@@ -1,0 +1,267 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert } from 'lucide-react';
+import Layout from '../components/Layout';
+import { useApp } from '../context/AppContext';
+import api from '../api/axios';
+
+const languages = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'ar', label: 'العربية', flag: '🇲🇦' },
+];
+
+export default function Settings() {
+  const { lang, setLang, dark, setDark, t } = useApp();
+  const navigate = useNavigate();
+  const [showDelete, setShowDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  const handlePasswordChange = async () => {
+    setPwError(''); setPwSuccess('');
+    if (!pwForm.current_password || !pwForm.new_password)
+      return setPwError('Please fill in all fields.');
+    if (pwForm.new_password.length < 6)
+      return setPwError('New password must be at least 6 characters.');
+    if (pwForm.new_password !== pwForm.confirm_password)
+      return setPwError('New passwords do not match.');
+    setPwSaving(true);
+    try {
+      await api.put('/auth/change-password', { current_password: pwForm.current_password, new_password: pwForm.new_password });
+      setPwSuccess('Password changed successfully.');
+      setPwForm({ current_password: '', new_password: '', confirm_password: '' });
+      setShowPw(false);
+      setTimeout(() => setPwSuccess(''), 4000);
+    } catch (err) {
+      setPwError(err.response?.data?.error || 'Failed to change password.');
+    } finally { setPwSaving(false); }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteError('');
+    if (deleteConfirm !== 'DELETE') return setDeleteError('Please type DELETE to confirm.');
+    if (!deletePassword) return setDeleteError('Password is required.');
+    setDeleting(true);
+    try {
+      await api.delete('/auth/account', { data: { password: deletePassword } });
+      localStorage.clear();
+      navigate('/');
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete account.');
+    } finally { setDeleting(false); }
+  };
+
+  const inp = 'w-full pr-10 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white';
+
+  return (
+    <Layout>
+      <div className="max-w-2xl mx-auto space-y-5">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t.settings}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage your preferences and account security.</p>
+        </div>
+
+        {pwSuccess && (
+          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl text-sm border border-emerald-100">
+            <Check size={14} />{pwSuccess}
+          </div>
+        )}
+
+        {/* Language */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Globe size={16} className="text-gray-400" />
+            <h3 className="font-semibold text-gray-900">{t.language}</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Choose the language for the interface.</p>
+          <div className="grid grid-cols-3 gap-3">
+            {languages.map(l => (
+              <button key={l.code} onClick={() => setLang(l.code)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  lang === l.code
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                }`}>
+                <span className="text-xl">{l.flag}</span>
+                <span>{l.label}</span>
+                {lang === l.code && <Check size={13} className="ml-auto text-indigo-600" />}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Theme */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            {dark ? <Moon size={16} className="text-gray-400" /> : <Sun size={16} className="text-gray-400" />}
+            <h3 className="font-semibold text-gray-900">{t.theme}</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Switch between light and dark appearance.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setDark(false)}
+              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                !dark ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}>
+              <Sun size={20} />
+              <div className="text-left">
+                <p className="font-medium">{t.lightMode}</p>
+                <p className="text-xs opacity-60 mt-0.5">Clean & bright</p>
+              </div>
+              {!dark && <Check size={14} className="ml-auto text-indigo-600" />}
+            </button>
+            <button onClick={() => setDark(true)}
+              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                dark ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}>
+              <Moon size={20} />
+              <div className="text-left">
+                <p className="font-medium">{t.darkMode}</p>
+                <p className="text-xs opacity-60 mt-0.5">Easy on the eyes</p>
+              </div>
+              {dark && <Check size={14} className="ml-auto text-indigo-600" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Password */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Lock size={16} className="text-gray-400" />
+              <div>
+                <h3 className="font-semibold text-gray-900">{t.changePassword}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Update your account password.</p>
+              </div>
+            </div>
+            <button onClick={() => { setShowPw(s => !s); setPwError(''); }}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                showPw ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700'
+              }`}>
+              {showPw ? <><ChevronUp size={14} />Cancel</> : <><ChevronDown size={14} />{t.changePassword}</>}
+            </button>
+          </div>
+
+          {showPw && (
+            <div className="mt-5 pt-5 border-t border-gray-100 space-y-4">
+              {pwError && (
+                <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2.5 rounded-xl text-sm border border-red-100">
+                  <AlertCircle size={14} />{pwError}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.currentPassword}</label>
+                <div className="relative">
+                  <input className={inp} type={showCurrent ? 'text' : 'password'}
+                    placeholder="Enter your current password"
+                    value={pwForm.current_password}
+                    onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))} />
+                  <button type="button" onClick={() => setShowCurrent(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.newPassword}</label>
+                <div className="relative">
+                  <input className={inp} type={showNew ? 'text' : 'password'}
+                    placeholder="Enter your new password (min. 6 chars)"
+                    value={pwForm.new_password}
+                    onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))} />
+                  <button type="button" onClick={() => setShowNew(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
+                <input className={inp + ' pr-3'} type="password"
+                  placeholder="Re-enter your new password"
+                  value={pwForm.confirm_password}
+                  onChange={e => setPwForm(f => ({ ...f, confirm_password: e.target.value }))} />
+              </div>
+              <button onClick={handlePasswordChange} disabled={pwSaving}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-60">
+                {pwSaving ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.loading}</>
+                ) : (
+                  <><Lock size={14} />{t.changePassword}</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Delete Account */}
+        <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Trash2 size={16} className="text-red-400" />
+              <div>
+                <h3 className="font-semibold text-gray-900">Delete Account</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Permanently delete your account and all data.</p>
+              </div>
+            </div>
+            <button onClick={() => { setShowDelete(s => !s); setDeleteError(''); setDeletePassword(''); setDeleteConfirm(''); }}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                showDelete ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
+              }`}>
+              {showDelete ? <><ChevronUp size={14} />Cancel</> : <><Trash2 size={14} />Delete Account</>}
+            </button>
+          </div>
+
+          {showDelete && (
+            <div className="mt-5 pt-5 border-t border-red-100 space-y-4">
+              <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                <TriangleAlert size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-700 leading-relaxed">
+                  This action is <strong>irreversible</strong>. All your resumes, job applications, messages, and connections will be permanently deleted.
+                </p>
+              </div>
+
+              {deleteError && (
+                <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2.5 rounded-xl text-sm border border-red-100">
+                  <AlertCircle size={14} />{deleteError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Your password</label>
+                <input type="password" className={inp.replace('focus:ring-indigo-500', 'focus:ring-red-500') + ' pr-3'}
+                  placeholder="Enter your password to confirm"
+                  value={deletePassword} onChange={e => setDeletePassword(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Type <strong className="text-red-600">DELETE</strong> to confirm
+                </label>
+                <input type="text" className={inp.replace('focus:ring-indigo-500', 'focus:ring-red-500') + ' pr-3'}
+                  placeholder="DELETE"
+                  value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} />
+              </div>
+
+              <button onClick={handleDeleteAccount} disabled={deleting}
+                className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-all disabled:opacity-60">
+                {deleting
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Deleting...</>
+                  : <><Trash2 size={14} />Permanently Delete Account</>
+                }
+              </button>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </Layout>
+  );
+}

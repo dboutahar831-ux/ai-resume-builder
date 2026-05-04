@@ -1,0 +1,68 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const pool = require('./db');
+const resumesRouter = require('./routes/resumes');
+const authRouter = require('./routes/auth');
+const jobsRouter = require('./routes/jobs');
+const aiRouter = require('./routes/ai');
+const friendsRouter = require('./routes/friends');
+const messagesRouter = require('./routes/messages');
+const coverLettersRouter = require('./routes/coverLetters');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.some(o => origin === o || origin.endsWith('.vercel.app'))) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// Health check — also verifies DB connectivity
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', database: 'disconnected', detail: err.message });
+  }
+});
+
+// Routes
+app.use('/api/auth', authRouter);
+app.use('/api/resumes', resumesRouter);
+app.use('/api/jobs', jobsRouter);
+app.use('/api/ai', aiRouter);
+app.use('/api/friends', friendsRouter);
+app.use('/api/messages', messagesRouter);
+app.use('/api/cover-letters', coverLettersRouter);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
