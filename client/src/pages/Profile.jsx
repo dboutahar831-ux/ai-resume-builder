@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContext';
 function InfoRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <div className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
         <Icon size={15} className="text-gray-400" />
       </div>
       <div>
@@ -111,8 +111,8 @@ export default function Profile() {
               {form.avatar ? (
                 <img src={form.avatar} alt="avatar" className="w-20 h-20 rounded-2xl object-cover border border-gray-200" />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-indigo-700 select-none">{form.name?.[0]?.toUpperCase()}</span>
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <span className="text-3xl font-bold text-white select-none">{form.name?.[0]?.toUpperCase()}</span>
                 </div>
               )}
               {editing && (

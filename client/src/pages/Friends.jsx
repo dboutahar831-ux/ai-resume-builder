@@ -7,8 +7,8 @@ import api from '../api/axios';
 function Avatar({ user, size = 'md' }) {
   const sz = size === 'lg' ? 'w-12 h-12 text-base' : 'w-9 h-9 text-sm';
   return user.avatar
-    ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0`} />
-    : <div className={`${sz} rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold flex-shrink-0`}>{user.name?.[0]}</div>;
+    ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0 ring-2 ring-white`} />
+    : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>{user.name?.[0]}</div>;
 }
 
 function FriendCard({ user, onAction, myId }) {
@@ -29,29 +29,29 @@ function FriendCard({ user, onAction, myId }) {
       <div className="flex gap-2 flex-shrink-0">
         {!status && (
           <button onClick={() => onAction('request', user.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-all">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-xl hover:bg-indigo-700 transition-all">
             <UserPlus size={13} />Add
           </button>
         )}
         {status === 'pending' && iAmRequester && (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-lg">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-xl">
             <Clock size={13} />Pending
           </span>
         )}
         {status === 'pending' && !iAmRequester && (
           <>
             <button onClick={() => onAction('accept', user.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-all">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-xl hover:bg-emerald-700 transition-all">
               <Check size={13} />Accept
             </button>
             <button onClick={() => onAction('reject', user.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 text-xs font-medium rounded-lg hover:bg-red-100 transition-all">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 text-xs font-medium rounded-xl hover:bg-red-100 transition-all">
               <X size={13} />
             </button>
           </>
         )}
         {status === 'accepted' && (
-          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-xl">
             <UserCheck size={13} />Friends
           </span>
         )}
@@ -135,7 +135,7 @@ export default function Friends() {
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-xs font-medium rounded-xl transition-all ${
                 tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}>
               {t.label}
@@ -185,11 +185,11 @@ export default function Friends() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleAction('accept', u.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-all">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-xl hover:bg-indigo-700 transition-all">
                     <Check size={13} />Accept
                   </button>
                   <button onClick={() => handleAction('reject', u.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                     <X size={15} />
                   </button>
                 </div>

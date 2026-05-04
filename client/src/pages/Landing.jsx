@@ -147,7 +147,7 @@ export default function Landing() {
               <div key={name} className="bg-white rounded-2xl p-7 border border-gray-100 flex flex-col justify-between">
                 <p className="text-gray-600 leading-relaxed italic mb-6">"{text}"</p>
                 <div className="flex items-center gap-3 pt-5 border-t border-gray-100">
-                  <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
                     {name[0]}
                   </div>
                   <div>

@@ -107,7 +107,7 @@ export default function Home() {
                     {f.avatar ? (
                       <img src={f.avatar} alt={f.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                     ) : (
-                      <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-sm flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                         {f.name?.[0]}
                       </div>
                     )}

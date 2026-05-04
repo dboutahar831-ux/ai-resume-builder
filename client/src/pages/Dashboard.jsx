@@ -156,7 +156,7 @@ export default function Dashboard() {
                 </div>
               ) : jobs.slice(0, 4).map(j => (
                 <div key={j.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-500">
                     {j.company?.[0]}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -105,7 +105,7 @@ export default function JobTracker() {
         <div className="flex gap-2 flex-wrap">
           {['all', ...STATUSES].map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${filter === s ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              className={`px-4 py-1.5 rounded-xl text-sm font-medium capitalize transition-all ${filter === s ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
               {s === 'all' ? `All (${jobs.length})` : `${s} (${jobs.filter(j => j.status === s).length})`}
             </button>
           ))}
@@ -130,7 +130,7 @@ export default function JobTracker() {
               const d = daysUntil(j.interview_date);
               return (
                 <div key={j.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 hover:shadow-sm transition-all">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm flex-shrink-0">
                     {j.company[0]}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -149,14 +149,14 @@ export default function JobTracker() {
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {j.url && (
-                      <a href={j.url} target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                      <a href={j.url} target="_blank" rel="noreferrer" className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
                         <ExternalLink size={16} />
                       </a>
                     )}
-                    <button onClick={() => openEdit(j)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                    <button onClick={() => openEdit(j)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
                       <Pencil size={16} />
                     </button>
-                    <button onClick={() => handleDelete(j.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                    <button onClick={() => handleDelete(j.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -172,7 +172,7 @@ export default function JobTracker() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="font-semibold text-gray-900">{editId ? 'Edit Application' : 'Add Application'}</h2>
-              <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-lg"><X size={18} /></button>
+              <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-all"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">

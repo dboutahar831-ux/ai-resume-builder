@@ -8,8 +8,8 @@ import api from '../api/axios';
 function Avatar({ user, size = 'sm' }) {
   const sz = size === 'lg' ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs';
   return user?.avatar
-    ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0`} />
-    : <div className={`${sz} rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold flex-shrink-0`}>
+    ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0 ring-2 ring-white`} />
+    : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>
         {user?.name?.[0] || '?'}
       </div>;
 }

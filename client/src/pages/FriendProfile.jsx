@@ -66,8 +66,8 @@ export default function FriendProfile() {
                 <img src={profile.avatar} alt={profile.name}
                   className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-indigo-100 border-4 border-white shadow-md flex items-center justify-center">
-                  <span className="text-3xl font-bold text-indigo-700">{profile.name?.[0]}</span>
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 border-4 border-white shadow-md flex items-center justify-center">
+                  <span className="text-3xl font-bold text-white">{profile.name?.[0]}</span>
                 </div>
               )}
 
