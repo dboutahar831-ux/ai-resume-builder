@@ -7,6 +7,7 @@ import {
   Clock, Hash, SlidersHorizontal, CalendarClock,
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import StoriesBar from '../components/StoriesBar';
 import api from '../api/axios';
 
 const REACTIONS = [
@@ -919,6 +920,9 @@ export default function Home() {
 
           {/* Feed */}
           <div className="lg:col-span-2 space-y-4">
+
+            {/* Stories Bar */}
+            <StoriesBar myUser={myUser} />
 
             {/* Composer */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"

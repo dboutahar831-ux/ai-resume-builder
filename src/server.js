@@ -13,6 +13,9 @@ const messagesRouter = require('./routes/messages');
 const coverLettersRouter = require('./routes/coverLetters');
 const postsRouter = require('./routes/posts');
 const notificationsRouter = require('./routes/notifications');
+const storiesRouter    = require('./routes/stories');
+const highlightsRouter = require('./routes/highlights');
+const notesRouter      = require('./routes/notes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +46,9 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/cover-letters', coverLettersRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/stories',       storiesRouter);
+app.use('/api/highlights',    highlightsRouter);
+app.use('/api/notes',         notesRouter);
 
 // Serve React frontend (only when client/dist exists — local dev / single-server deploy)
 const clientDist = path.join(__dirname, '../client/dist');

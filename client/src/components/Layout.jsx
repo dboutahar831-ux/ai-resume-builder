@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, LogOut, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight } from 'lucide-react';
+import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, LogOut, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight, Moon, Sun } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
 
@@ -84,11 +84,32 @@ function NotificationBell({ items, count, onMarkRead, onClose }) {
   );
 }
 
+function useDarkMode() {
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [dark]);
+
+  return [dark, setDark];
+}
+
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
   const [notifItems, setNotifItems] = useState([]);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
   const [pendingReqs, setPendingReqs] = useState(0);
+  const [dark, setDark] = useDarkMode();
   const navigate = useNavigate();
   const { t } = useApp();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -154,7 +175,7 @@ export default function Layout({ children }) {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50/80">
+    <div className="flex h-screen bg-gray-50/80 dark:bg-[#13151f]">
       {open && <div className="fixed inset-0 bg-black/30 z-20 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />}
 
       <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
@@ -168,6 +189,11 @@ export default function Layout({ children }) {
             <span className="font-bold text-gray-900 tracking-tight">ResumeAI</span>
           </Link>
           <div className="flex items-center gap-0.5">
+            <button onClick={() => setDark(d => !d)}
+              className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all"
+              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {dark ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <NotificationBell items={notifItems} count={notifCount} onMarkRead={markAllRead} onClose={() => setOpen(false)} />
             <button onClick={() => setOpen(false)} className="lg:hidden p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
               <X size={17} />

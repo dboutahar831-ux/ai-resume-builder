@@ -28,40 +28,81 @@
 }
 
 /* ─── Dark Mode ──────────────────────────────────────────────────── */
-.dark body                          { background-color: #0f1117; color: #e2e8f0; }
+/* Warm dark palette — easier on the eyes than cold blue-black */
+:root {
+  --dm-bg:       #13151f;  /* page background   */
+  --dm-surface:  #1c1f2e;  /* cards / panels    */
+  --dm-raised:   #252840;  /* elevated surfaces */
+  --dm-border:   #2e3150;  /* borders / dividers */
+  --dm-text:     #dde1f0;  /* primary text      */
+  --dm-muted:    #8b92b2;  /* secondary text    */
+  --dm-dim:      #545878;  /* placeholder / dim */
+}
+
+.dark body { background-color: var(--dm-bg); color: var(--dm-text); }
+.dark *     { -webkit-font-smoothing: antialiased; }
 
 /* Surfaces */
-.dark .bg-white                     { background-color: #1a1d2e !important; }
-.dark .bg-gray-50                   { background-color: #0f1117 !important; }
-.dark .bg-gray-100                  { background-color: #222537 !important; }
-.dark .bg-indigo-50                 { background-color: #1e2048 !important; }
+.dark .bg-white        { background-color: var(--dm-surface) !important; }
+.dark .bg-gray-50      { background-color: var(--dm-bg)      !important; }
+.dark .bg-gray-50\/80  { background-color: var(--dm-bg)      !important; }
+.dark .bg-gray-100     { background-color: var(--dm-raised)  !important; }
+.dark .bg-gray-200     { background-color: var(--dm-raised)  !important; }
+.dark .bg-indigo-50    { background-color: #1e2148           !important; }
+.dark .bg-emerald-50   { background-color: #162b22           !important; }
+.dark .bg-blue-50      { background-color: #151f35           !important; }
+.dark .bg-rose-50      { background-color: #2b1820           !important; }
+.dark .bg-purple-50    { background-color: #1f1632           !important; }
+.dark .bg-yellow-50    { background-color: #1f1c10           !important; }
 
 /* Borders */
-.dark .border-gray-100              { border-color: #2a2d42 !important; }
-.dark .border-gray-200              { border-color: #2a2d42 !important; }
-.dark .divide-gray-50 > * + *      { border-color: #2a2d42 !important; }
+.dark .border-gray-100  { border-color: var(--dm-border) !important; }
+.dark .border-gray-200  { border-color: var(--dm-border) !important; }
+.dark .border-gray-300  { border-color: var(--dm-border) !important; }
+.dark .ring-gray-100    { --tw-ring-color: var(--dm-border) !important; }
+.dark .divide-gray-50 > * + *  { border-color: var(--dm-border) !important; }
+.dark .divide-gray-100 > * + * { border-color: var(--dm-border) !important; }
 
 /* Text */
-.dark .text-gray-900               { color: #f1f5f9 !important; }
-.dark .text-gray-700               { color: #cbd5e1 !important; }
-.dark .text-gray-600               { color: #94a3b8 !important; }
-.dark .text-gray-500               { color: #64748b !important; }
-.dark .text-gray-400               { color: #475569 !important; }
-.dark .text-gray-300               { color: #374151 !important; }
+.dark .text-gray-900  { color: #eef0f8 !important; }
+.dark .text-gray-800  { color: #d8dced !important; }
+.dark .text-gray-700  { color: #c2c8df !important; }
+.dark .text-gray-600  { color: var(--dm-muted)  !important; }
+.dark .text-gray-500  { color: #6b7494           !important; }
+.dark .text-gray-400  { color: var(--dm-dim)     !important; }
+.dark .text-gray-300  { color: #3d4260           !important; }
 
 /* Inputs */
 .dark input:not([type=file]),
 .dark textarea,
-.dark select                        { background-color: #222537 !important; color: #e2e8f0 !important; border-color: #2a2d42 !important; }
+.dark select {
+  background-color: var(--dm-raised) !important;
+  color: var(--dm-text) !important;
+  border-color: var(--dm-border) !important;
+}
 .dark input::placeholder,
-.dark textarea::placeholder         { color: #475569 !important; }
+.dark textarea::placeholder { color: var(--dm-dim) !important; }
 
-/* Shadows */
-.dark .shadow-sm                    { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
-.dark .hover\:shadow-md:hover       { box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important; }
-.dark .hover\:shadow-sm:hover       { box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important; }
+/* Shadows — softer so everything doesn't look painted-on */
+.dark .shadow-sm  { box-shadow: 0 1px 4px rgba(0,0,0,0.5) !important; }
+.dark .shadow-md  { box-shadow: 0 4px 16px rgba(0,0,0,0.55) !important; }
+.dark .shadow-lg  { box-shadow: 0 8px 30px rgba(0,0,0,0.6)  !important; }
+.dark .shadow-xl  { box-shadow: 0 12px 40px rgba(0,0,0,0.65) !important; }
+.dark .shadow-2xl { box-shadow: 0 20px 60px rgba(0,0,0,0.7)  !important; }
+.dark .hover\:shadow-md:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.55) !important; }
+.dark .hover\:shadow-sm:hover { box-shadow: 0 2px 8px  rgba(0,0,0,0.45) !important; }
 
 /* Hover states */
-.dark .hover\:bg-gray-50:hover      { background-color: #222537 !important; }
-.dark .hover\:bg-gray-100:hover     { background-color: #2d3148 !important; }
-.dark .hover\:bg-indigo-50:hover    { background-color: #1e2048 !important; }
+.dark .hover\:bg-gray-50:hover    { background-color: var(--dm-raised) !important; }
+.dark .hover\:bg-gray-100:hover   { background-color: #2f3350          !important; }
+.dark .hover\:bg-indigo-50:hover  { background-color: #1e2148          !important; }
+.dark .hover\:bg-red-50:hover     { background-color: #2b1820          !important; }
+
+/* Sidebar / nav active state already uses bg-indigo-600 — keep its ring in dark */
+.dark .shadow-indigo-200 { box-shadow: none !important; }
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar        { width: 6px; height: 6px; }
+.dark ::-webkit-scrollbar-track  { background: var(--dm-bg); }
+.dark ::-webkit-scrollbar-thumb  { background: var(--dm-border); border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: var(--dm-dim); }
