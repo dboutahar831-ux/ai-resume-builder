@@ -47,16 +47,9 @@ The skills array should contain 8-12 specific, relevant skills for this role and
 
   try {
     const response = await client.messages.create({
-      model: 'claude-opus-4-7',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      thinking: { type: 'adaptive' },
-      system: [
-        {
-          type: 'text',
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
+      system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
     });
 
@@ -89,7 +82,7 @@ router.post('/enhance', auth, async (req, res) => {
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
-      system: `You are a professional content writer for ResumeAI, a career-focused social platform.
+      system: `You are a professional content writer for Nexly, a career social platform.
 Your job: rewrite the user's draft post to sound polished, engaging, and professional — suitable for a LinkedIn-style audience.
 Rules:
 - Keep the original meaning and language (if Arabic write Arabic, if English write English)
