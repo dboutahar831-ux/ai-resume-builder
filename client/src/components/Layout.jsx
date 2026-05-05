@@ -28,6 +28,7 @@ const NOTIF_META = {
   reaction: { bg: 'bg-rose-50',    Icon: Heart,           color: 'text-rose-500'    },
   repost:   { bg: 'bg-purple-50',  Icon: Repeat2,         color: 'text-purple-600'  },
   reply:    { bg: 'bg-indigo-50',  Icon: CornerDownRight, color: 'text-indigo-600'  },
+  mention:  { bg: 'bg-violet-50',  Icon: UserPlus,        color: 'text-violet-600'  },
 };
 
 function NotificationBell({ items, count, onMarkRead, onClose }) {
@@ -147,7 +148,7 @@ export default function Layout({ children }) {
         notifications.push({ type: 'request', text: `${r.name} sent you a friend request`, link: '/friends', icon: 'friend', read: false })
       );
 
-      const typeText = { comment: 'commented on your post', reaction: 'reacted to your post', repost: 'shared your post', reply: 'replied to your comment' };
+      const typeText = { comment: 'commented on your post', reaction: 'reacted to your post', repost: 'shared your post', reply: 'replied to your comment', mention: 'mentioned you in a post' };
       postNotifs.data.forEach(n => {
         const label = typeText[n.type] || 'interacted with your post';
         const diff = Date.now() - new Date(n.created_at).getTime();

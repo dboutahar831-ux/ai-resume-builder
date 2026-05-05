@@ -87,7 +87,7 @@ router.get('/trending', auth, async (req, res) => {
 
 // POST /api/posts
 router.post('/', auth, async (req, res) => {
-  const { content, image_url, video_url, scheduled_at } = req.body;
+  const { content, image_url, video_url, scheduled_at, mention_ids } = req.body;
   if (!content?.trim() && !image_url && !video_url)
     return res.status(400).json({ error: 'Post cannot be empty.' });
   try {
@@ -101,6 +101,11 @@ router.post('/', auth, async (req, res) => {
       'SELECT name, avatar, last_seen_at, COALESCE(show_online_status, TRUE) AS show_online FROM users WHERE id=$1',
       [req.user.id]
     );
+    if (Array.isArray(mention_ids)) {
+      for (const uid of mention_ids) {
+        await notify(uid, req.user.id, 'mention', post.id);
+      }
+    }
     res.json({
       ...post,
       user_id: req.user.id,
@@ -201,7 +206,7 @@ router.get('/:postId/comments', auth, async (req, res) => {
 
 // POST /api/posts/:postId/comments
 router.post('/:postId/comments', auth, async (req, res) => {
-  const { content, image_url, parent_id } = req.body;
+  const { content, image_url, parent_id, mention_ids } = req.body;
   if (!content?.trim() && !image_url) return res.status(400).json({ error: 'Comment cannot be empty.' });
   try {
     const result = await pool.query(
@@ -221,6 +226,11 @@ router.post('/:postId/comments', auth, async (req, res) => {
         }
       } else {
         await notify(owner.rows[0].user_id, req.user.id, 'comment', parseInt(req.params.postId), c.id);
+      }
+    }
+    if (Array.isArray(mention_ids)) {
+      for (const uid of mention_ids) {
+        await notify(uid, req.user.id, 'mention', parseInt(req.params.postId), c.id);
       }
     }
 

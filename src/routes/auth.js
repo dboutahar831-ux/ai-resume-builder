@@ -158,6 +158,20 @@ router.put('/change-password', auth, async (req, res) => {
   }
 });
 
+// GET /api/auth/users/search?q=name — search users for @mentions
+router.get('/users/search', auth, async (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  try {
+    const result = await pool.query(
+      `SELECT id, name, avatar FROM users
+       WHERE LOWER(name) LIKE $2 AND id != $1
+       ORDER BY name ASC LIMIT 6`,
+      [req.user.id, `%${q}%`]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // PUT /api/auth/heartbeat — update last_seen_at
 router.put('/heartbeat', auth, async (req, res) => {
   try {

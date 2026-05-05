@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, X, Music, Type } from 'lucide-react';
 import api from '../api/axios';
 import StoryViewer from './StoryViewer';
+import MentionSuggestions from './MentionSuggestions';
+import { useMention } from '../hooks/useMention';
 
 function AddStoryModal({ onClose, onAdded }) {
   const [media, setMedia] = useState(null);
   const [mediaType, setMediaType] = useState('image');
   const [caption, setCaption] = useState('');
   const [musicFile, setMusicFile] = useState(null);
+  const captionMention = useMention();
   const [musicName, setMusicName] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
@@ -84,12 +87,17 @@ function AddStoryModal({ onClose, onAdded }) {
 
           {media && (
             <>
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl relative">
+                <MentionSuggestions
+                  suggestions={captionMention.suggestions}
+                  onSelect={u => captionMention.pickMention(u, caption, setCaption)}
+                />
                 <Type size={14} className="text-gray-400 flex-shrink-0" />
                 <input
+                  ref={captionMention.inputRef}
                   value={caption}
-                  onChange={e => setCaption(e.target.value)}
-                  placeholder="Add a caption..."
+                  onChange={e => { setCaption(e.target.value); captionMention.onType(e.target.value, e.target.selectionStart); }}
+                  placeholder="Add a caption... (@ to mention)"
                   maxLength={150}
                   className="flex-1 text-sm bg-transparent outline-none text-gray-800 dark:text-gray-200 placeholder-gray-400"
                 />

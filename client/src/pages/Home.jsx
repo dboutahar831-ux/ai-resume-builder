@@ -8,7 +8,18 @@ import {
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import StoriesBar from '../components/StoriesBar';
+import MentionSuggestions from '../components/MentionSuggestions';
+import { useMention } from '../hooks/useMention';
 import api from '../api/axios';
+
+function renderWithMentions(text) {
+  if (!text) return null;
+  return text.split(/(@\S+)/g).map((part, i) =>
+    part.startsWith('@')
+      ? <span key={i} className="font-semibold cursor-pointer hover:underline" style={{ color: '#6C5CE7' }}>{part}</span>
+      : part
+  );
+}
 
 const REACTIONS = [
   { type: 'like',  emoji: '👍', label: 'Like',  color: 'text-indigo-600', bg: 'bg-indigo-50',  ring: 'ring-indigo-200' },
@@ -172,7 +183,7 @@ function CommentItem({ comment, postId, myId, onDelete, onReact, onReply, allCom
           {isReply && comment.parent_user_name && (
             <span className="text-xs text-indigo-400 font-medium">@{comment.parent_user_name} </span>
           )}
-          {comment.content && <p className="text-sm text-gray-800 mt-0.5 leading-relaxed">{comment.content}</p>}
+          {comment.content && <p className="text-sm text-gray-800 mt-0.5 leading-relaxed">{renderWithMentions(comment.content)}</p>}
           {comment.image_url && (
             <img src={comment.image_url} alt="comment" className="mt-2 rounded-xl max-h-48 object-cover" />
           )}
@@ -308,6 +319,7 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
   const [replyingTo, setReplyingTo] = useState(null);
   const commentFileRef = useRef();
   const commentInputRef = useRef();
+  const commentMention = useMention();
 
   const loadComments = useCallback(async () => {
     setLoadingComments(true);
@@ -330,11 +342,13 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
         content: commentText.trim() || null,
         image_url: commentImage || null,
         parent_id: replyingTo?.id || null,
+        mention_ids: commentMention.mentionIds,
       });
       setComments(c => [...c, { ...res.data, parent_user_name: replyingTo?.user_name || null }]);
       setCommentText('');
       setCommentImage('');
       setReplyingTo(null);
+      commentMention.reset();
       onCommentCountChange(post.id, 1);
     } finally { setSending(false); }
   };
@@ -469,7 +483,7 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
         {!isRepost && (
           <>
             {post.content && (
-              <p className="px-4 pb-3 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+              <p className="px-4 pb-3 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{renderWithMentions(post.content)}</p>
             )}
             {post.image_url && (
               <div className="cursor-pointer" onClick={() => setImgExpanded(v => !v)}>
@@ -554,13 +568,17 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
                     </button>
                   </div>
                 )}
-                <div className="flex items-center gap-1 px-1">
+                <div className="flex items-center gap-1 px-1 relative">
+                  <MentionSuggestions
+                    suggestions={commentMention.suggestions}
+                    onSelect={u => commentMention.pickMention(u, commentText, setCommentText)}
+                  />
                   <input
-                    ref={commentInputRef}
+                    ref={el => { commentInputRef.current = el; commentMention.inputRef.current = el; }}
                     value={commentText}
-                    onChange={e => setCommentText(e.target.value)}
+                    onChange={e => { setCommentText(e.target.value); commentMention.onType(e.target.value, e.target.selectionStart); }}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendComment())}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Write a comment...'}
+                    placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Write a comment... (@ to mention)'}
                     className="flex-1 px-2 py-2 text-sm bg-transparent outline-none"
                   />
                   <button onClick={() => commentFileRef.current?.click()}
@@ -659,6 +677,7 @@ export default function Home() {
   const textareaRef = useRef();
   const searchRef = useRef();
   const searchTimerRef = useRef();
+  const postMention = useMention();
 
   const load = useCallback(async () => {
     api.get('/posts/feed')
@@ -735,12 +754,14 @@ export default function Home() {
         image_url: postImage || null,
         video_url: postVideo || null,
         scheduled_at: scheduledAt || null,
+        mention_ids: postMention.mentionIds,
       });
       if (!scheduledAt) setPosts(p => [res.data, ...p]);
       setPostText('');
       setPostImage('');
       setPostVideo('');
       setScheduledAt(null);
+      postMention.reset();
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } finally { setSubmitting(false); }
   };
@@ -767,6 +788,7 @@ export default function Home() {
     setPostText(e.target.value);
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+    postMention.onType(e.target.value, e.target.selectionStart);
   };
 
   const handleReact = async (postId, type) => {
@@ -933,13 +955,17 @@ export default function Home() {
                 <Link to="/profile" className="flex-shrink-0">
                   <Avatar user={myUser} size="md" />
                 </Link>
-                <div className="flex-1">
+                <div className="flex-1 relative">
+                  <MentionSuggestions
+                    suggestions={postMention.suggestions}
+                    onSelect={u => postMention.pickMention(u, postText, setPostText)}
+                  />
                   <textarea
-                    ref={textareaRef}
+                    ref={el => { textareaRef.current = el; postMention.inputRef.current = el; }}
                     value={postText}
                     onChange={handleTextChange}
                     onKeyDown={e => e.key === 'Enter' && e.ctrlKey && submitPost()}
-                    placeholder={`What's on your mind, ${myUser.name?.split(' ')[0] || ''}?`}
+                    placeholder={`What's on your mind, ${myUser.name?.split(' ')[0] || ''}? (@ to mention)`}
                     rows={2}
                     className="w-full text-sm text-gray-800 placeholder-gray-400 resize-none outline-none leading-relaxed bg-transparent"
                     style={{ minHeight: '52px', maxHeight: '200px' }}
