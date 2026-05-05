@@ -63,27 +63,28 @@ export default function FriendProfile() {
           <ArrowLeft size={16} />Back
         </button>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Cover */}
-          <div className="h-28 relative">
+          <div className="h-48 relative">
             {profile.cover_image
               ? <img src={profile.cover_image} alt="cover" className="w-full h-full object-cover" />
-              : <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
+              : <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500" />
             }
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent" />
           </div>
 
-          <div className="px-6 pb-6">
-            <div className="-mt-10 mb-4 flex items-end justify-between">
+          <div className="px-8 pb-8">
+            <div className="-mt-16 mb-5 flex items-end justify-between">
               <div className="relative">
                 {profile.avatar ? (
                   <img src={profile.avatar} alt={profile.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
+                    className="w-32 h-32 rounded-3xl object-cover border-4 border-white shadow-xl" />
                 ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 border-4 border-white shadow-md flex items-center justify-center">
-                    <span className="text-3xl font-bold text-white">{profile.name?.[0]}</span>
+                  <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-indigo-400 to-indigo-700 border-4 border-white shadow-xl flex items-center justify-center">
+                    <span className="text-5xl font-bold text-white">{profile.name?.[0]}</span>
                   </div>
                 )}
-                <span className={`absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                <span className={`absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full border-2 border-white shadow ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
               </div>
 
               <div className="flex gap-2 mb-1">
@@ -125,53 +126,47 @@ export default function FriendProfile() {
               </div>
             </div>
 
-            <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{profile.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               {isFriend && (
-                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                  <UserCheck size={12} />Connected
-                </p>
+                <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-semibold border border-emerald-100">
+                  <UserCheck size={11} />Connected
+                </span>
               )}
               {lastSeenLabel && (
-                <p className={`text-xs flex items-center gap-1 ${online ? 'text-emerald-600' : 'text-gray-400'}`}>
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium border
+                  ${online ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-50 text-gray-500 border-gray-100'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                   {lastSeenLabel}
-                </p>
+                </span>
               )}
-              {!lastSeenLabel && <p className="text-xs text-gray-400">ResumeAI member</p>}
+              {!lastSeenLabel && (
+                <span className="text-xs text-gray-400">ResumeAI member</span>
+              )}
             </div>
 
             {profile.bio && (
-              <p className="text-sm text-gray-600 mt-3 leading-relaxed">{profile.bio}</p>
+              <p className="text-sm text-gray-600 mt-3 leading-relaxed max-w-md">{profile.bio}</p>
             )}
 
-            <div className="mt-5 space-y-3 border-t border-gray-100 pt-5">
+            <div className="mt-5 flex flex-wrap gap-4 border-t border-gray-100 pt-5">
               {profile.location && (
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                    <MapPin size={14} className="text-gray-400" />
-                  </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <MapPin size={14} className="text-gray-400 flex-shrink-0" />
                   {profile.location}
                 </div>
               )}
               {profile.linkedin && (
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                    <Link2 size={14} className="text-gray-400" />
-                  </div>
-                  <a href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://${profile.linkedin}`}
-                    target="_blank" rel="noreferrer"
-                    className="text-indigo-600 hover:underline truncate">
-                    {profile.linkedin}
-                  </a>
-                </div>
+                <a href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://${profile.linkedin}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex items-center gap-2 text-sm text-indigo-600 hover:underline">
+                  <Link2 size={14} className="flex-shrink-0" />LinkedIn
+                </a>
               )}
               {profile.created_at && (
-                <div className="flex items-center gap-3 text-sm text-gray-500">
-                  <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                    <Calendar size={14} className="text-gray-400" />
-                  </div>
-                  Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <Calendar size={14} className="flex-shrink-0" />
+                  Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </div>
               )}
             </div>
