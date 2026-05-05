@@ -9,7 +9,8 @@ router.get('/search', auth, async (req, res) => {
   if (!q) return res.json([]);
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.avatar, u.last_seen_at,
+      `SELECT u.id, u.name, u.location, u.avatar,
+        CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS last_seen_at,
         (SELECT status FROM friendships
          WHERE (requester_id=$1 AND addressee_id=u.id)
             OR (requester_id=u.id AND addressee_id=$1)
@@ -32,7 +33,8 @@ router.get('/search', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.avatar, u.last_seen_at
+      `SELECT u.id, u.name, u.location, u.avatar,
+        CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS last_seen_at
        FROM friendships f
        JOIN users u ON (
          CASE WHEN f.requester_id=$1 THEN f.addressee_id ELSE f.requester_id END = u.id
@@ -63,7 +65,8 @@ router.get('/requests', auth, async (req, res) => {
 router.get('/profile/:userId', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.linkedin, u.avatar, u.bio, u.created_at, u.last_seen_at,
+      `SELECT u.id, u.name, u.location, u.linkedin, u.avatar, u.bio, u.cover_image, u.created_at,
+        CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS last_seen_at,
         (SELECT status FROM friendships
          WHERE (requester_id=$1 AND addressee_id=$2)
             OR (requester_id=$2 AND addressee_id=$1)
@@ -86,8 +89,7 @@ router.post('/request/:userId', auth, async (req, res) => {
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot add yourself.' });
   try {
     await pool.query(
-      `INSERT INTO friendships (requester_id, addressee_id) VALUES ($1,$2)
-       ON CONFLICT DO NOTHING`,
+      `INSERT INTO friendships (requester_id, addressee_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
       [req.user.id, targetId]
     );
     res.json({ message: 'Request sent.' });
@@ -110,8 +112,7 @@ router.put('/accept/:userId', auth, async (req, res) => {
 router.put('/reject/:userId', auth, async (req, res) => {
   try {
     await pool.query(
-      `DELETE FROM friendships
-       WHERE requester_id=$1 AND addressee_id=$2 AND status='pending'`,
+      `DELETE FROM friendships WHERE requester_id=$1 AND addressee_id=$2 AND status='pending'`,
       [req.params.userId, req.user.id]
     );
     res.json({ message: 'Request rejected.' });
@@ -123,8 +124,7 @@ router.delete('/:userId', auth, async (req, res) => {
   try {
     await pool.query(
       `DELETE FROM friendships
-       WHERE (requester_id=$1 AND addressee_id=$2)
-          OR (requester_id=$2 AND addressee_id=$1)`,
+       WHERE (requester_id=$1 AND addressee_id=$2) OR (requester_id=$2 AND addressee_id=$1)`,
       [req.user.id, req.params.userId]
     );
     res.json({ message: 'Unfriended.' });

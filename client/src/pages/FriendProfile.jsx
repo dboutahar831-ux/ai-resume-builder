@@ -47,31 +47,45 @@ export default function FriendProfile() {
   const iAmRequester = requester_id === myId;
   const isFriend = status === 'accepted';
 
+  const online = profile.last_seen_at && Date.now() - new Date(profile.last_seen_at).getTime() < 120000;
+  const diff = profile.last_seen_at ? Date.now() - new Date(profile.last_seen_at).getTime() : null;
+  const lastSeenLabel = !profile.last_seen_at ? null
+    : online ? 'Active now'
+    : diff < 3600000 ? `Active ${Math.floor(diff / 60000)}m ago`
+    : diff < 86400000 ? `Active ${Math.floor(diff / 3600000)}h ago`
+    : `Active ${Math.floor(diff / 86400000)}d ago`;
+
   return (
     <Layout>
       <div className="max-w-xl mx-auto space-y-5">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+        <button onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
           <ArrowLeft size={16} />Back
         </button>
 
-        {/* Profile card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Cover */}
-          <div className="h-24 bg-gradient-to-r from-indigo-500 to-purple-600" />
+          <div className="h-28 relative">
+            {profile.cover_image
+              ? <img src={profile.cover_image} alt="cover" className="w-full h-full object-cover" />
+              : <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
+            }
+          </div>
 
           <div className="px-6 pb-6">
-            {/* Avatar */}
             <div className="-mt-10 mb-4 flex items-end justify-between">
-              {profile.avatar ? (
-                <img src={profile.avatar} alt={profile.name}
-                  className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
-              ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 border-4 border-white shadow-md flex items-center justify-center">
-                  <span className="text-3xl font-bold text-white">{profile.name?.[0]}</span>
-                </div>
-              )}
+              <div className="relative">
+                {profile.avatar ? (
+                  <img src={profile.avatar} alt={profile.name}
+                    className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 border-4 border-white shadow-md flex items-center justify-center">
+                    <span className="text-3xl font-bold text-white">{profile.name?.[0]}</span>
+                  </div>
+                )}
+                <span className={`absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+              </div>
 
-              {/* Actions */}
               <div className="flex gap-2 mb-1">
                 {isFriend && (
                   <Link to={`/messages?user=${id}`}
@@ -114,33 +128,23 @@ export default function FriendProfile() {
             <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {isFriend && (
-                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1"><UserCheck size={12} />Connected</p>
+                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                  <UserCheck size={12} />Connected
+                </p>
               )}
-              {profile.last_seen_at && (() => {
-                const online = Date.now() - new Date(profile.last_seen_at).getTime() < 120000;
-                const diff = Date.now() - new Date(profile.last_seen_at).getTime();
-                const label = online ? 'Active now'
-                  : diff < 3600000 ? `Active ${Math.floor(diff / 60000)}m ago`
-                  : diff < 86400000 ? `Active ${Math.floor(diff / 3600000)}h ago`
-                  : `Active ${Math.floor(diff / 86400000)}d ago`;
-                return (
-                  <p className={`text-xs flex items-center gap-1 ${online ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                    {label}
-                  </p>
-                );
-              })()}
-              {!isFriend && !profile.last_seen_at && (
-                <p className="text-xs text-gray-400">ResumeAI member</p>
+              {lastSeenLabel && (
+                <p className={`text-xs flex items-center gap-1 ${online ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                  {lastSeenLabel}
+                </p>
               )}
+              {!lastSeenLabel && <p className="text-xs text-gray-400">ResumeAI member</p>}
             </div>
 
-            {/* Bio */}
             {profile.bio && (
               <p className="text-sm text-gray-600 mt-3 leading-relaxed">{profile.bio}</p>
             )}
 
-            {/* Info rows */}
             <div className="mt-5 space-y-3 border-t border-gray-100 pt-5">
               {profile.location && (
                 <div className="flex items-center gap-3 text-sm text-gray-600">

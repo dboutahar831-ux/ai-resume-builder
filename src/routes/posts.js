@@ -3,21 +3,45 @@ const router = express.Router();
 const pool = require('../db');
 const auth = require('../middleware/auth');
 
+const VALID_REACTIONS = ['like', 'heart', 'laugh', 'sad', 'angry'];
+
+async function notify(recipientId, actorId, type, postId, commentId = null) {
+  if (recipientId === actorId) return;
+  try {
+    await pool.query(
+      `INSERT INTO notifications (user_id, actor_id, type, post_id, comment_id)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [recipientId, actorId, type, postId, commentId || null]
+    );
+  } catch {}
+}
+
 // GET /api/posts/feed
 router.get('/feed', auth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        p.id, p.content, p.image_url, p.created_at,
+        p.id, p.content, p.image_url, p.video_url, p.created_at,
+        p.original_post_id, p.repost_text,
         u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+        CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
+        op.content AS original_content,
+        op.image_url AS original_image_url,
+        op.video_url AS original_video_url,
+        op.created_at AS original_created_at,
+        ou.id AS original_user_id,
+        ou.name AS original_user_name,
+        ou.avatar AS original_user_avatar,
         COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
         COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
         (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
-         FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type) t
+         FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
         ) AS reactions_summary,
         (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction
       FROM posts p
       JOIN users u ON u.id = p.user_id
+      LEFT JOIN posts op ON op.id = p.original_post_id
+      LEFT JOIN users ou ON ou.id = op.user_id
       WHERE p.user_id = $1
          OR p.user_id IN (
            SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END
@@ -33,17 +57,62 @@ router.get('/feed', auth, async (req, res) => {
 
 // POST /api/posts
 router.post('/', auth, async (req, res) => {
-  const { content, image_url } = req.body;
-  if (!content?.trim() && !image_url) return res.status(400).json({ error: 'Post cannot be empty.' });
+  const { content, image_url, video_url } = req.body;
+  if (!content?.trim() && !image_url && !video_url)
+    return res.status(400).json({ error: 'Post cannot be empty.' });
   try {
     const result = await pool.query(
-      `INSERT INTO posts (user_id, content, image_url) VALUES ($1,$2,$3)
-       RETURNING id, content, image_url, created_at`,
-      [req.user.id, content?.trim() || null, image_url || null]
+      `INSERT INTO posts (user_id, content, image_url, video_url) VALUES ($1,$2,$3,$4)
+       RETURNING id, content, image_url, video_url, created_at`,
+      [req.user.id, content?.trim() || null, image_url || null, video_url || null]
+    );
+    const post = result.rows[0];
+    const u = await pool.query(
+      'SELECT name, avatar, last_seen_at, COALESCE(show_online_status, TRUE) AS show_online FROM users WHERE id=$1',
+      [req.user.id]
+    );
+    res.json({
+      ...post,
+      user_id: req.user.id,
+      user_name: u.rows[0].name,
+      user_avatar: u.rows[0].avatar,
+      user_last_seen_at: u.rows[0].show_online ? u.rows[0].last_seen_at : null,
+      reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/posts/:postId/repost
+router.post('/:postId/repost', auth, async (req, res) => {
+  const { repost_text } = req.body;
+  try {
+    const original = await pool.query('SELECT id, user_id FROM posts WHERE id=$1', [req.params.postId]);
+    if (!original.rows[0]) return res.status(404).json({ error: 'Post not found.' });
+
+    const result = await pool.query(
+      `INSERT INTO posts (user_id, original_post_id, repost_text) VALUES ($1,$2,$3)
+       RETURNING id, content, image_url, video_url, original_post_id, repost_text, created_at`,
+      [req.user.id, req.params.postId, repost_text?.trim() || null]
     );
     const post = result.rows[0];
     const u = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [req.user.id]);
-    res.json({ ...post, user_id: req.user.id, user_name: u.rows[0].name, user_avatar: u.rows[0].avatar, reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null });
+    const orig = await pool.query(`
+      SELECT p.content, p.image_url, p.video_url, p.created_at,
+        u.id AS user_id, u.name, u.avatar
+      FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id=$1
+    `, [req.params.postId]);
+    const o = orig.rows[0];
+
+    await notify(original.rows[0].user_id, req.user.id, 'repost', parseInt(req.params.postId));
+
+    res.json({
+      ...post,
+      user_id: req.user.id, user_name: u.rows[0].name, user_avatar: u.rows[0].avatar,
+      original_content: o?.content, original_image_url: o?.image_url, original_video_url: o?.video_url,
+      original_created_at: o?.created_at, original_user_id: o?.user_id,
+      original_user_name: o?.name, original_user_avatar: o?.avatar,
+      reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -58,9 +127,12 @@ router.delete('/:id', auth, async (req, res) => {
 // POST /api/posts/:postId/react
 router.post('/:postId/react', auth, async (req, res) => {
   const { type } = req.body;
-  if (!['like', 'laugh', 'sad', 'angry'].includes(type)) return res.status(400).json({ error: 'Invalid type.' });
+  if (!VALID_REACTIONS.includes(type)) return res.status(400).json({ error: 'Invalid type.' });
   try {
-    const ex = await pool.query('SELECT type FROM post_reactions WHERE post_id=$1 AND user_id=$2', [req.params.postId, req.user.id]);
+    const ex = await pool.query(
+      'SELECT type FROM post_reactions WHERE post_id=$1 AND user_id=$2',
+      [req.params.postId, req.user.id]
+    );
     if (ex.rows.length > 0 && ex.rows[0].type === type) {
       await pool.query('DELETE FROM post_reactions WHERE post_id=$1 AND user_id=$2', [req.params.postId, req.user.id]);
       return res.json({ my_reaction: null });
@@ -69,6 +141,8 @@ router.post('/:postId/react', auth, async (req, res) => {
       await pool.query('UPDATE post_reactions SET type=$1 WHERE post_id=$2 AND user_id=$3', [type, req.params.postId, req.user.id]);
     } else {
       await pool.query('INSERT INTO post_reactions (post_id, user_id, type) VALUES ($1,$2,$3)', [req.params.postId, req.user.id, type]);
+      const owner = await pool.query('SELECT user_id FROM posts WHERE id=$1', [req.params.postId]);
+      if (owner.rows[0]) await notify(owner.rows[0].user_id, req.user.id, 'reaction', parseInt(req.params.postId));
     }
     res.json({ my_reaction: type });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -79,8 +153,9 @@ router.get('/:postId/comments', auth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        c.id, c.content, c.image_url, c.created_at,
+        c.id, c.content, c.image_url, c.created_at, c.parent_id,
         u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+        (SELECT u2.name FROM comments c2 JOIN users u2 ON u2.id = c2.user_id WHERE c2.id = c.parent_id) AS parent_user_name,
         (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
          FROM (SELECT type, COUNT(*)::int AS cnt FROM comment_reactions WHERE comment_id = c.id GROUP BY type) t
         ) AS reactions_summary,
@@ -96,17 +171,38 @@ router.get('/:postId/comments', auth, async (req, res) => {
 
 // POST /api/posts/:postId/comments
 router.post('/:postId/comments', auth, async (req, res) => {
-  const { content, image_url } = req.body;
+  const { content, image_url, parent_id } = req.body;
   if (!content?.trim() && !image_url) return res.status(400).json({ error: 'Comment cannot be empty.' });
   try {
     const result = await pool.query(
-      `INSERT INTO comments (post_id, user_id, content, image_url) VALUES ($1,$2,$3,$4)
-       RETURNING id, content, image_url, created_at`,
-      [req.params.postId, req.user.id, content?.trim() || null, image_url || null]
+      `INSERT INTO comments (post_id, user_id, content, image_url, parent_id)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id, content, image_url, created_at, parent_id`,
+      [req.params.postId, req.user.id, content?.trim() || null, image_url || null, parent_id || null]
     );
     const c = result.rows[0];
     const u = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [req.user.id]);
-    res.json({ ...c, user_id: req.user.id, user_name: u.rows[0].name, user_avatar: u.rows[0].avatar, reactions_summary: null, my_reaction: null });
+
+    const owner = await pool.query('SELECT user_id FROM posts WHERE id=$1', [req.params.postId]);
+    if (owner.rows[0]) {
+      if (parent_id) {
+        const parentComment = await pool.query('SELECT user_id FROM comments WHERE id=$1', [parent_id]);
+        if (parentComment.rows[0]) {
+          await notify(parentComment.rows[0].user_id, req.user.id, 'reply', parseInt(req.params.postId), c.id);
+        }
+      } else {
+        await notify(owner.rows[0].user_id, req.user.id, 'comment', parseInt(req.params.postId), c.id);
+      }
+    }
+
+    res.json({
+      ...c,
+      user_id: req.user.id,
+      user_name: u.rows[0].name,
+      user_avatar: u.rows[0].avatar,
+      parent_user_name: null,
+      reactions_summary: null,
+      my_reaction: null,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -121,9 +217,12 @@ router.delete('/:postId/comments/:commentId', auth, async (req, res) => {
 // POST /api/posts/:postId/comments/:commentId/react
 router.post('/:postId/comments/:commentId/react', auth, async (req, res) => {
   const { type } = req.body;
-  if (!['like', 'laugh', 'sad', 'angry'].includes(type)) return res.status(400).json({ error: 'Invalid type.' });
+  if (!VALID_REACTIONS.includes(type)) return res.status(400).json({ error: 'Invalid type.' });
   try {
-    const ex = await pool.query('SELECT type FROM comment_reactions WHERE comment_id=$1 AND user_id=$2', [req.params.commentId, req.user.id]);
+    const ex = await pool.query(
+      'SELECT type FROM comment_reactions WHERE comment_id=$1 AND user_id=$2',
+      [req.params.commentId, req.user.id]
+    );
     if (ex.rows.length > 0 && ex.rows[0].type === type) {
       await pool.query('DELETE FROM comment_reactions WHERE comment_id=$1 AND user_id=$2', [req.params.commentId, req.user.id]);
       return res.json({ my_reaction: null });

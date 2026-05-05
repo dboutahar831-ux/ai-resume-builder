@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Save, Check, AlertCircle, Camera, User, Mail, Phone, MapPin, Link2, Calendar, Pencil, X } from 'lucide-react';
+import { Save, Check, AlertCircle, Camera, User, Mail, Phone, MapPin, Link2, Calendar, Pencil, X, Image } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
 import { useApp } from '../context/AppContext';
@@ -21,12 +21,15 @@ function InfoRow({ icon: Icon, label, value }) {
 export default function Profile() {
   const { t } = useApp();
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ name: '', age: '', phone: '', location: '', linkedin: '', avatar: '', bio: '' });
+  const [form, setForm] = useState({
+    name: '', age: '', phone: '', location: '', linkedin: '', avatar: '', bio: '', cover_image: '',
+  });
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const fileRef = useRef();
+  const coverRef = useRef();
 
   useEffect(() => {
     api.get('/auth/profile').then(res => {
@@ -39,6 +42,7 @@ export default function Profile() {
         linkedin: res.data.linkedin || '',
         avatar: res.data.avatar || '',
         bio: res.data.bio || '',
+        cover_image: res.data.cover_image || '',
       });
     });
   }, []);
@@ -52,14 +56,30 @@ export default function Profile() {
     reader.readAsDataURL(file);
   };
 
+  const handleCoverChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return setError('Cover image must be smaller than 5MB.');
+    const reader = new FileReader();
+    reader.onload = (ev) => setForm(f => ({ ...f, cover_image: ev.target.result }));
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async () => {
     setSaving(true); setError(''); setSuccess('');
     try {
       const res = await api.put('/auth/profile', form);
       const updated = res.data;
       setUser(u => ({ ...u, ...updated }));
-      setForm(f => ({ ...f, ...updated, age: updated.age || '', phone: updated.phone || '', location: updated.location || '', linkedin: updated.linkedin || '' }));
-      localStorage.setItem('user', JSON.stringify({ ...JSON.parse(localStorage.getItem('user') || '{}'), ...updated }));
+      setForm(f => ({
+        ...f, ...updated,
+        age: updated.age || '', phone: updated.phone || '',
+        location: updated.location || '', linkedin: updated.linkedin || '',
+        cover_image: updated.cover_image || '',
+      }));
+      localStorage.setItem('user', JSON.stringify({
+        ...JSON.parse(localStorage.getItem('user') || '{}'), ...updated,
+      }));
       setSuccess('Profile updated successfully.');
       setEditing(false);
       setTimeout(() => setSuccess(''), 3000);
@@ -69,7 +89,11 @@ export default function Profile() {
   };
 
   const handleCancel = () => {
-    if (user) setForm({ name: user.name || '', age: user.age || '', phone: user.phone || '', location: user.location || '', linkedin: user.linkedin || '', avatar: user.avatar || '', bio: user.bio || '' });
+    if (user) setForm({
+      name: user.name || '', age: user.age || '', phone: user.phone || '',
+      location: user.location || '', linkedin: user.linkedin || '',
+      avatar: user.avatar || '', bio: user.bio || '', cover_image: user.cover_image || '',
+    });
     setEditing(false); setError('');
   };
 
@@ -105,39 +129,61 @@ export default function Profile() {
           </div>
         )}
 
-        {/* Avatar + name card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center gap-5">
-            <div className="relative flex-shrink-0">
-              {form.avatar ? (
-                <img src={form.avatar} alt="avatar" className="w-20 h-20 rounded-2xl object-cover border border-gray-200" />
-              ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
-                  <span className="text-3xl font-bold text-white select-none">{form.name?.[0]?.toUpperCase()}</span>
-                </div>
-              )}
-              {editing && (
-                <button onClick={() => fileRef.current?.click()}
-                  className="absolute -bottom-2 -right-2 w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center shadow-md hover:bg-indigo-700 transition-all">
-                  <Camera size={13} className="text-white" />
-                </button>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xl font-bold text-gray-900">{user.name}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
-              {user.bio && <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{user.bio}</p>}
-              {user.location && <p className="text-xs text-gray-400 mt-1">📍 {user.location}</p>}
-              {user.linkedin && (
-                <a href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
-                  target="_blank" rel="noreferrer"
-                  className="text-xs text-indigo-600 hover:underline mt-1 block truncate">
-                  🔗 {user.linkedin}
-                </a>
-              )}
-            </div>
+        {/* Cover + Avatar card */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Cover photo */}
+          <div className="relative h-32">
+            {form.cover_image
+              ? <img src={form.cover_image} alt="cover" className="w-full h-full object-cover" />
+              : <div className="w-full h-full bg-gradient-to-r from-indigo-500 to-purple-600" />
+            }
+            {editing && (
+              <button onClick={() => coverRef.current?.click()}
+                className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 bg-black/50 hover:bg-black/70 text-white text-xs font-medium rounded-xl backdrop-blur-sm transition-all">
+                <Image size={12} />Change Cover
+              </button>
+            )}
+            {editing && form.cover_image && (
+              <button onClick={() => setForm(f => ({ ...f, cover_image: '' }))}
+                className="absolute bottom-2 right-32 flex items-center gap-1.5 px-3 py-1.5 bg-black/50 hover:bg-red-600/80 text-white text-xs font-medium rounded-xl backdrop-blur-sm transition-all">
+                <X size={12} />Remove
+              </button>
+            )}
           </div>
+
+          <div className="px-6 pb-6">
+            <div className="flex items-end justify-between -mt-10 mb-4">
+              <div className="relative">
+                {form.avatar
+                  ? <img src={form.avatar} alt="avatar" className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md" />
+                  : <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 border-4 border-white shadow-md flex items-center justify-center">
+                      <span className="text-3xl font-bold text-white select-none">{form.name?.[0]?.toUpperCase()}</span>
+                    </div>
+                }
+                {editing && (
+                  <button onClick={() => fileRef.current?.click()}
+                    className="absolute -bottom-2 -right-2 w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center shadow-md hover:bg-indigo-700 transition-all">
+                    <Camera size={13} className="text-white" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p className="text-xl font-bold text-gray-900">{user.name}</p>
+            <p className="text-sm text-gray-500">{user.email}</p>
+            {user.bio && <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{user.bio}</p>}
+            {user.location && <p className="text-xs text-gray-400 mt-1">📍 {user.location}</p>}
+            {user.linkedin && (
+              <a href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
+                target="_blank" rel="noreferrer"
+                className="text-xs text-indigo-600 hover:underline mt-1 block truncate">
+                🔗 {user.linkedin}
+              </a>
+            )}
+          </div>
+
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+          <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
         </div>
 
         {/* View mode */}
@@ -168,14 +214,12 @@ export default function Profile() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.fullName}</label>
-                <input className={inp} value={form.name}
-                  placeholder="Enter your full name"
+                <input className={inp} value={form.name} placeholder="Enter your full name"
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.age}</label>
-                <input className={inp} type="number" min="10" max="100"
-                  placeholder="Enter your age"
+                <input className={inp} type="number" min="10" max="100" placeholder="Your age"
                   value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} />
               </div>
             </div>
@@ -186,21 +230,18 @@ export default function Profile() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.phone}</label>
-                <input className={inp}
-                  placeholder="Enter your phone number"
+                <input className={inp} placeholder="Phone number"
                   value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.location}</label>
-                <input className={inp}
-                  placeholder="City, Country"
+                <input className={inp} placeholder="City, Country"
                   value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.linkedin}</label>
-              <input className={inp}
-                placeholder="linkedin.com/in/yourprofile"
+              <input className={inp} placeholder="linkedin.com/in/yourprofile"
                 value={form.linkedin} onChange={e => setForm(f => ({ ...f, linkedin: e.target.value }))} />
             </div>
             <div>
@@ -217,11 +258,9 @@ export default function Profile() {
               </button>
               <button onClick={handleSave} disabled={saving}
                 className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-60">
-                {saving ? (
-                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.loading}</>
-                ) : (
-                  <><Save size={14} />{t.saveChanges}</>
-                )}
+                {saving
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.loading}</>
+                  : <><Save size={14} />{t.saveChanges}</>}
               </button>
             </div>
           </div>

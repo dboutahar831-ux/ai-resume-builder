@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert } from 'lucide-react';
+import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -14,6 +14,8 @@ const languages = [
 export default function Settings() {
   const { lang, setLang, dark, setDark, t } = useApp();
   const navigate = useNavigate();
+  const [showOnline, setShowOnline] = useState(true);
+  const [savingOnline, setSavingOnline] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -26,6 +28,21 @@ export default function Settings() {
   const [pwError, setPwError] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+
+  useEffect(() => {
+    api.get('/auth/profile').then(res => {
+      setShowOnline(res.data.show_online_status !== false);
+    }).catch(() => {});
+  }, []);
+
+  const toggleOnlineStatus = async (val) => {
+    setSavingOnline(true);
+    try {
+      const profile = await api.get('/auth/profile');
+      await api.put('/auth/profile', { ...profile.data, show_online_status: val });
+      setShowOnline(val);
+    } catch {} finally { setSavingOnline(false); }
+  };
 
   const handlePasswordChange = async () => {
     setPwError(''); setPwSuccess('');
@@ -97,6 +114,31 @@ export default function Settings() {
                 {lang === l.code && <Check size={13} className="ml-auto text-indigo-600" />}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Online Status Privacy */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Radio size={16} className="text-gray-400" />
+            <h3 className="font-semibold text-gray-900">Online Status</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Control who can see when you're active.</p>
+          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+            <div>
+              <p className="text-sm font-medium text-gray-800">Show active status</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {showOnline ? 'Friends can see when you\'re online' : 'Your online status is hidden from everyone'}
+              </p>
+            </div>
+            <button
+              onClick={() => toggleOnlineStatus(!showOnline)}
+              disabled={savingOnline}
+              className={`relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50
+                ${showOnline ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+                ${showOnline ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
           </div>
         </div>
 

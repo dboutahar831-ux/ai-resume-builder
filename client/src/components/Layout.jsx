@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, LogOut, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight } from 'lucide-react';
+import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, LogOut, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
 
-function NotificationBell({ items, count, onClose }) {
+const NOTIF_META = {
+  msg:      { bg: 'bg-indigo-50',  Icon: MessageSquare,   color: 'text-indigo-600'  },
+  friend:   { bg: 'bg-emerald-50', Icon: UserPlus,        color: 'text-emerald-600' },
+  comment:  { bg: 'bg-blue-50',    Icon: MessageSquare,   color: 'text-blue-600'    },
+  reaction: { bg: 'bg-rose-50',    Icon: Heart,           color: 'text-rose-500'    },
+  repost:   { bg: 'bg-purple-50',  Icon: Repeat2,         color: 'text-purple-600'  },
+  reply:    { bg: 'bg-indigo-50',  Icon: CornerDownRight, color: 'text-indigo-600'  },
+};
+
+function NotificationBell({ items, count, onMarkRead, onClose }) {
   const [open, setOpen] = useState(false);
   const ref = useRef();
 
@@ -14,11 +23,18 @@ function NotificationBell({ items, count, onClose }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const handleOpen = () => {
+    setOpen(o => {
+      if (!o) onMarkRead?.();
+      return !o;
+    });
+  };
+
   const handleLinkClick = () => { setOpen(false); onClose?.(); };
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(o => !o)}
+      <button onClick={handleOpen}
         className="relative p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all">
         <Bell size={17} />
         {count > 0 && (
@@ -29,10 +45,12 @@ function NotificationBell({ items, count, onClose }) {
       </button>
 
       {open && (
-        <div className="absolute left-full ml-3 top-0 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute left-full ml-3 top-0 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-900">Notifications</p>
-            {count > 0 && <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-semibold">{count} new</span>}
+            {count > 0 && (
+              <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-semibold">{count} new</span>
+            )}
           </div>
           {items.length === 0 ? (
             <div className="px-4 py-8 text-center">
@@ -40,19 +58,24 @@ function NotificationBell({ items, count, onClose }) {
               <p className="text-xs text-gray-400">No new notifications</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
-              {items.map((item, i) => (
-                <Link key={i} to={item.link} onClick={handleLinkClick}
-                  className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${item.icon === 'msg' ? 'bg-indigo-50' : 'bg-emerald-50'}`}>
-                    {item.icon === 'msg'
-                      ? <MessageSquare size={13} className="text-indigo-600" />
-                      : <UserPlus size={13} className="text-emerald-600" />
-                    }
-                  </div>
-                  <p className="text-xs text-gray-700 leading-relaxed mt-1">{item.text}</p>
-                </Link>
-              ))}
+            <div className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+              {items.map((item, i) => {
+                const meta = NOTIF_META[item.icon] || NOTIF_META.msg;
+                const { Icon } = meta;
+                return (
+                  <Link key={i} to={item.link} onClick={handleLinkClick}
+                    className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${!item.read ? 'bg-indigo-50/30' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${meta.bg}`}>
+                      <Icon size={13} className={meta.color} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-700 leading-relaxed">{item.text}</p>
+                      {item.time && <p className="text-[10px] text-gray-400 mt-0.5">{item.time}</p>}
+                    </div>
+                    {!item.read && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1.5" />}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
@@ -73,20 +96,31 @@ export default function Layout({ children }) {
 
   const loadNotifications = useCallback(async () => {
     try {
-      const [msgs, reqs] = await Promise.all([
+      const [msgs, reqs, postNotifs] = await Promise.all([
         api.get('/messages/unread/count'),
         api.get('/friends/requests'),
+        api.get('/notifications').catch(() => ({ data: [] })),
       ]);
       const msgCount = msgs.data.count || 0;
       const reqCount = reqs.data.length || 0;
       setUnreadMsgs(msgCount);
       setPendingReqs(reqCount);
+
       const notifications = [];
       if (msgCount > 0)
-        notifications.push({ type: 'messages', text: `${msgCount} unread message${msgCount > 1 ? 's' : ''}`, link: '/messages', icon: 'msg' });
+        notifications.push({ type: 'messages', text: `${msgCount} unread message${msgCount > 1 ? 's' : ''}`, link: '/messages', icon: 'msg', read: false });
       reqs.data.forEach(r =>
-        notifications.push({ type: 'request', text: `${r.name} sent you a friend request`, link: '/friends', icon: 'friend', id: r.id })
+        notifications.push({ type: 'request', text: `${r.name} sent you a friend request`, link: '/friends', icon: 'friend', read: false })
       );
+
+      const typeText = { comment: 'commented on your post', reaction: 'reacted to your post', repost: 'shared your post', reply: 'replied to your comment' };
+      postNotifs.data.forEach(n => {
+        const label = typeText[n.type] || 'interacted with your post';
+        const diff = Date.now() - new Date(n.created_at).getTime();
+        const time = diff < 60000 ? 'Just now' : diff < 3600000 ? `${Math.floor(diff / 60000)}m ago` : diff < 86400000 ? `${Math.floor(diff / 3600000)}h ago` : `${Math.floor(diff / 86400000)}d ago`;
+        notifications.push({ type: n.type, text: `${n.actor_name} ${label}`, link: '/home', icon: n.type, read: n.read, time });
+      });
+
       setNotifItems(notifications);
     } catch {}
   }, []);
@@ -97,7 +131,12 @@ export default function Layout({ children }) {
     return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  const notifCount = notifItems.length;
+  const notifCount = notifItems.filter(n => !n.read).length;
+
+  const markAllRead = useCallback(() => {
+    api.put('/notifications/read-all').catch(() => {});
+    setNotifItems(prev => prev.map(n => ({ ...n, read: true })));
+  }, []);
 
   const links = [
     { to: '/home',          icon: Home,           label: 'Home' },
@@ -129,7 +168,7 @@ export default function Layout({ children }) {
             <span className="font-bold text-gray-900 tracking-tight">ResumeAI</span>
           </Link>
           <div className="flex items-center gap-0.5">
-            <NotificationBell items={notifItems} count={notifCount} onClose={() => setOpen(false)} />
+            <NotificationBell items={notifItems} count={notifCount} onMarkRead={markAllRead} onClose={() => setOpen(false)} />
             <button onClick={() => setOpen(false)} className="lg:hidden p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
               <X size={17} />
             </button>

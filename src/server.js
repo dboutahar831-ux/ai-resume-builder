@@ -12,6 +12,7 @@ const friendsRouter = require('./routes/friends');
 const messagesRouter = require('./routes/messages');
 const coverLettersRouter = require('./routes/coverLetters');
 const postsRouter = require('./routes/posts');
+const notificationsRouter = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,8 +20,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Health check — also verifies DB connectivity
 app.get('/health', async (req, res) => {
@@ -41,6 +42,7 @@ app.use('/api/friends', friendsRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/cover-letters', coverLettersRouter);
 app.use('/api/posts', postsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Serve React frontend (only when client/dist exists — local dev / single-server deploy)
 const clientDist = path.join(__dirname, '../client/dist');

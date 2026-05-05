@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:\\\\Users\\\\bouta\\\\OneDrive\\\\Desktop\\\\AI Resume Builder\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\bouta\\\\OneDrive\\\\Desktop\\\\AI Resume Builder\" diff HEAD)",
+      "Read(//c/Users/bouta/.claude/projects/c--Users-bouta-OneDrive-Desktop-AI-Resume-Builder/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(git -C \"c:/Users/bouta/OneDrive/Desktop/AI Resume Builder\" diff --stat)",
+      "Bash(git -C \"c:/Users/bouta/OneDrive/Desktop/AI Resume Builder\" add client/src/components/Layout.jsx client/src/pages/Dashboard.jsx client/src/pages/FriendProfile.jsx client/src/pages/Friends.jsx client/src/pages/Home.jsx client/src/pages/JobTracker.jsx client/src/pages/Landing.jsx client/src/pages/Messages.jsx client/src/pages/Profile.jsx)",
+      "Bash(git -C 'c:/Users/bouta/OneDrive/Desktop/AI Resume Builder' commit -m ' *)",
+      "Bash(git -C \"c:/Users/bouta/OneDrive/Desktop/AI Resume Builder\" push origin master)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\bouta\\\\OneDrive\\\\Desktop\\\\AI Resume Builder\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:3000/health\" -Method GET)",
+      "PowerShell($response = Invoke-WebRequest -Uri \"http://localhost:3000/health\" -Method GET; $response.Content)",
+      "Bash(curl -s -X PUT http://localhost:3000/api/auth/heartbeat -H \"Authorization: Bearer faketoken\" -H \"Content-Type: application/json\")",
+      "Bash(npm run *)",
+      "Bash(curl -s \"http://localhost:3000/health\")",
+      "Bash(curl -s \"http://localhost:3000/debug/status-column\")",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill *)",
+      "PowerShell($proc = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -First 1; if \\($proc\\) { Stop-Process -Id $proc.OwningProcess -Force; \"Killed PID $\\($proc.OwningProcess\\)\" } else { \"No process on port 3000\" })",
+      "Bash(curl -s -X GET http://localhost:3000/api/posts/feed -H \"Authorization: Bearer test\")",
+      "Bash(curl -s \"http://localhost:3000/api/posts/feed\" -H \"Authorization: Bearer invalidtoken123\")",
+      "PowerShell($proc = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -First 1; if \\($proc\\) { Stop-Process -Id $proc.OwningProcess -Force })",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -ne 0 } | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; \"Done\")",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\bouta\\\\OneDrive\\\\Desktop\\\\AI Resume Builder\\\\client\\\\vercel.json\")",
+      "Bash(git rm *)"
+    ]
+  }
+}
