@@ -29,6 +29,26 @@ router.get('/search', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/friends/suggestions — users not yet connected
+router.get('/suggestions', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.avatar, u.bio, u.location
+       FROM users u
+       WHERE u.id != $1 AND u.verified = TRUE
+       AND NOT EXISTS (
+         SELECT 1 FROM friendships f
+         WHERE (f.requester_id = $1 AND f.addressee_id = u.id)
+            OR (f.requester_id = u.id AND f.addressee_id = $1)
+       )
+       ORDER BY RANDOM()
+       LIMIT 4`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/friends — accepted friends
 router.get('/', auth, async (req, res) => {
   try {

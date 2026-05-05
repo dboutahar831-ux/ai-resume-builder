@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, Users, ThumbsUp,
   MoreHorizontal, Trash2, Briefcase, FileText, Bell,
-  Repeat2, Video, CornerDownRight, Sparkles,
+  Repeat2, Video, CornerDownRight, Sparkles, Search, FileSignature, ChevronRight, UserPlus,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
@@ -593,9 +593,17 @@ export default function Home() {
   const [enhanceError, setEnhanceError] = useState('');
   const [stats, setStats] = useState({ resumes: 0, jobs: 0, friends: 0, unread: 0 });
   const [friends, setFriends] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [addedIds, setAddedIds] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const postFileRef = useRef();
   const postVideoRef = useRef();
   const textareaRef = useRef();
+  const searchRef = useRef();
+  const searchTimerRef = useRef();
 
   const load = useCallback(async () => {
     api.get('/posts/feed')
@@ -612,9 +620,37 @@ export default function Home() {
       setStats({ resumes: r.data.length, jobs: j.data.length, friends: f.data.length, unread: u.data.count });
       setFriends(f.data.slice(0, 7));
     }).catch(() => {});
+    api.get('/friends/suggestions').then(r => setSuggestions(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    clearTimeout(searchTimerRef.current);
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
+    setSearchOpen(true);
+    searchTimerRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await api.get(`/friends/search?q=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(res.data);
+      } catch { setSearchResults([]); }
+      finally { setSearchLoading(false); }
+    }, 350);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const sendRequest = async (userId) => {
+    try {
+      await api.post(`/friends/request/${userId}`);
+      setAddedIds(prev => new Set([...prev, userId]));
+    } catch {}
+  };
 
   const aiEnhance = async () => {
     if (!postText.trim() || enhancing) return;
@@ -726,6 +762,61 @@ export default function Home() {
       `}</style>
 
       <div className="max-w-5xl mx-auto">
+
+        {/* Search bar */}
+        <div className="relative mb-5" ref={searchRef}>
+          <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-2.5 focus-within:border-indigo-200 focus-within:ring-2 focus-within:ring-indigo-50 transition-all">
+            <Search size={16} className="text-gray-400 flex-shrink-0" />
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => searchQuery.trim() && setSearchOpen(true)}
+              placeholder="Search people..."
+              className="flex-1 text-sm text-gray-800 placeholder-gray-400 outline-none bg-transparent"
+            />
+            {searchLoading && <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />}
+            {searchQuery && !searchLoading && (
+              <button onClick={() => { setSearchQuery(''); setSearchResults([]); setSearchOpen(false); }}
+                className="text-gray-300 hover:text-gray-500 transition-colors">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {searchOpen && (searchResults.length > 0 || (searchQuery.trim() && !searchLoading)) && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden"
+              style={{ animation: 'fadeInUp 0.15s ease' }}>
+              {searchResults.length === 0 ? (
+                <div className="px-4 py-5 text-center">
+                  <p className="text-sm text-gray-400">No results for "<span className="font-medium text-gray-600">{searchQuery}</span>"</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {searchResults.map(user => (
+                    <Link key={user.id} to={`/friends/${user.id}`}
+                      onClick={() => { setSearchQuery(''); setSearchOpen(false); }}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <Avatar user={user} size="sm" showDot lastSeen={user.last_seen_at} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                        {user.location && <p className="text-xs text-gray-400 truncate">{user.location}</p>}
+                      </div>
+                      <span className={`text-xs font-medium flex-shrink-0 ${
+                        user.friendship_status === 'accepted' ? 'text-emerald-600' :
+                        user.friendship_status === 'pending'  ? 'text-gray-400' :
+                        'text-indigo-600'
+                      }`}>
+                        {user.friendship_status === 'accepted' ? 'Connected' :
+                         user.friendship_status === 'pending'  ? 'Pending' : '+ Connect'}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {/* Feed */}
@@ -934,6 +1025,59 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            {/* People you may know */}
+            {suggestions.filter(u => !addedIds.has(u.id)).length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
+                style={{ animation: 'slideDown 0.5s ease' }}>
+                <p className="text-sm font-bold text-gray-900 mb-3">People you may know</p>
+                <div className="space-y-3">
+                  {suggestions.filter(u => !addedIds.has(u.id)).map(user => (
+                    <div key={user.id} className="flex items-center gap-2.5">
+                      <Link to={`/friends/${user.id}`} className="flex-shrink-0">
+                        <Avatar user={user} size="sm" />
+                      </Link>
+                      <div className="flex-1 min-w-0">
+                        <Link to={`/friends/${user.id}`}
+                          className="text-xs font-semibold text-gray-800 hover:text-indigo-600 transition-colors block truncate">
+                          {user.name}
+                        </Link>
+                        <p className="text-[10px] text-gray-400 truncate">{user.location || 'ResumeAI member'}</p>
+                      </div>
+                      <button onClick={() => sendRequest(user.id)}
+                        className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors flex-shrink-0">
+                        <UserPlus size={11} />Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Access */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
+              style={{ animation: 'slideDown 0.55s ease' }}>
+              <p className="text-sm font-bold text-gray-900 mb-2">Quick Access</p>
+              <div className="space-y-0.5">
+                {[
+                  { to: '/resumes',       icon: FileText,      label: 'Resume Builder',  sub: 'Build your resume',    color: 'text-indigo-500', bg: 'bg-indigo-50' },
+                  { to: '/cover-letters', icon: FileSignature, label: 'Cover Letters',   sub: 'Craft cover letters',  color: 'text-violet-500', bg: 'bg-violet-50' },
+                  { to: '/jobs',          icon: Briefcase,     label: 'Job Tracker',     sub: 'Track applications',   color: 'text-blue-500',   bg: 'bg-blue-50'   },
+                ].map(item => (
+                  <Link key={item.to} to={item.to}
+                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors group">
+                    <div className={`w-7 h-7 rounded-lg ${item.bg} flex items-center justify-center flex-shrink-0`}>
+                      <item.icon size={13} className={item.color} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-800">{item.label}</p>
+                      <p className="text-[10px] text-gray-400">{item.sub}</p>
+                    </div>
+                    <ChevronRight size={12} className="text-gray-300 group-hover:text-gray-400 flex-shrink-0" />
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
 
         </div>
