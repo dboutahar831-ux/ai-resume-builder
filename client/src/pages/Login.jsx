@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, CheckCircle, Zap } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Zap, Users, Briefcase, Sparkles, CheckCircle } from 'lucide-react';
 import api from '../api/axios';
 
 function NexlyIcon({ className = 'w-8 h-8' }) {
@@ -19,6 +19,13 @@ function NexlyIcon({ className = 'w-8 h-8' }) {
     </svg>
   );
 }
+
+const perks = [
+  { icon: Sparkles,    text: 'AI-powered resume builder' },
+  { icon: Users,       text: 'Career network & community' },
+  { icon: Briefcase,   text: 'Job application tracker' },
+  { icon: CheckCircle, text: 'Free forever — no credit card' },
+];
 
 export default function Login() {
   const navigate = useNavigate();
@@ -48,25 +55,40 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
+
       {/* Left panel */}
-      <div className="hidden lg:flex w-5/12 bg-indigo-600 flex-col justify-between p-12">
+      <div
+        className="hidden lg:flex w-5/12 flex-col justify-between p-12"
+        style={{ background: 'linear-gradient(145deg, #0d1117 0%, #1a1040 55%, #2d1b4e 100%)' }}
+      >
         <Link to="/" className="flex items-center gap-2">
-          <NexlyIcon className="w-8 h-8" />
-          <span className="font-bold text-white text-lg">Nexly</span>
+          <NexlyIcon className="w-9 h-9" />
+          <span className="font-bold text-white text-xl tracking-tight">Nexly</span>
         </Link>
+
         <div>
+          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: '#2EC4B6' }}>
+            Welcome back
+          </p>
           <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Welcome back.<br />Let's keep building.
+            Your career network<br />
+            <span style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              is waiting for you.
+            </span>
           </h2>
-          <p className="text-indigo-200 text-base leading-relaxed">
-            Your resumes and job applications are waiting for you.
+          <p className="text-gray-400 text-base leading-relaxed">
+            Sign in to continue building your career and connecting with professionals.
           </p>
         </div>
-        <div className="space-y-3">
-          {['AI-powered content generation', 'Real-time resume preview', 'Job application tracker', 'One-click PDF export'].map(f => (
-            <div key={f} className="flex items-center gap-3 text-sm text-indigo-100">
-              <CheckCircle size={16} className="text-indigo-300 flex-shrink-0" />
-              {f}
+
+        <div className="space-y-4">
+          {perks.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(108,92,231,0.15)', border: '1px solid rgba(108,92,231,0.3)' }}>
+                <Icon size={15} style={{ color: '#a78bfa' }} />
+              </div>
+              <span className="text-sm text-gray-300">{text}</span>
             </div>
           ))}
         </div>
@@ -110,7 +132,8 @@ export default function Login() {
                 </div>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-60 mt-2">
+                className="w-full flex items-center justify-center gap-2 text-white py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 mt-2"
+                style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                 {loading ? (
                   <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Signing in...</>
                 ) : (

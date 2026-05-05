@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Phone, MapPin, Calendar, AlertCircle, ChevronDown, ChevronUp, Zap, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, Calendar, AlertCircle, ChevronDown, ChevronUp, Zap, CheckCircle, Users, Briefcase, Sparkles } from 'lucide-react';
 import api from '../api/axios';
 
 function NexlyIcon({ className = 'w-8 h-8' }) {
@@ -19,6 +19,13 @@ function NexlyIcon({ className = 'w-8 h-8' }) {
     </svg>
   );
 }
+
+const perks = [
+  { icon: Sparkles, text: 'AI-powered resume builder' },
+  { icon: Users,    text: 'Career network & community' },
+  { icon: Briefcase,text: 'Job application tracker' },
+  { icon: CheckCircle, text: 'Free forever — no credit card' },
+];
 
 export default function Register() {
   const navigate = useNavigate();
@@ -49,30 +56,40 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
+
       {/* Left panel */}
-      <div className="hidden lg:flex w-5/12 bg-indigo-600 flex-col justify-between p-12">
+      <div
+        className="hidden lg:flex w-5/12 flex-col justify-between p-12"
+        style={{ background: 'linear-gradient(145deg, #0d1117 0%, #1a1040 55%, #2d1b4e 100%)' }}
+      >
         <Link to="/" className="flex items-center gap-2">
-          <NexlyIcon className="w-8 h-8" />
-          <span className="font-bold text-white text-lg">Nexly</span>
+          <NexlyIcon className="w-9 h-9" />
+          <span className="font-bold text-white text-xl tracking-tight">Nexly</span>
         </Link>
+
         <div>
+          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: '#2EC4B6' }}>
+            Join Nexly
+          </p>
           <h2 className="text-4xl font-bold text-white leading-tight mb-4">
-            Start Your Journey<br />Today
+            The social platform<br />
+            <span style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              built for your career.
+            </span>
           </h2>
-          <p className="text-indigo-200 text-base leading-relaxed">
-            Join thousands of professionals who use Nexly to land their dream jobs.
+          <p className="text-gray-400 text-base leading-relaxed">
+            Build your resume, grow your network, and track every opportunity — all in one place.
           </p>
         </div>
-        <div className="space-y-3">
-          {[
-            'AI-powered resume builder',
-            'Career feed & professional network',
-            'Job application tracker',
-            'Free forever — no credit card',
-          ].map(item => (
-            <div key={item} className="flex items-center gap-3">
-              <CheckCircle size={16} className="text-indigo-300 flex-shrink-0" />
-              <span className="text-sm text-indigo-100">{item}</span>
+
+        <div className="space-y-4">
+          {perks.map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(108,92,231,0.15)', border: '1px solid rgba(108,92,231,0.3)' }}>
+                <Icon size={15} style={{ color: '#a78bfa' }} />
+              </div>
+              <span className="text-sm text-gray-300">{text}</span>
             </div>
           ))}
         </div>
@@ -160,7 +177,8 @@ export default function Register() {
               )}
 
               <button type="submit" disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-60 mt-2">
+                className="w-full flex items-center justify-center gap-2 text-white py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 mt-2"
+                style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                 {loading ? (
                   <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Creating account...</>
                 ) : (
