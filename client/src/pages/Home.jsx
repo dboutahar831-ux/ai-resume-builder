@@ -4,6 +4,7 @@ import {
   Image, X, Send, MessageSquare, Users, ThumbsUp,
   MoreHorizontal, Trash2, Briefcase, FileText, Bell,
   Repeat2, Video, CornerDownRight, Sparkles, Search, FileSignature, ChevronRight, UserPlus,
+  Clock, Hash, SlidersHorizontal, CalendarClock,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
@@ -581,6 +582,54 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
   );
 }
 
+const FALLBACK_TOPICS = ['#JobSearchAI', '#ResumeTips', '#CareerGrowth', '#InterviewPrep', '#TechJobs', '#HiringNow', '#CareerAdvice', '#LinkedInTips'];
+
+function ScheduleModal({ onClose, onSchedule }) {
+  const [dt, setDt] = useState('');
+  const min = new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16);
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+        onClick={e => e.stopPropagation()}
+        style={{ animation: 'popUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <p className="font-bold text-gray-900">Schedule Post</p>
+            <p className="text-xs text-gray-400 mt-0.5">Choose when to publish</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"><X size={15} /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <input
+            type="datetime-local"
+            value={dt}
+            min={min}
+            onChange={e => setDt(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+          />
+          {dt && (
+            <p className="text-xs text-indigo-600 font-medium flex items-center gap-1.5">
+              <CalendarClock size={13} />
+              Scheduled for {new Date(dt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
+        <div className="flex gap-3 px-5 pb-5">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={() => { if (dt) { onSchedule(dt); onClose(); } }}
+            disabled={!dt}
+            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 flex items-center justify-center gap-2 transition-all">
+            <Clock size={14} />Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const myUser = JSON.parse(localStorage.getItem('user') || '{}');
   const [posts, setPosts] = useState([]);
@@ -599,6 +648,10 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [trendingTopics, setTrendingTopics] = useState(FALLBACK_TOPICS);
+  const [scheduleModal, setScheduleModal] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState(null);
   const postFileRef = useRef();
   const postVideoRef = useRef();
   const textareaRef = useRef();
@@ -621,6 +674,7 @@ export default function Home() {
       setFriends(f.data.slice(0, 7));
     }).catch(() => {});
     api.get('/friends/suggestions').then(r => setSuggestions(r.data)).catch(() => {});
+    api.get('/posts/trending').then(r => { if (r.data.length > 0) setTrendingTopics(r.data); }).catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -677,11 +731,13 @@ export default function Home() {
         content: postText.trim() || null,
         image_url: postImage || null,
         video_url: postVideo || null,
+        scheduled_at: scheduledAt || null,
       });
-      setPosts(p => [res.data, ...p]);
+      if (!scheduledAt) setPosts(p => [res.data, ...p]);
       setPostText('');
       setPostImage('');
       setPostVideo('');
+      setScheduledAt(null);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } finally { setSubmitting(false); }
   };
@@ -761,10 +817,17 @@ export default function Home() {
         }
       `}</style>
 
+      {scheduleModal && (
+        <ScheduleModal
+          onClose={() => setScheduleModal(false)}
+          onSchedule={(dt) => setScheduledAt(dt)}
+        />
+      )}
+
       <div className="max-w-5xl mx-auto">
 
         {/* Search bar */}
-        <div className="relative mb-5" ref={searchRef}>
+        <div className="relative mb-3" ref={searchRef}>
           <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-2.5 focus-within:border-indigo-200 focus-within:ring-2 focus-within:ring-indigo-50 transition-all">
             <Search size={16} className="text-gray-400 flex-shrink-0" />
             <input
@@ -781,7 +844,27 @@ export default function Home() {
                 <X size={14} />
               </button>
             )}
+            <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
+            <button onClick={() => setAdvancedOpen(o => !o)}
+              className={`flex items-center gap-1.5 text-xs font-semibold flex-shrink-0 transition-colors whitespace-nowrap ${advancedOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>
+              <SlidersHorizontal size={13} />Advanced Search
+            </button>
           </div>
+
+          {advancedOpen && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-40 p-4"
+              style={{ animation: 'fadeInUp 0.15s ease' }}>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Filter Results</p>
+              <div className="grid grid-cols-2 gap-2">
+                {['All Users', 'Connected', 'Not Connected', 'Active Now'].map(f => (
+                  <button key={f} onClick={() => setAdvancedOpen(false)}
+                    className="px-3 py-2 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors text-left">
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {searchOpen && (searchResults.length > 0 || (searchQuery.trim() && !searchLoading)) && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden"
@@ -815,6 +898,21 @@ export default function Home() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Trending Topics */}
+        <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex items-center gap-1.5 flex-shrink-0 text-xs font-bold text-gray-400">
+            <Hash size={13} />Trending
+          </div>
+          <div className="w-px h-4 bg-gray-200 flex-shrink-0" />
+          {trendingTopics.map(tag => (
+            <button key={tag}
+              onClick={() => setPostText(t => t ? `${t} ${tag}` : tag)}
+              className="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-100 rounded-full text-xs font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm whitespace-nowrap">
+              {tag}
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -868,6 +966,18 @@ export default function Home() {
                 </p>
               )}
 
+              {scheduledAt && (
+                <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-xl">
+                  <CalendarClock size={13} className="text-indigo-500 flex-shrink-0" />
+                  <span className="text-xs text-indigo-700 font-medium flex-1">
+                    Scheduled for {new Date(scheduledAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <button onClick={() => setScheduledAt(null)} className="text-indigo-400 hover:text-indigo-600">
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-1">
                   <button onClick={() => postFileRef.current?.click()}
@@ -894,6 +1004,15 @@ export default function Home() {
                     {enhancing
                       ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing...</>
                       : <><Sparkles size={14} />AI Enhance</>}
+                  </button>
+
+                  {/* Schedule button */}
+                  <button
+                    onClick={() => setScheduleModal(true)}
+                    disabled={(!postText.trim() && !hasMedia) || submitting}
+                    title="Schedule Post"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200">
+                    <Clock size={14} />Schedule Post
                   </button>
 
                   {/* Post button */}

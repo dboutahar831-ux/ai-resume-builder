@@ -48,6 +48,7 @@ router.get('/feed', auth, async (req, res) => {
            FROM friendships
            WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
          )
+      AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
       ORDER BY p.created_at DESC
       LIMIT 50
     `, [req.user.id]);
@@ -55,16 +56,45 @@ router.get('/feed', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/posts/scheduled — user's upcoming scheduled posts
+router.get('/scheduled', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, content, image_url, video_url, scheduled_at
+       FROM posts
+       WHERE user_id = $1 AND scheduled_at > NOW()
+       ORDER BY scheduled_at ASC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/posts/trending — top hashtags from last 7 days
+router.get('/trending', auth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT tag, COUNT(*)::int AS count FROM (
+        SELECT LOWER((REGEXP_MATCHES(content, '#[A-Za-zÀ-ÿ0-9_]+', 'g'))[1]) AS tag
+        FROM posts WHERE created_at > NOW() - INTERVAL '7 days' AND content IS NOT NULL
+      ) t
+      WHERE tag IS NOT NULL
+      GROUP BY tag ORDER BY count DESC LIMIT 8
+    `);
+    res.json(result.rows.map(r => r.tag));
+  } catch { res.json([]); }
+});
+
 // POST /api/posts
 router.post('/', auth, async (req, res) => {
-  const { content, image_url, video_url } = req.body;
+  const { content, image_url, video_url, scheduled_at } = req.body;
   if (!content?.trim() && !image_url && !video_url)
     return res.status(400).json({ error: 'Post cannot be empty.' });
   try {
     const result = await pool.query(
-      `INSERT INTO posts (user_id, content, image_url, video_url) VALUES ($1,$2,$3,$4)
-       RETURNING id, content, image_url, video_url, created_at`,
-      [req.user.id, content?.trim() || null, image_url || null, video_url || null]
+      `INSERT INTO posts (user_id, content, image_url, video_url, scheduled_at) VALUES ($1,$2,$3,$4,$5)
+       RETURNING id, content, image_url, video_url, created_at, scheduled_at`,
+      [req.user.id, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null]
     );
     const post = result.rows[0];
     const u = await pool.query(

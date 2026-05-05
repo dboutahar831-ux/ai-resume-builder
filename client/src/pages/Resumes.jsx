@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Plus, Pencil, Trash2, Mail, MapPin, Share2, Check } from 'lucide-react';
+import { FileText, Plus, Pencil, Trash2, Mail, MapPin, Share2, Check, Sparkles, X, ChevronRight, Lightbulb, Target, Zap } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
+
+const AI_TIPS = [
+  { icon: Target, title: 'Tailor for each job', body: 'Customize your resume keywords to match the job description — ATS systems scan for exact matches.', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+  { icon: Zap,    title: 'Quantify achievements', body: 'Replace vague duties with numbers: "Increased sales by 32%" beats "Responsible for sales".', color: 'text-amber-500', bg: 'bg-amber-50' },
+  { icon: Lightbulb, title: 'Keep it one page', body: 'Unless you have 10+ years of experience, a single page resume performs better with recruiters.', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  { icon: FileText, title: 'Use action verbs', body: 'Start each bullet with strong verbs: Led, Built, Launched, Optimized, Delivered, Architected.', color: 'text-purple-500', bg: 'bg-purple-50' },
+];
 
 export default function Resumes() {
   const [resumes, setResumes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(null);
+  const [aiMode, setAiMode] = useState(false);
 
   useEffect(() => {
     api.get('/resumes').then(r => setResumes(r.data)).finally(() => setLoading(false));
@@ -30,17 +38,73 @@ export default function Resumes() {
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-end justify-between">
+      <div className="max-w-5xl mx-auto space-y-5">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">My Resumes</h1>
-            <p className="text-sm text-gray-500 mt-1">{resumes.length} resume{resumes.length !== 1 ? 's' : ''} created</p>
+            <p className="text-sm text-gray-500 mt-0.5">{resumes.length} resume{resumes.length !== 1 ? 's' : ''} created</p>
           </div>
-          <Link to="/resumes/new"
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all">
-            <Plus size={15} />New Resume
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* AI Assistant toggle */}
+            <button
+              onClick={() => setAiMode(v => !v)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                aiMode
+                  ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-transparent shadow-sm shadow-violet-200'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-200 hover:text-indigo-600'
+              }`}>
+              <Sparkles size={14} />
+              AI Assistant
+              <span className={`w-7 h-4 rounded-full transition-all relative flex-shrink-0 ${aiMode ? 'bg-white/30' : 'bg-gray-200'}`}>
+                <span className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${aiMode ? 'left-3.5 bg-white' : 'left-0.5 bg-white'}`} />
+              </span>
+            </button>
+
+            <Link to="/resumes/new"
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200">
+              <Plus size={14} />New Resume
+            </Link>
+          </div>
         </div>
+
+        {/* AI Assistant Panel */}
+        {aiMode && (
+          <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-indigo-100 rounded-2xl p-5"
+            style={{ animation: 'fadeInDown 0.25s ease' }}>
+            <style>{`@keyframes fadeInDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }`}</style>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="font-bold text-gray-900 flex items-center gap-2">
+                  <Sparkles size={16} className="text-indigo-500" />AI Resume Tips
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">Personalized advice to help your resume stand out</p>
+              </div>
+              <button onClick={() => setAiMode(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-white/60 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {AI_TIPS.map((tip, i) => (
+                <div key={i} className="bg-white rounded-xl p-3.5 border border-white/80 shadow-sm flex gap-3">
+                  <div className={`w-8 h-8 rounded-lg ${tip.bg} flex items-center justify-center flex-shrink-0`}>
+                    <tip.icon size={14} className={tip.color} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">{tip.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{tip.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Link to="/resumes/new"
+              className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">
+              <Sparkles size={13} />Generate AI Resume
+              <ChevronRight size={13} />
+            </Link>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center h-40">
