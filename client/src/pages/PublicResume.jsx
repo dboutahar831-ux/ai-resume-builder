@@ -27,7 +27,7 @@ export default function PublicResume() {
       <FileText size={48} className="text-gray-200 mb-4" />
       <h1 className="text-xl font-bold text-gray-800 mb-2">Resume not found</h1>
       <p className="text-gray-500 text-sm mb-6">{error}</p>
-      <Link to="/" className="text-indigo-600 hover:underline text-sm">Back to ResumeAI</Link>
+      <Link to="/" className="text-indigo-600 hover:underline text-sm">Back to Nexly</Link>
     </div>
   );
 
@@ -45,7 +45,7 @@ export default function PublicResume() {
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
               <FileText size={14} className="text-white" />
             </div>
-            <span className="font-semibold text-gray-900 text-sm">ResumeAI</span>
+            <span className="font-semibold text-gray-900 text-sm">Nexly</span>
           </Link>
           <button onClick={() => window.print()} className="text-sm text-gray-500 hover:text-indigo-600 border border-gray-200 px-4 py-1.5 rounded-lg transition-colors">
             Print / Save PDF
@@ -135,7 +135,7 @@ export default function PublicResume() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6 print:hidden">
-          Created with <a href="/" className="text-indigo-600 hover:underline">ResumeAI</a>
+          Created with <a href="/" className="text-indigo-600 hover:underline">Nexly</a>
         </p>
       </div>
     </div>

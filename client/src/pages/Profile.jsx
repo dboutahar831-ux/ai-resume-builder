@@ -196,7 +196,7 @@ function FriendsModal({ friends, onClose }) {
               <Avatar src={f.avatar} name={f.name} size="w-10 h-10" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{f.name}</p>
-                <p className="text-xs text-gray-400 truncate">{f.location || 'ResumeAI'}</p>
+                <p className="text-xs text-gray-400 truncate">{f.location || 'Nexly'}</p>
               </div>
               <ChevronRight size={14} className="text-gray-300 ml-auto flex-shrink-0" />
             </Link>

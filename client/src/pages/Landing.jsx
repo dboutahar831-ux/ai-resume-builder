@@ -1,6 +1,23 @@
 import { Link } from 'react-router-dom';
 import { FileText, Briefcase, Sparkles, Shield, Zap, BarChart3, CheckCircle, ArrowRight } from 'lucide-react';
 
+function NexlyIcon({ className = 'w-8 h-8' }) {
+  return (
+    <svg viewBox="0 0 56 52" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <defs>
+        <linearGradient id="nx-land" x1="0" y1="26" x2="56" y2="26" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2EC4B6"/>
+          <stop offset="45%" stopColor="#6C5CE7"/>
+          <stop offset="100%" stopColor="#BF5AF2"/>
+        </linearGradient>
+      </defs>
+      <path d="M5 46 L5 6 L22 42 L22 6" stroke="url(#nx-land)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M30 6 L51 46" stroke="url(#nx-land)" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M51 6 L30 46" stroke="url(#nx-land)" strokeWidth="7" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 const features = [
   { icon: Sparkles, title: 'AI-Powered Writing', desc: 'Generate professional resume content instantly with AI assistance tailored to your field.' },
   { icon: Briefcase, title: 'Job Tracker', desc: 'Track all your applications in one place with status updates and notes.' },
@@ -11,7 +28,7 @@ const features = [
 ];
 
 const testimonials = [
-  { name: 'Sarah M.', role: 'Software Engineer', text: 'Got 3 interviews in my first week using ResumeAI. The AI suggestions are incredibly professional.' },
+  { name: 'Sarah M.', role: 'Software Engineer', text: 'Got 3 interviews in my first week using Nexly. The AI suggestions are incredibly professional.' },
   { name: 'James K.', role: 'Product Manager', text: 'The job tracker alone is worth it. I finally have clarity on all my applications.' },
   { name: 'Layla A.', role: 'UX Designer', text: 'Cleanest resume builder I have ever used. The live preview is a game changer.' },
 ];
@@ -31,10 +48,8 @@ export default function Landing() {
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <FileText size={16} className="text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-lg">ResumeAI</span>
+            <NexlyIcon className="w-8 h-8" />
+            <span className="font-bold text-gray-900 text-lg">Nexly</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
             <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
@@ -65,7 +80,7 @@ export default function Landing() {
         </h1>
 
         <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-          ResumeAI generates professional resume content in seconds and helps you track every job application — all in one place.
+          Nexly is your career social platform — build resumes with AI, track jobs, connect with professionals, and share your journey.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -185,9 +200,9 @@ export default function Landing() {
             <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
               <FileText size={11} className="text-white" />
             </div>
-            <span className="font-semibold text-gray-600">ResumeAI</span>
+            <span className="font-semibold text-gray-600">Nexly</span>
           </div>
-          <span>© 2026 ResumeAI. All rights reserved.</span>
+          <span>© 2026 Nexly. All rights reserved.</span>
         </div>
       </footer>
     </div>

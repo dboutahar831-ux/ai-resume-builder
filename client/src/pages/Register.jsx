@@ -1,7 +1,24 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FileText, Mail, Lock, User, Phone, MapPin, Calendar, AlertCircle, ChevronDown, ChevronUp, Zap, CheckCircle } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, Calendar, AlertCircle, ChevronDown, ChevronUp, Zap, CheckCircle } from 'lucide-react';
 import api from '../api/axios';
+
+function NexlyIcon({ className = 'w-8 h-8' }) {
+  return (
+    <svg viewBox="0 0 56 52" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <defs>
+        <linearGradient id="nx-reg" x1="0" y1="26" x2="56" y2="26" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2EC4B6"/>
+          <stop offset="45%" stopColor="#6C5CE7"/>
+          <stop offset="100%" stopColor="#BF5AF2"/>
+        </linearGradient>
+      </defs>
+      <path d="M5 46 L5 6 L22 42 L22 6" stroke="url(#nx-reg)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M30 6 L51 46" stroke="url(#nx-reg)" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M51 6 L30 46" stroke="url(#nx-reg)" strokeWidth="7" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 export default function Register() {
   const navigate = useNavigate();
@@ -35,21 +52,19 @@ export default function Register() {
       {/* Left panel */}
       <div className="hidden lg:flex w-5/12 bg-indigo-600 flex-col justify-between p-12">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-            <FileText size={16} className="text-white" />
-          </div>
-          <span className="font-bold text-white text-lg">ResumeAI</span>
+          <NexlyIcon className="w-8 h-8" />
+          <span className="font-bold text-white text-lg">Nexly</span>
         </Link>
         <div>
           <h2 className="text-4xl font-bold text-white leading-tight mb-4">
             Start Your Journey<br />Today
           </h2>
           <p className="text-indigo-200 text-base leading-relaxed">
-            Join thousands of professionals who use ResumeAI to land their dream jobs.
+            Join thousands of professionals who use Nexly to land their dream jobs.
           </p>
         </div>
         <div className="bg-white/10 rounded-2xl p-6">
-          <p className="text-sm text-indigo-100 italic mb-4">"Got 3 interviews in my first week using ResumeAI. The AI suggestions are incredibly professional."</p>
+          <p className="text-sm text-indigo-100 italic mb-4">"Got 3 interviews in my first week using Nexly. The AI suggestions are incredibly professional."</p>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-indigo-400 flex items-center justify-center text-sm font-bold text-white">S</div>
             <div>
@@ -64,10 +79,8 @@ export default function Register() {
       <div className="flex-1 flex items-center justify-center px-6 py-12 overflow-y-auto">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <FileText size={15} className="text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-lg">ResumeAI</span>
+            <NexlyIcon className="w-8 h-8" />
+            <span className="font-bold text-gray-900 text-lg">Nexly</span>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">

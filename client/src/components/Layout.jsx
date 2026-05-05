@@ -1,6 +1,23 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, LogOut, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight, Moon, Sun } from 'lucide-react';
+
+function NexlyIcon({ className = 'w-8 h-8' }) {
+  return (
+    <svg viewBox="0 0 56 52" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <defs>
+        <linearGradient id="nx-g" x1="0" y1="26" x2="56" y2="26" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2EC4B6"/>
+          <stop offset="45%" stopColor="#6C5CE7"/>
+          <stop offset="100%" stopColor="#BF5AF2"/>
+        </linearGradient>
+      </defs>
+      <path d="M5 46 L5 6 L22 42 L22 6" stroke="url(#nx-g)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M30 6 L51 46" stroke="url(#nx-g)" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M51 6 L30 46" stroke="url(#nx-g)" strokeWidth="7" strokeLinecap="round"/>
+    </svg>
+  );
+}
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
 
@@ -183,10 +200,8 @@ export default function Layout({ children }) {
         {/* Logo */}
         <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-sm shadow-indigo-200">
-              <FileText size={15} className="text-white" />
-            </div>
-            <span className="font-bold text-gray-900 tracking-tight">ResumeAI</span>
+            <NexlyIcon className="w-8 h-8" />
+            <span className="font-bold text-gray-900 dark:text-gray-100 tracking-tight">Nexly</span>
           </Link>
           <div className="flex items-center gap-0.5">
             <button onClick={() => setDark(d => !d)}
@@ -278,10 +293,8 @@ export default function Layout({ children }) {
             <Menu size={19} />
           </button>
           <Link to="/home" className="flex items-center gap-2 flex-1">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center">
-              <FileText size={12} className="text-white" />
-            </div>
-            <span className="font-bold text-gray-900 text-sm">ResumeAI</span>
+            <NexlyIcon className="w-6 h-6" />
+            <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">Nexly</span>
           </Link>
           <NotificationBell items={notifItems} count={notifCount} />
         </header>

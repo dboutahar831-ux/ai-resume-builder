@@ -1143,7 +1143,7 @@ export default function Home() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-gray-800 truncate group-hover:text-indigo-700">{f.name}</p>
                         <p className="text-xs text-gray-400 truncate">
-                          {isOnline(f.last_seen_at) ? '🟢 Active now' : f.location || 'ResumeAI'}
+                          {isOnline(f.last_seen_at) ? '🟢 Active now' : f.location || 'Nexly'}
                         </p>
                       </div>
                       <Link to={`/messages?user=${f.id}`} onClick={e => e.stopPropagation()}
@@ -1172,7 +1172,7 @@ export default function Home() {
                           className="text-xs font-semibold text-gray-800 hover:text-indigo-600 transition-colors block truncate">
                           {user.name}
                         </Link>
-                        <p className="text-[10px] text-gray-400 truncate">{user.location || 'ResumeAI member'}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{user.location || 'Nexly member'}</p>
                       </div>
                       <button onClick={() => sendRequest(user.id)}
                         className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors flex-shrink-0">

@@ -141,7 +141,7 @@ export default function FriendProfile() {
                 </span>
               )}
               {!lastSeenLabel && (
-                <span className="text-xs text-gray-400">ResumeAI member</span>
+                <span className="text-xs text-gray-400">Nexly member</span>
               )}
             </div>
 

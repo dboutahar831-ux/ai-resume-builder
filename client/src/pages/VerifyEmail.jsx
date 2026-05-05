@@ -1,7 +1,24 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { FileText, Mail, AlertCircle, Check, RefreshCw } from 'lucide-react';
+import { Mail, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import api from '../api/axios';
+
+function NexlyIcon({ className = 'w-8 h-8' }) {
+  return (
+    <svg viewBox="0 0 56 52" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <defs>
+        <linearGradient id="nx-verify" x1="0" y1="26" x2="56" y2="26" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#2EC4B6"/>
+          <stop offset="45%" stopColor="#6C5CE7"/>
+          <stop offset="100%" stopColor="#BF5AF2"/>
+        </linearGradient>
+      </defs>
+      <path d="M5 46 L5 6 L22 42 L22 6" stroke="url(#nx-verify)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M30 6 L51 46" stroke="url(#nx-verify)" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M51 6 L30 46" stroke="url(#nx-verify)" strokeWidth="7" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
@@ -67,10 +84,8 @@ export default function VerifyEmail() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <FileText size={15} className="text-white" />
-          </div>
-          <span className="font-bold text-gray-900 text-lg">ResumeAI</span>
+          <NexlyIcon className="w-8 h-8" />
+          <span className="font-bold text-gray-900 text-lg">Nexly</span>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
