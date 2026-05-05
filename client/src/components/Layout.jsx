@@ -282,7 +282,7 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Mobile header */}
         <header className="lg:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-600 transition-all">

@@ -850,7 +850,7 @@ export default function Home() {
             <div className="h-4 w-px bg-gray-200 flex-shrink-0" />
             <button onClick={() => setAdvancedOpen(o => !o)}
               className={`flex items-center gap-1.5 text-xs font-semibold flex-shrink-0 transition-colors whitespace-nowrap ${advancedOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>
-              <SlidersHorizontal size={13} />Advanced Search
+              <SlidersHorizontal size={13} /><span className="hidden sm:inline">Advanced Search</span>
             </button>
           </div>
 
@@ -984,51 +984,45 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 gap-2">
                 <div className="flex items-center gap-1">
                   <button onClick={() => postFileRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition-all active:scale-95">
-                    <Image size={15} className="text-emerald-500" />
-                    <span className="font-medium">Photo</span>
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition-all active:scale-95">
+                    <Image size={16} className="text-emerald-500" />
+                    <span className="font-medium hidden sm:inline">Photo</span>
                   </button>
                   <button onClick={() => postVideoRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95">
-                    <Video size={15} className="text-blue-500" />
-                    <span className="font-medium">Video</span>
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95">
+                    <Video size={16} className="text-blue-500" />
+                    <span className="font-medium hidden sm:inline">Video</span>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* AI Enhance button */}
-                  <button
-                    onClick={aiEnhance}
+                <div className="flex items-center gap-1.5">
+                  <button onClick={aiEnhance}
                     disabled={!postText.trim() || enhancing || submitting}
-                    title="Enhance with AI"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed
-                      bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600
-                      text-white shadow-sm shadow-violet-200 hover:shadow-md hover:shadow-violet-200">
+                    title="AI Enhance"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40
+                      bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm">
                     {enhancing
-                      ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing...</>
-                      : <><Sparkles size={14} />AI Enhance</>}
+                      ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <Sparkles size={13} />}
+                    <span className="hidden sm:inline">{enhancing ? 'Enhancing...' : 'AI Enhance'}</span>
                   </button>
 
-                  {/* Schedule button */}
-                  <button
-                    onClick={() => setScheduleModal(true)}
+                  <button onClick={() => setScheduleModal(true)}
                     disabled={(!postText.trim() && !hasMedia) || submitting}
                     title="Schedule Post"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-200">
-                    <Clock size={14} />Schedule Post
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 bg-emerald-600 text-white shadow-sm">
+                    <Clock size={13} />
+                    <span className="hidden sm:inline">Schedule</span>
                   </button>
 
-                  {/* Post button */}
                   <button onClick={submitPost}
                     disabled={(!postText.trim() && !hasMedia) || submitting}
-                    className="px-5 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-indigo-200">
+                    className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-40 shadow-sm">
                     {submitting
-                      ? <span className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Posting...
-                        </span>
+                      ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       : 'Post'}
                   </button>
                 </div>
