@@ -38,7 +38,7 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([api.get('/resumes'), api.get('/jobs')])
       .then(([r, j]) => { setResumes(r.data); setJobs(j.data); })
-      .catch(() => { localStorage.clear(); navigate('/login'); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -180,7 +180,7 @@ export default function Dashboard() {
                 <span className="text-xs font-semibold text-indigo-600">{progress}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
-                <div className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                <div className="h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }} />
               </div>
               <ul className="space-y-2.5">
                 {checklist.map(({ done, text }) => (
@@ -229,7 +229,7 @@ export default function Dashboard() {
 
         {/* Quick actions */}
         <div className="grid sm:grid-cols-2 gap-4">
-          <Link to="/resumes/new" className="group flex items-center gap-4 bg-indigo-600 rounded-2xl p-5 hover:bg-indigo-700 transition-all">
+          <Link to="/resumes/new" className="group flex items-center gap-4 rounded-2xl p-5 transition-all hover:opacity-90" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
               <Plus size={20} className="text-white" />
             </div>

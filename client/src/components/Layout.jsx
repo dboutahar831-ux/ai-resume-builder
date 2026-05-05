@@ -217,11 +217,10 @@ export default function Layout({ children }) {
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pb-2 pt-1">Main</p>
           {links.map(({ to, icon: Icon, label, badge }) => (
             <NavLink key={to} to={to} onClick={() => setOpen(false)}
+              style={({ isActive }) => isActive ? { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' } : {}}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  isActive ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`
               }>
               {({ isActive }) => (
@@ -245,11 +244,10 @@ export default function Layout({ children }) {
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pb-2">Account</p>
           {bottomLinks.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} onClick={() => setOpen(false)}
+              style={({ isActive }) => isActive ? { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' } : {}}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  isActive ? 'text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`
               }>
               {({ isActive }) => (
@@ -312,12 +310,12 @@ export default function Layout({ children }) {
           <NavLink key={to} to={to} onClick={() => setOpen(false)}
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative ${
-                isActive ? 'text-indigo-600' : 'text-gray-400'
+                isActive ? '' : 'text-gray-400'
               }`
             }>
             {({ isActive }) => (
               <>
-                <Icon size={20} className={isActive ? 'text-indigo-600' : 'text-gray-400'} />
+                <Icon size={20} style={isActive ? { color: '#6C5CE7' } : {}} className={isActive ? '' : 'text-gray-400'} />
                 <span className="text-[10px] font-medium">{label}</span>
                 {badge > 0 && (
                   <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
