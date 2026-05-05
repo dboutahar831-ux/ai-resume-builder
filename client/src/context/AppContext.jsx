@@ -51,9 +51,12 @@ export function AppProvider({ children }) {
       if (!localStorage.getItem('token')) return;
       try { await api.put('/auth/heartbeat'); } catch {}
     };
-    beat();
-    const id = setInterval(beat, 30000);
-    return () => clearInterval(id);
+    const delay = setTimeout(() => {
+      beat();
+      const id = setInterval(beat, 30000);
+      return () => clearInterval(id);
+    }, 5000);
+    return () => clearTimeout(delay);
   }, []);
 
   useEffect(() => {
