@@ -633,6 +633,7 @@ function ScheduleModal({ onClose, onSchedule }) {
 
 export default function Home() {
   const myUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const [coverImage, setCoverImage] = useState(myUser.cover_image || '');
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [postText, setPostText] = useState('');
@@ -676,6 +677,7 @@ export default function Home() {
     }).catch(() => {});
     api.get('/friends/suggestions').then(r => setSuggestions(r.data)).catch(() => {});
     api.get('/posts/trending').then(r => { if (r.data.length > 0) setTrendingTopics(r.data); }).catch(() => {});
+    api.get('/auth/profile').then(r => { if (r.data.cover_image) setCoverImage(r.data.cover_image); }).catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -1089,9 +1091,14 @@ export default function Home() {
             {/* Profile card */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               style={{ animation: 'slideDown 0.35s ease' }}>
-              <div className="h-14 bg-gradient-to-r from-indigo-500 to-purple-500" />
+              <div className="h-16 overflow-hidden">
+                {coverImage
+                  ? <img src={coverImage} alt="" className="w-full h-full object-cover" />
+                  : <div className="w-full h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+                }
+              </div>
               <div className="px-4 pb-4 -mt-7">
-                <Link to="/profile" className="block w-14 h-14 rounded-2xl ring-4 ring-white mb-2 overflow-hidden">
+                <Link to="/profile" className="block w-14 h-14 rounded-2xl ring-4 ring-white dark:ring-gray-900 mb-2 overflow-hidden">
                   {myUser.avatar
                     ? <img src={myUser.avatar} alt="me" className="w-full h-full object-cover" />
                     : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">

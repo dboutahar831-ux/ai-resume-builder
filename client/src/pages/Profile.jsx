@@ -20,27 +20,29 @@ function Avatar({ src, name, size = 'w-8 h-8', className = '' }) {
       </div>;
 }
 
-/* ─── Note Bubble ─── */
+/* ─── Note Bubble — Facebook-style: sits right above the avatar ─── */
 function NoteBubble({ note, isOwn, onEdit, onDelete }) {
   if (!note && !isOwn) return null;
   return (
-    <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none">
-      <div className={`px-3 py-1.5 rounded-2xl rounded-b-sm shadow-lg border text-xs font-medium max-w-[13rem] text-center whitespace-nowrap overflow-hidden text-ellipsis pointer-events-auto
-        ${note ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-800 dark:text-gray-200' : 'bg-gray-50 dark:bg-gray-800 border-dashed border-gray-200 dark:border-gray-700 text-gray-400 cursor-pointer hover:border-indigo-300 hover:text-indigo-500 transition-colors'}
-      `}
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 flex flex-col items-center pointer-events-none">
+      <div className={`px-3 py-1.5 rounded-2xl shadow-md border text-xs font-medium max-w-[160px] text-center whitespace-nowrap overflow-hidden text-ellipsis pointer-events-auto
+        ${note
+          ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200'
+          : 'bg-white/90 dark:bg-gray-800 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 cursor-pointer hover:border-indigo-400 hover:text-indigo-500 transition-colors'
+        }`}
         onClick={!note && isOwn ? onEdit : undefined}
         title={note?.content}>
         {note ? note.content : '+ Add a note...'}
       </div>
       {note && isOwn && (
-        <div className="flex gap-1 mt-0.5 pointer-events-auto">
+        <div className="flex gap-1.5 mt-0.5 pointer-events-auto">
           <button onClick={onEdit} className="text-[10px] text-gray-400 hover:text-indigo-500 transition-colors">Edit</button>
-          <span className="text-gray-300 text-[10px]">·</span>
+          <span className="text-gray-300 dark:text-gray-600 text-[10px]">·</span>
           <button onClick={onDelete} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors">Delete</button>
         </div>
       )}
-      {/* Tail */}
-      <div className="w-2.5 h-2.5 -mt-0.5 bg-white dark:bg-gray-800 border-b border-r border-gray-100 dark:border-gray-700 rotate-45" />
+      {/* Downward tail pointing towards the avatar */}
+      <div className="w-3 h-3 -mt-px bg-white dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 rotate-45 rounded-br-sm" />
     </div>
   );
 }
@@ -247,6 +249,7 @@ export default function Profile() {
   const [myStories, setMyStories]   = useState(null); // { stories, all_seen }
   const [storyViewer, setStoryViewer] = useState(false);
   const [coverModal, setCoverModal]  = useState(false);
+  const [avatarModal, setAvatarModal] = useState(false);
 
   // Note
   const [note, setNote]         = useState(null);
@@ -386,8 +389,21 @@ export default function Profile() {
 
       {/* Cover view modal */}
       {coverModal && form.cover_image && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setCoverModal(false)}>
+        <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4" onClick={() => setCoverModal(false)}>
+          <button onClick={() => setCoverModal(false)} className="absolute top-4 right-4 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+            <X size={18} />
+          </button>
           <img src={form.cover_image} alt="cover" className="max-w-3xl w-full rounded-2xl object-contain" />
+        </div>
+      )}
+
+      {/* Avatar view modal */}
+      {avatarModal && form.avatar && (
+        <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4" onClick={() => setAvatarModal(false)}>
+          <button onClick={() => setAvatarModal(false)} className="absolute top-4 right-4 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+            <X size={18} />
+          </button>
+          <img src={form.avatar} alt="profile" className="w-72 h-72 rounded-full object-cover shadow-2xl ring-4 ring-white/20" />
         </div>
       )}
 
@@ -437,17 +453,17 @@ export default function Profile() {
             <div className="flex items-end justify-between -mt-14 mb-5 relative overflow-visible">
 
               {/* Avatar + Note + Story ring */}
-              <div className="relative overflow-visible pt-14">
-                {/* Note bubble */}
-                <NoteBubble
-                  note={note}
-                  isOwn
-                  onEdit={() => setNoteModal(true)}
-                  onDelete={deleteNote}
-                />
+              <div className="relative overflow-visible" style={{ marginTop: '-56px', paddingTop: '56px' }}>
+                {/* Avatar with story ring — note is positioned relative to this */}
+                <div className="relative inline-block">
+                  {/* Note bubble — positioned just above the avatar */}
+                  <NoteBubble
+                    note={note}
+                    isOwn
+                    onEdit={() => setNoteModal(true)}
+                    onDelete={deleteNote}
+                  />
 
-                {/* Avatar with story ring */}
-                <div className="relative">
                   <StoryAvatar
                     avatar={form.avatar}
                     name={form.name}
@@ -456,6 +472,7 @@ export default function Profile() {
                     size="w-28 h-28"
                     onClick={() => {
                       if (myStories?.story_count) setStoryViewer(true);
+                      else if (form.avatar && !editing) setAvatarModal(true);
                     }}
                   />
                   {/* Camera button */}
@@ -571,34 +588,34 @@ export default function Profile() {
               <Plus size={12} />New
             </button>
           </div>
-          <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide">
-            {highlights.length === 0 && (
-              <button onClick={() => setAddHLModal(true)}
-                className="flex flex-col items-center gap-2 flex-shrink-0">
-                <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-300 hover:border-indigo-300 hover:text-indigo-400 transition-colors">
-                  <Plus size={18} />
-                </div>
-                <p className="text-[10px] text-gray-400">Add</p>
-              </button>
-            )}
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+            {/* New highlight button */}
+            <button onClick={() => setAddHLModal(true)}
+              className="flex-shrink-0 w-[88px] h-[112px] rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-1.5 text-gray-300 dark:text-gray-600 hover:border-indigo-300 hover:text-indigo-400 dark:hover:border-indigo-500 transition-colors">
+              <Plus size={22} />
+              <span className="text-[10px] font-medium">New</span>
+            </button>
+
             {highlights.map(hl => (
-              <div key={hl.id} className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
+              <div key={hl.id} className="flex-shrink-0 group relative">
                 <button onClick={() => hl.item_count > 0 && setViewingHL(hl)}
-                  className="w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-400 transition-colors relative">
+                  className="w-[88px] h-[112px] rounded-2xl overflow-hidden relative shadow-sm hover:shadow-md transition-shadow block">
                   {hl.cover_url
                     ? <img src={hl.cover_url} alt={hl.title} className="w-full h-full object-cover" />
                     : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-                        <Sparkles size={16} className="text-white" />
+                        <Sparkles size={22} className="text-white" />
                       </div>
                   }
+                  {/* Title overlay at bottom */}
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 pt-6 pb-2">
+                    <p className="text-white text-[10px] font-semibold truncate text-center leading-tight">{hl.title}</p>
+                  </div>
                 </button>
-                <div className="flex items-center gap-1">
-                  <p className="text-[10px] font-medium text-gray-600 dark:text-gray-400 truncate max-w-[52px] text-center">{hl.title}</p>
-                  <button onClick={() => deleteHighlight(hl.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all">
-                    <X size={9} />
-                  </button>
-                </div>
+                {/* Delete button — top-right on hover */}
+                <button onClick={() => deleteHighlight(hl.id)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10">
+                  <X size={10} />
+                </button>
               </div>
             ))}
           </div>

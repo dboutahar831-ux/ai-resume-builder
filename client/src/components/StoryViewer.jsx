@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Trash2, Music, ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { X, Trash2, Music, ChevronLeft, ChevronRight, Volume2, VolumeX, Pause, Play } from 'lucide-react';
 import api from '../api/axios';
 
 function timeAgo(d) {
@@ -86,11 +86,7 @@ export default function StoryViewer({ userStories, initialUserIndex = 0, myId, o
       )}
 
       {/* Story card */}
-      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black select-none"
-        onMouseDown={() => setPaused(true)}
-        onMouseUp={() => setPaused(false)}
-        onTouchStart={() => setPaused(true)}
-        onTouchEnd={() => setPaused(false)}>
+      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-black select-none">
 
         {/* Progress bars */}
         <div className="absolute top-3 left-3 right-3 z-30 flex gap-1">
@@ -123,6 +119,10 @@ export default function StoryViewer({ userStories, initialUserIndex = 0, myId, o
               <Trash2 size={15} />
             </button>
           )}
+          <button onClick={(e) => { e.stopPropagation(); setPaused(p => !p); }}
+            className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+            {paused ? <Play size={15} /> : <Pause size={15} />}
+          </button>
           <button onClick={(e) => { e.stopPropagation(); setMuted(m => !m); }}
             className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
@@ -141,6 +141,15 @@ export default function StoryViewer({ userStories, initialUserIndex = 0, myId, o
             : <img src={story.media_url} alt="" className="w-full h-full object-contain" />
           }
         </div>
+
+        {/* Pause overlay */}
+        {paused && (
+          <div className="absolute inset-0 z-25 flex items-center justify-center pointer-events-none">
+            <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center backdrop-blur-sm">
+              <Pause size={28} className="text-white" />
+            </div>
+          </div>
+        )}
 
         {/* Caption */}
         {story.caption && (
@@ -164,10 +173,16 @@ export default function StoryViewer({ userStories, initialUserIndex = 0, myId, o
           </div>
         )}
 
-        {/* Tap zones */}
+        {/* Tap zones — tap to navigate, hold to pause */}
         <div className="absolute inset-0 z-20 flex pointer-events-none">
-          <div className="flex-1 pointer-events-auto" onClick={goPrev} />
-          <div className="flex-1 pointer-events-auto" onClick={goNext} />
+          <div className="flex-1 pointer-events-auto"
+            onClick={goPrev}
+            onMouseDown={() => setPaused(true)} onMouseUp={() => setPaused(false)}
+            onTouchStart={() => setPaused(true)} onTouchEnd={() => setPaused(false)} />
+          <div className="flex-1 pointer-events-auto"
+            onClick={goNext}
+            onMouseDown={() => setPaused(true)} onMouseUp={() => setPaused(false)}
+            onTouchStart={() => setPaused(true)} onTouchEnd={() => setPaused(false)} />
         </div>
       </div>
     </div>
