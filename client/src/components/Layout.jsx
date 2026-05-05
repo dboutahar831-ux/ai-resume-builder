@@ -102,11 +102,7 @@ function NotificationBell({ items, count, onMarkRead, onClose }) {
 }
 
 function useDarkMode() {
-  const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
 
   useEffect(() => {
     if (dark) {
@@ -299,10 +295,40 @@ export default function Layout({ children }) {
           <NotificationBell items={notifItems} count={notifCount} />
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 animate-fade-in pb-20 lg:pb-6">
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex items-center justify-around px-2 py-2 safe-bottom">
+        {[
+          { to: '/home',     icon: Home,           label: 'Home'     },
+          { to: '/friends',  icon: Users,           label: 'Friends', badge: pendingReqs },
+          { to: '/messages', icon: MessageSquare,   label: 'Messages',badge: unreadMsgs  },
+          { to: '/profile',  icon: User,            label: 'Profile'  },
+          { to: '/settings', icon: Settings,        label: 'More'     },
+        ].map(({ to, icon: Icon, label, badge }) => (
+          <NavLink key={to} to={to} onClick={() => setOpen(false)}
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative ${
+                isActive ? 'text-indigo-600' : 'text-gray-400'
+              }`
+            }>
+            {({ isActive }) => (
+              <>
+                <Icon size={20} className={isActive ? 'text-indigo-600' : 'text-gray-400'} />
+                <span className="text-[10px] font-medium">{label}</span>
+                {badge > 0 && (
+                  <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }
