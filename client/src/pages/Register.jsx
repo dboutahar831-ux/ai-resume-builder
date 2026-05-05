@@ -63,15 +63,18 @@ export default function Register() {
             Join thousands of professionals who use Nexly to land their dream jobs.
           </p>
         </div>
-        <div className="bg-white/10 rounded-2xl p-6">
-          <p className="text-sm text-indigo-100 italic mb-4">"Got 3 interviews in my first week using Nexly. The AI suggestions are incredibly professional."</p>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-400 flex items-center justify-center text-sm font-bold text-white">S</div>
-            <div>
-              <p className="text-sm font-semibold text-white">Sarah M.</p>
-              <p className="text-xs text-indigo-300">Software Engineer</p>
+        <div className="space-y-3">
+          {[
+            'AI-powered resume builder',
+            'Career feed & professional network',
+            'Job application tracker',
+            'Free forever — no credit card',
+          ].map(item => (
+            <div key={item} className="flex items-center gap-3">
+              <CheckCircle size={16} className="text-indigo-300 flex-shrink-0" />
+              <span className="text-sm text-indigo-100">{item}</span>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
