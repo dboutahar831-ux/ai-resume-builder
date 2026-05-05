@@ -42,12 +42,15 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/cover-letters', coverLettersRouter);
 app.use('/api/posts', postsRouter);
 
-// Serve React frontend
+// Serve React frontend (only when client/dist exists — local dev / single-server deploy)
 const clientDist = path.join(__dirname, '../client/dist');
-app.use(express.static(clientDist));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
-});
+const fs = require('fs');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // Global error handler
 app.use((err, req, res, next) => {
