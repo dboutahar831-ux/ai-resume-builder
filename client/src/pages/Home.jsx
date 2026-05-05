@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, Users, ThumbsUp,
   MoreHorizontal, Trash2, Briefcase, FileText, Bell,
-  Repeat2, Video, CornerDownRight,
+  Repeat2, Video, CornerDownRight, Sparkles,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
@@ -589,6 +589,8 @@ export default function Home() {
   const [postImage, setPostImage] = useState('');
   const [postVideo, setPostVideo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceError, setEnhanceError] = useState('');
   const [stats, setStats] = useState({ resumes: 0, jobs: 0, friends: 0, unread: 0 });
   const [friends, setFriends] = useState([]);
   const postFileRef = useRef();
@@ -613,6 +615,23 @@ export default function Home() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const aiEnhance = async () => {
+    if (!postText.trim() || enhancing) return;
+    setEnhancing(true);
+    setEnhanceError('');
+    try {
+      const res = await api.post('/ai/enhance', { text: postText });
+      setPostText(res.data.enhanced);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+      }
+    } catch (err) {
+      setEnhanceError(err.response?.data?.error || 'Enhancement failed. Try again.');
+      setTimeout(() => setEnhanceError(''), 4000);
+    } finally { setEnhancing(false); }
+  };
 
   const submitPost = async () => {
     if ((!postText.trim() && !postImage && !postVideo) || submitting) return;
@@ -752,6 +771,12 @@ export default function Home() {
                 </div>
               </div>
 
+              {enhanceError && (
+                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                  <span>⚠</span>{enhanceError}
+                </p>
+              )}
+
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <div className="flex items-center gap-1">
                   <button onClick={() => postFileRef.current?.click()}
@@ -765,15 +790,32 @@ export default function Home() {
                     <span className="font-medium">Video</span>
                   </button>
                 </div>
-                <button onClick={submitPost}
-                  disabled={(!postText.trim() && !hasMedia) || submitting}
-                  className="px-5 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-indigo-200">
-                  {submitting
-                    ? <span className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Posting...
-                      </span>
-                    : 'Post'}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  {/* AI Enhance button */}
+                  <button
+                    onClick={aiEnhance}
+                    disabled={!postText.trim() || enhancing || submitting}
+                    title="Enhance with AI"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed
+                      bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600
+                      text-white shadow-sm shadow-violet-200 hover:shadow-md hover:shadow-violet-200">
+                    {enhancing
+                      ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing...</>
+                      : <><Sparkles size={14} />AI Enhance</>}
+                  </button>
+
+                  {/* Post button */}
+                  <button onClick={submitPost}
+                    disabled={(!postText.trim() && !hasMedia) || submitting}
+                    className="px-5 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-indigo-200">
+                    {submitting
+                      ? <span className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />Posting...
+                        </span>
+                      : 'Post'}
+                  </button>
+                </div>
               </div>
               <input ref={postFileRef} type="file" accept="image/*" className="hidden" onChange={handlePostImage} />
               <input ref={postVideoRef} type="file" accept="video/*" className="hidden" onChange={handlePostVideo} />

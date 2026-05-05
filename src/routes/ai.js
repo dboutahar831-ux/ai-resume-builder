@@ -79,4 +79,34 @@ The skills array should contain 8-12 specific, relevant skills for this role and
   }
 });
 
+// POST /api/ai/enhance — improve a social post text
+router.post('/enhance', auth, async (req, res) => {
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'text is required.' });
+  if (text.trim().length < 5) return res.status(400).json({ error: 'Text is too short to enhance.' });
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      system: `You are a professional content writer for ResumeAI, a career-focused social platform.
+Your job: rewrite the user's draft post to sound polished, engaging, and professional — suitable for a LinkedIn-style audience.
+Rules:
+- Keep the original meaning and language (if Arabic write Arabic, if English write English)
+- Make it concise, clear, and human — no corporate buzzwords or fluff
+- Add a hook at the start if the text is long enough
+- Keep emojis only if the user already used them
+- Return ONLY the improved text, no explanations, no quotes, no labels`,
+      messages: [{ role: 'user', content: `Enhance this post:\n\n${text.trim()}` }],
+    });
+
+    const enhanced = response.content.find(b => b.type === 'text')?.text?.trim();
+    if (!enhanced) throw new Error('No response from AI');
+    res.json({ enhanced });
+  } catch (err) {
+    console.error('Enhance error:', err.message);
+    res.status(500).json({ error: 'Failed to enhance text. Please try again.' });
+  }
+});
+
 module.exports = router;
