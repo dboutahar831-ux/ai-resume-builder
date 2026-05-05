@@ -112,10 +112,33 @@ export default function FriendProfile() {
             </div>
 
             <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
-            {isFriend
-              ? <p className="text-xs text-emerald-600 font-medium flex items-center gap-1 mt-0.5"><UserCheck size={12} />Connected</p>
-              : <p className="text-xs text-gray-400 mt-0.5">ResumeAI member</p>
-            }
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {isFriend && (
+                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1"><UserCheck size={12} />Connected</p>
+              )}
+              {profile.last_seen_at && (() => {
+                const online = Date.now() - new Date(profile.last_seen_at).getTime() < 120000;
+                const diff = Date.now() - new Date(profile.last_seen_at).getTime();
+                const label = online ? 'Active now'
+                  : diff < 3600000 ? `Active ${Math.floor(diff / 60000)}m ago`
+                  : diff < 86400000 ? `Active ${Math.floor(diff / 3600000)}h ago`
+                  : `Active ${Math.floor(diff / 86400000)}d ago`;
+                return (
+                  <p className={`text-xs flex items-center gap-1 ${online ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    {label}
+                  </p>
+                );
+              })()}
+              {!isFriend && !profile.last_seen_at && (
+                <p className="text-xs text-gray-400">ResumeAI member</p>
+              )}
+            </div>
+
+            {/* Bio */}
+            {profile.bio && (
+              <p className="text-sm text-gray-600 mt-3 leading-relaxed">{profile.bio}</p>
+            )}
 
             {/* Info rows */}
             <div className="mt-5 space-y-3 border-t border-gray-100 pt-5">

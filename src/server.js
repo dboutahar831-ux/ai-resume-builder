@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 const pool = require('./db');
 const resumesRouter = require('./routes/resumes');
 const authRouter = require('./routes/auth');
@@ -10,6 +11,7 @@ const aiRouter = require('./routes/ai');
 const friendsRouter = require('./routes/friends');
 const messagesRouter = require('./routes/messages');
 const coverLettersRouter = require('./routes/coverLetters');
+const postsRouter = require('./routes/posts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,10 +40,13 @@ app.use('/api/ai', aiRouter);
 app.use('/api/friends', friendsRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/cover-letters', coverLettersRouter);
+app.use('/api/posts', postsRouter);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// Serve React frontend
+const clientDist = path.join(__dirname, '../client/dist');
+app.use(express.static(clientDist));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
 });
 
 // Global error handler

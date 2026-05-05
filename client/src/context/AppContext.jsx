@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../api/axios';
 
 const translations = {
   en: {
@@ -44,6 +45,16 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en');
   const [dark, setDark] = useState(() => localStorage.getItem('dark') === 'true');
+
+  useEffect(() => {
+    const beat = async () => {
+      if (!localStorage.getItem('token')) return;
+      try { await api.put('/auth/heartbeat'); } catch {}
+    };
+    beat();
+    const id = setInterval(beat, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('lang', lang);

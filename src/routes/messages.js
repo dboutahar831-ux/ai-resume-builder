@@ -9,7 +9,7 @@ router.get('/conversations', auth, async (req, res) => {
     const result = await pool.query(
       `SELECT DISTINCT ON (other_id)
          other_id,
-         u.name AS other_name, u.avatar AS other_avatar,
+         u.name AS other_name, u.avatar AS other_avatar, u.last_seen_at AS other_last_seen_at,
          m.content AS last_message,
          m.created_at AS last_at,
          m.sender_id AS last_sender_id,

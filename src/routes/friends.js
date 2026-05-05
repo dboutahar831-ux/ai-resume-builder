@@ -9,7 +9,7 @@ router.get('/search', auth, async (req, res) => {
   if (!q) return res.json([]);
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.avatar,
+      `SELECT u.id, u.name, u.location, u.avatar, u.last_seen_at,
         (SELECT status FROM friendships
          WHERE (requester_id=$1 AND addressee_id=u.id)
             OR (requester_id=u.id AND addressee_id=$1)
@@ -32,7 +32,7 @@ router.get('/search', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.avatar
+      `SELECT u.id, u.name, u.location, u.avatar, u.last_seen_at
        FROM friendships f
        JOIN users u ON (
          CASE WHEN f.requester_id=$1 THEN f.addressee_id ELSE f.requester_id END = u.id
@@ -63,7 +63,7 @@ router.get('/requests', auth, async (req, res) => {
 router.get('/profile/:userId', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.linkedin, u.avatar, u.created_at,
+      `SELECT u.id, u.name, u.location, u.linkedin, u.avatar, u.bio, u.created_at, u.last_seen_at,
         (SELECT status FROM friendships
          WHERE (requester_id=$1 AND addressee_id=$2)
             OR (requester_id=$2 AND addressee_id=$1)

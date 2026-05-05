@@ -21,7 +21,7 @@ function InfoRow({ icon: Icon, label, value }) {
 export default function Profile() {
   const { t } = useApp();
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ name: '', age: '', phone: '', location: '', linkedin: '', avatar: '' });
+  const [form, setForm] = useState({ name: '', age: '', phone: '', location: '', linkedin: '', avatar: '', bio: '' });
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
@@ -38,6 +38,7 @@ export default function Profile() {
         location: res.data.location || '',
         linkedin: res.data.linkedin || '',
         avatar: res.data.avatar || '',
+        bio: res.data.bio || '',
       });
     });
   }, []);
@@ -68,7 +69,7 @@ export default function Profile() {
   };
 
   const handleCancel = () => {
-    if (user) setForm({ name: user.name || '', age: user.age || '', phone: user.phone || '', location: user.location || '', linkedin: user.linkedin || '', avatar: user.avatar || '' });
+    if (user) setForm({ name: user.name || '', age: user.age || '', phone: user.phone || '', location: user.location || '', linkedin: user.linkedin || '', avatar: user.avatar || '', bio: user.bio || '' });
     setEditing(false); setError('');
   };
 
@@ -126,6 +127,7 @@ export default function Profile() {
             <div className="flex-1 min-w-0">
               <p className="text-xl font-bold text-gray-900">{user.name}</p>
               <p className="text-sm text-gray-500">{user.email}</p>
+              {user.bio && <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{user.bio}</p>}
               {user.location && <p className="text-xs text-gray-400 mt-1">📍 {user.location}</p>}
               {user.linkedin && (
                 <a href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
@@ -200,6 +202,12 @@ export default function Profile() {
               <input className={inp}
                 placeholder="linkedin.com/in/yourprofile"
                 value={form.linkedin} onChange={e => setForm(f => ({ ...f, linkedin: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+              <textarea className={inp + ' resize-none'} rows={3}
+                placeholder="Tell people a bit about yourself..."
+                value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
             </div>
 
             <div className="flex gap-3 pt-2">

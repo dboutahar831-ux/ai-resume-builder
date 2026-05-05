@@ -97,6 +97,7 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid email or password.' });
 
+    await pool.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [user.id]);
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({
       user: { id: user.id, name: user.name, email: user.email, age: user.age, phone: user.phone, location: user.location, linkedin: user.linkedin, avatar: user.avatar },
@@ -111,7 +112,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, age, phone, location, linkedin, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });
@@ -123,12 +124,12 @@ router.get('/profile', auth, async (req, res) => {
 
 // PUT /api/auth/profile
 router.put('/profile', auth, async (req, res) => {
-  const { name, age, phone, location, linkedin, avatar } = req.body;
+  const { name, age, phone, location, linkedin, avatar, bio } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required.' });
   try {
     const result = await pool.query(
-      'UPDATE users SET name=$1, age=$2, phone=$3, location=$4, linkedin=$5, avatar=$6 WHERE id=$7 RETURNING id, name, email, age, phone, location, linkedin, avatar',
-      [name, age || null, phone || null, location || null, linkedin || null, avatar || null, req.user.id]
+      'UPDATE users SET name=$1, age=$2, phone=$3, location=$4, linkedin=$5, avatar=$6, bio=$7 WHERE id=$8 RETURNING id, name, email, age, phone, location, linkedin, avatar, bio',
+      [name, age || null, phone || null, location || null, linkedin || null, avatar || null, bio || null, req.user.id]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -151,6 +152,14 @@ router.put('/change-password', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// PUT /api/auth/heartbeat — update last_seen_at
+router.put('/heartbeat', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [req.user.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // DELETE /api/auth/account

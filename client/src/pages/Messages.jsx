@@ -24,6 +24,28 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d`;
 }
 
+function isOnline(lastSeenAt) {
+  return lastSeenAt && Date.now() - new Date(lastSeenAt).getTime() < 120000;
+}
+
+function formatLastSeen(lastSeenAt) {
+  if (!lastSeenAt) return null;
+  const diff = Date.now() - new Date(lastSeenAt).getTime();
+  if (diff < 120000) return 'Active now';
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `Active ${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Active ${h}h ago`;
+  return `Active ${Math.floor(h / 24)}d ago`;
+}
+
+function StatusDot({ lastSeenAt }) {
+  const online = isOnline(lastSeenAt);
+  return (
+    <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+  );
+}
+
 export default function Messages() {
   const myUser = JSON.parse(localStorage.getItem('user') || '{}');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,6 +72,14 @@ export default function Messages() {
     ]);
     setConversations(c.data);
     setFriends(f.data);
+    setActiveUser(prev => {
+      if (!prev) return prev;
+      const conv = c.data.find(x => x.other_id === prev.id);
+      if (conv) return { ...prev, last_seen_at: conv.other_last_seen_at };
+      const friend = f.data.find(x => x.id === prev.id);
+      if (friend) return { ...prev, last_seen_at: friend.last_seen_at };
+      return prev;
+    });
   }, []);
 
   const loadMessages = useCallback(async (userId) => {
@@ -58,7 +88,18 @@ export default function Messages() {
     setMessages(res.data);
   }, []);
 
-  useEffect(() => { loadConversations(); }, [loadConversations]);
+  useEffect(() => {
+    const init = async () => {
+      try { await api.put('/auth/heartbeat'); } catch {}
+      loadConversations();
+    };
+    init();
+    const id = setInterval(async () => {
+      try { await api.put('/auth/heartbeat'); } catch {}
+      loadConversations();
+    }, 30000);
+    return () => clearInterval(id);
+  }, [loadConversations]);
 
   // Open from URL param on mount only
   useEffect(() => {
@@ -86,7 +127,7 @@ export default function Messages() {
     const fromFriends = friends.find(f => f.id === userId);
     const fromConvs = conversations.find(c => c.other_id === userId);
     let user = fromFriends
-      || (fromConvs ? { id: fromConvs.other_id, name: fromConvs.other_name, avatar: fromConvs.other_avatar } : null);
+      || (fromConvs ? { id: fromConvs.other_id, name: fromConvs.other_name, avatar: fromConvs.other_avatar, last_seen_at: fromConvs.other_last_seen_at } : null);
     if (!user) {
       try { const r = await api.get(`/friends/profile/${userId}`); user = r.data; }
       catch { return; }
@@ -177,10 +218,12 @@ export default function Messages() {
                 className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${activeUser?.id === c.other_id ? 'bg-indigo-50' : ''}`}>
                 <div className="relative flex-shrink-0">
                   <Avatar user={{ id: c.other_id, name: c.other_name, avatar: c.other_avatar }} />
-                  {c.unread > 0 && (
+                  {c.unread > 0 ? (
                     <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-indigo-600 text-white text-xs rounded-full flex items-center justify-center font-bold leading-none">
                       {c.unread > 9 ? '9+' : c.unread}
                     </span>
+                  ) : (
+                    <StatusDot lastSeenAt={c.other_last_seen_at} />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -203,8 +246,18 @@ export default function Messages() {
                 {filteredFriends.map(f => (
                   <button key={f.id} onClick={() => openConversation(f.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${activeUser?.id === f.id ? 'bg-indigo-50' : ''}`}>
-                    <Avatar user={f} />
-                    <p className="text-sm font-medium text-gray-800">{f.name}</p>
+                    <div className="relative flex-shrink-0">
+                      <Avatar user={f} />
+                      <StatusDot lastSeenAt={f.last_seen_at} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{f.name}</p>
+                      {formatLastSeen(f.last_seen_at) && (
+                        <p className={`text-xs ${isOnline(f.last_seen_at) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                          {formatLastSeen(f.last_seen_at)}
+                        </p>
+                      )}
+                    </div>
                   </button>
                 ))}
               </>
@@ -220,13 +273,21 @@ export default function Messages() {
               <button onClick={() => setMobileView('list')} className="lg:hidden p-1 text-gray-400 hover:text-gray-600">
                 <ArrowLeft size={18} />
               </button>
-              <Link to={`/friends/${activeUser.id}`}>
+                <Link to={`/friends/${activeUser.id}`} className="relative flex-shrink-0">
                 <Avatar user={activeUser} size="lg" />
+                <StatusDot lastSeenAt={activeUser.last_seen_at} />
               </Link>
-              <Link to={`/friends/${activeUser.id}`}
-                className="font-semibold text-gray-900 text-sm hover:text-indigo-600 transition-colors">
-                {activeUser.name}
-              </Link>
+              <div>
+                <Link to={`/friends/${activeUser.id}`}
+                  className="font-semibold text-gray-900 text-sm hover:text-indigo-600 transition-colors block">
+                  {activeUser.name}
+                </Link>
+                {formatLastSeen(activeUser.last_seen_at) && (
+                  <p className={`text-xs ${isOnline(activeUser.last_seen_at) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    {formatLastSeen(activeUser.last_seen_at)}
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <div className="px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">

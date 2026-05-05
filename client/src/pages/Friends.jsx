@@ -11,20 +11,49 @@ function Avatar({ user, size = 'md' }) {
     : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>{user.name?.[0]}</div>;
 }
 
+function isOnline(lastSeenAt) {
+  return lastSeenAt && Date.now() - new Date(lastSeenAt).getTime() < 120000;
+}
+
+function formatLastSeen(lastSeenAt) {
+  if (!lastSeenAt) return null;
+  const diff = Date.now() - new Date(lastSeenAt).getTime();
+  if (diff < 120000) return 'Active now';
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `Active ${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Active ${h}h ago`;
+  return `Active ${Math.floor(h / 24)}d ago`;
+}
+
+function StatusDot({ lastSeenAt, size = 'sm' }) {
+  const online = isOnline(lastSeenAt);
+  const sz = size === 'lg' ? 'w-3 h-3' : 'w-2.5 h-2.5';
+  return (
+    <span className={`absolute bottom-0 right-0 ${sz} rounded-full border-2 border-white ${online ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+  );
+}
+
 function FriendCard({ user, onAction, myId }) {
   const { friendship_status: status, requester_id } = user;
   const iAmRequester = requester_id === myId;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 hover:shadow-sm transition-all">
-      <Link to={`/friends/${user.id}`}>
+      <Link to={`/friends/${user.id}`} className="relative flex-shrink-0">
         <Avatar user={user} size="lg" />
+        <StatusDot lastSeenAt={user.last_seen_at} />
       </Link>
       <div className="flex-1 min-w-0">
         <Link to={`/friends/${user.id}`} className="font-semibold text-gray-900 text-sm hover:text-indigo-600 transition-colors">
           {user.name}
         </Link>
         {user.location && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><MapPin size={10} />{user.location}</p>}
+        {formatLastSeen(user.last_seen_at) && (
+          <p className={`text-xs mt-0.5 ${isOnline(user.last_seen_at) ? 'text-emerald-600' : 'text-gray-400'}`}>
+            {formatLastSeen(user.last_seen_at)}
+          </p>
+        )}
       </div>
       <div className="flex gap-2 flex-shrink-0">
         {!status && (
@@ -75,7 +104,18 @@ export default function Friends() {
     setRequests(r.data);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const init = async () => {
+      try { await api.put('/auth/heartbeat'); } catch {}
+      load();
+    };
+    init();
+    const id = setInterval(async () => {
+      try { await api.put('/auth/heartbeat'); } catch {}
+      load();
+    }, 30000);
+    return () => clearInterval(id);
+  }, [load]);
 
   useEffect(() => {
     if (!query.trim()) { setSearchResults([]); return; }
@@ -178,7 +218,10 @@ export default function Friends() {
               </div>
             ) : requests.map(u => (
               <div key={u.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
-                <Link to={`/friends/${u.id}`}><Avatar user={u} size="lg" /></Link>
+                <Link to={`/friends/${u.id}`} className="relative flex-shrink-0">
+                  <Avatar user={u} size="lg" />
+                  <StatusDot lastSeenAt={u.last_seen_at} />
+                </Link>
                 <div className="flex-1 min-w-0">
                   <Link to={`/friends/${u.id}`} className="font-semibold text-gray-900 text-sm hover:text-indigo-600">{u.name}</Link>
                   <p className="text-xs text-gray-400">Sent you a friend request</p>
