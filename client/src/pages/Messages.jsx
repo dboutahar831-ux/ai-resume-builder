@@ -98,7 +98,8 @@ function VoicePlayer({ src }) {
 }
 
 export default function Messages() {
-  const myUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const myUserRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
+  const myUser = myUserRef.current;
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
   const [friends, setFriends] = useState([]);
@@ -136,10 +137,12 @@ export default function Messages() {
     setActiveUser(prev => {
       if (!prev) return prev;
       const conv = c.data.find(x => x.other_id === prev.id);
-      if (conv) return { ...prev, last_seen_at: conv.other_last_seen_at };
-      const friend = f.data.find(x => x.id === prev.id);
-      if (friend) return { ...prev, last_seen_at: friend.last_seen_at };
-      return prev;
+      const newLastSeen = conv?.other_last_seen_at
+        ?? f.data.find(x => x.id === prev.id)?.last_seen_at
+        ?? prev.last_seen_at;
+      // Only create a new object if last_seen_at actually changed — avoids restarting the poll interval
+      if (newLastSeen === prev.last_seen_at) return prev;
+      return { ...prev, last_seen_at: newLastSeen };
     });
   }, []);
 
@@ -180,8 +183,9 @@ export default function Messages() {
   }, [isTyping]);
 
   // Combined poll: messages + typing in one interval
+  // Depends on activeUser?.id only — won't restart when last_seen_at updates
   useEffect(() => {
-    if (!activeUser) { setIsTyping(false); return; }
+    if (!activeUser?.id) { setIsTyping(false); return; }
     const poll = async () => {
       const uid = activeUserRef.current?.id;
       if (!uid) return;
@@ -200,12 +204,16 @@ export default function Messages() {
     };
     pollRef.current = setInterval(poll, 3000);
     return () => clearInterval(pollRef.current);
-  }, [activeUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUser?.id]);
 
   const openConversation = async (userId) => {
     clearInterval(pollRef.current);
     prevMsgCountRef.current = 0;
     setIsTyping(false);
+    setInput('');
+    setMsgImage('');
+    setPendingVoice(null);
     const fromFriends = friends.find(f => f.id === userId);
     const fromConvs = conversations.find(c => c.other_id === userId);
     let user = fromFriends
@@ -216,6 +224,8 @@ export default function Messages() {
     setActiveUser(user);
     setSearchParams({ user: userId }, { replace: true });
     await loadMessages(userId);
+    // Always scroll to bottom after opening, regardless of message count
+    requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' }));
     setMobileView('chat');
     requestAnimationFrame(() => inputRef.current?.focus());
   };
@@ -298,7 +308,11 @@ export default function Messages() {
 
   const cancelVoice = () => {
     clearInterval(recTimerRef.current);
-    if (recording) { mediaRecRef.current?.stop(); setRecording(false); }
+    if (recording && mediaRecRef.current) {
+      mediaRecRef.current.onstop = null; // prevent the blob from being set after cancel
+      mediaRecRef.current.stop();
+      setRecording(false);
+    }
     setPendingVoice(null);
   };
 
