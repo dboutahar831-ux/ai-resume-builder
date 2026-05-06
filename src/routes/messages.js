@@ -5,7 +5,6 @@ const auth = require('../middleware/auth');
 
 // GET /api/messages/conversations
 router.get('/conversations', auth, async (req, res) => {
-  // Try full query (with image_url / voice_url), fall back to basic if columns missing
   let rows;
   try {
     const r = await pool.query(
@@ -13,8 +12,8 @@ router.get('/conversations', auth, async (req, res) => {
          other_id,
          u.name AS other_name, u.avatar AS other_avatar, u.last_seen_at AS other_last_seen_at,
          m.content AS last_message,
-         m.image_url AS last_image_url,
-         m.voice_url AS last_voice_url,
+         CASE WHEN m.image_url IS NOT NULL AND m.image_url != '' THEN TRUE ELSE FALSE END AS has_image,
+         CASE WHEN m.voice_url IS NOT NULL AND m.voice_url != '' THEN TRUE ELSE FALSE END AS has_voice,
          m.created_at AS last_at,
          m.sender_id AS last_sender_id,
          (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=other_id AND read=FALSE) AS unread
@@ -35,7 +34,7 @@ router.get('/conversations', auth, async (req, res) => {
            other_id,
            u.name AS other_name, u.avatar AS other_avatar, u.last_seen_at AS other_last_seen_at,
            m.content AS last_message,
-           NULL AS last_image_url, NULL AS last_voice_url,
+           FALSE AS has_image, FALSE AS has_voice,
            m.created_at AS last_at,
            m.sender_id AS last_sender_id,
            (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=other_id AND read=FALSE) AS unread
@@ -65,7 +64,52 @@ router.get('/unread/count', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/messages/typing/:userId — is userId currently typing to me?
+// GET /api/messages/img/:msgId — serve image for a message (avoids large bulk response)
+router.get('/img/:msgId', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT image_url, sender_id, receiver_id FROM messages WHERE id=$1', [req.params.msgId]);
+    const msg = r.rows[0];
+    if (!msg) return res.status(404).end();
+    // Only allow sender or receiver to fetch
+    if (msg.sender_id !== req.user.id && msg.receiver_id !== req.user.id)
+      return res.status(403).end();
+    const url = msg.image_url;
+    if (!url) return res.status(404).end();
+    if (url.startsWith('data:')) {
+      const [header, data] = url.split(',');
+      const mime = (header.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+      const buf = Buffer.from(data, 'base64');
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      return res.send(buf);
+    }
+    res.redirect(url);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/messages/voice/:msgId — serve voice for a message
+router.get('/voice/:msgId', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT voice_url, sender_id, receiver_id FROM messages WHERE id=$1', [req.params.msgId]);
+    const msg = r.rows[0];
+    if (!msg) return res.status(404).end();
+    if (msg.sender_id !== req.user.id && msg.receiver_id !== req.user.id)
+      return res.status(403).end();
+    const url = msg.voice_url;
+    if (!url) return res.status(404).end();
+    if (url.startsWith('data:')) {
+      const [header, data] = url.split(',');
+      const mime = (header.match(/data:([^;]+)/) || [])[1] || 'audio/webm';
+      const buf = Buffer.from(data, 'base64');
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      return res.send(buf);
+    }
+    res.redirect(url);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/messages/typing/:userId
 router.get('/typing/:userId', auth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -78,7 +122,7 @@ router.get('/typing/:userId', auth, async (req, res) => {
   } catch { res.json({ typing: false }); }
 });
 
-// POST /api/messages/typing/:userId — I am typing to userId
+// POST /api/messages/typing/:userId
 router.post('/typing/:userId', auth, async (req, res) => {
   try {
     await pool.query(
@@ -91,9 +135,8 @@ router.post('/typing/:userId', auth, async (req, res) => {
   } catch { res.json({ ok: false }); }
 });
 
-// GET /api/messages/:userId — messages with a specific user
+// GET /api/messages/:userId — messages list (base64 media replaced with endpoint URLs)
 router.get('/:userId', auth, async (req, res) => {
-  // Try full query (with new columns), fall back to basic if migration hasn't run
   let rows;
   try {
     const r = await pool.query(
@@ -125,10 +168,21 @@ router.get('/:userId', auth, async (req, res) => {
     } catch (err2) { return res.status(500).json({ error: err2.message }); }
   }
 
-  // Send messages to client immediately
+  // Replace base64 data URIs with endpoint URLs — avoids huge response bodies (Netlify 6MB limit)
+  const baseUrl = process.env.BASE_URL || '';
+  rows = rows.map(msg => ({
+    ...msg,
+    image_url: msg.image_url?.startsWith('data:')
+      ? `${baseUrl}/api/messages/img/${msg.id}`
+      : (msg.image_url || null),
+    voice_url: msg.voice_url?.startsWith('data:')
+      ? `${baseUrl}/api/messages/voice/${msg.id}`
+      : (msg.voice_url || null),
+  }));
+
   res.json(rows);
 
-  // Mark as read in background — separate try-catch, never blocks the response
+  // Mark as read in background
   try {
     const me = await pool.query(
       `SELECT COALESCE(show_read_receipts, TRUE) AS show_read_receipts FROM users WHERE id=$1`,
@@ -150,22 +204,27 @@ router.get('/:userId', auth, async (req, res) => {
   } catch {}
 });
 
-// POST /api/messages/:userId — send a message (text / image / voice)
+// POST /api/messages/:userId — send message
 router.post('/:userId', auth, async (req, res) => {
   const { content, image_url, voice_url } = req.body;
   if (!content?.trim() && !image_url && !voice_url)
     return res.status(400).json({ error: 'Message cannot be empty.' });
   try {
-    // Try insert with new columns first
     const result = await pool.query(
       `INSERT INTO messages (sender_id, receiver_id, content, image_url, voice_url)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [req.user.id, req.params.userId, content?.trim() || null, image_url || null, voice_url || null]
     );
-    res.json(result.rows[0]);
+    const msg = result.rows[0];
+    // Return endpoint URLs instead of base64 for the newly sent message too
+    const baseUrl = process.env.BASE_URL || '';
+    res.json({
+      ...msg,
+      image_url: msg.image_url?.startsWith('data:') ? `${baseUrl}/api/messages/img/${msg.id}` : (msg.image_url || null),
+      voice_url: msg.voice_url?.startsWith('data:') ? `${baseUrl}/api/messages/voice/${msg.id}` : (msg.voice_url || null),
+    });
   } catch {
     try {
-      // Fallback: insert without new columns (only text)
       const result = await pool.query(
         `INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1,$2,$3) RETURNING *`,
         [req.user.id, req.params.userId, content?.trim() || null]

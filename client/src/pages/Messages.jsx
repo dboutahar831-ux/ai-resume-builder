@@ -328,8 +328,8 @@ export default function Messages() {
   const fmtRec = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const lastMsgPreview = (c) => {
-    if (c.last_voice_url) return '🎙️ Voice message';
-    if (c.last_image_url) return '📷 Photo';
+    if (c.has_voice) return '🎙️ Voice message';
+    if (c.has_image) return '📷 Photo';
     return c.last_message;
   };
 
