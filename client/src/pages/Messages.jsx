@@ -148,8 +148,10 @@ export default function Messages() {
 
   const loadMessages = useCallback(async (userId) => {
     if (!userId) return;
-    const res = await api.get(`/messages/${userId}`);
-    setMessages(res.data);
+    try {
+      const res = await api.get(`/messages/${userId}`);
+      if (Array.isArray(res.data)) setMessages(res.data);
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -196,6 +198,7 @@ export default function Messages() {
         ]);
         setMessages(prev => {
           const d = msgRes.data;
+          if (!Array.isArray(d)) return prev; // ignore error responses
           if (prev.length === d.length && (prev.length === 0 || prev[prev.length - 1]?.id === d[d.length - 1]?.id)) return prev;
           return d;
         });

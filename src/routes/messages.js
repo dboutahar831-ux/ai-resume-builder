@@ -83,28 +83,30 @@ router.get('/:userId', auth, async (req, res) => {
       [req.user.id, req.params.userId]
     );
 
-    // Check if I have read receipts enabled (if disabled, don't reveal read_at to sender)
-    const me = await pool.query(
-      `SELECT COALESCE(show_read_receipts, TRUE) AS show_read_receipts FROM users WHERE id=$1`,
-      [req.user.id]
-    );
-    const myReceiptsOn = me.rows[0]?.show_read_receipts !== false;
-
-    if (myReceiptsOn) {
-      await pool.query(
-        `UPDATE messages SET read=TRUE, read_at=COALESCE(read_at, NOW())
-         WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
-        [req.user.id, req.params.userId]
-      );
-    } else {
-      await pool.query(
-        `UPDATE messages SET read=TRUE
-         WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
-        [req.user.id, req.params.userId]
-      );
-    }
-
+    // Send messages immediately — don't let the mark-as-read update block the response
     res.json(result.rows);
+
+    // Mark as read in background (separate try-catch so missing columns don't break the response)
+    try {
+      const me = await pool.query(
+        `SELECT COALESCE(show_read_receipts, TRUE) AS show_read_receipts FROM users WHERE id=$1`,
+        [req.user.id]
+      );
+      const myReceiptsOn = me.rows[0]?.show_read_receipts !== false;
+      if (myReceiptsOn) {
+        await pool.query(
+          `UPDATE messages SET read=TRUE, read_at=COALESCE(read_at, NOW())
+           WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
+          [req.user.id, req.params.userId]
+        );
+      } else {
+        await pool.query(
+          `UPDATE messages SET read=TRUE
+           WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
+          [req.user.id, req.params.userId]
+        );
+      }
+    } catch {} // Column may not exist yet — don't crash the response
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
