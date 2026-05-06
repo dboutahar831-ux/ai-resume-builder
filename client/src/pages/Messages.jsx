@@ -205,7 +205,6 @@ export default function Messages() {
   const openConversation = async (userId) => {
     clearInterval(pollRef.current);
     prevMsgCountRef.current = 0;
-    setMessages([]);
     setIsTyping(false);
     const fromFriends = friends.find(f => f.id === userId);
     const fromConvs = conversations.find(c => c.other_id === userId);
