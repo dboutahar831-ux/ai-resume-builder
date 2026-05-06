@@ -72,7 +72,7 @@ function NoteModal({ current, onSave, onClose }) {
           <button onClick={onClose} className="flex-1 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400">Cancel</button>
           <button onClick={() => { if (val.trim()) { onSave(val.trim()); onClose(); } }}
             disabled={!val.trim()}
-            className="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:bg-indigo-700 transition-colors">
+            className="flex-1 py-2 text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-colors" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             Save
           </button>
         </div>
@@ -169,7 +169,7 @@ function AddHighlightModal({ onSave, onClose }) {
           <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400">Cancel</button>
           <button onClick={() => { if (title.trim() && items.length) { onSave(title.trim(), items); onClose(); } }}
             disabled={!title.trim() || !items.length}
-            className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:bg-indigo-700 transition-colors">
+            className="flex-1 py-2.5 text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-colors" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             Create
           </button>
         </div>
@@ -478,7 +478,7 @@ export default function Profile() {
                   {/* Camera button */}
                   <button
                     onClick={() => { if (!editing) setEditing(true); setTimeout(() => fileRef.current?.click(), 50); }}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 border-2 border-white dark:border-gray-900 z-10">
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 hover:opacity-90 border-2 border-white dark:border-gray-900 z-10" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     <Camera size={13} className="text-white" />
                   </button>
                 </div>
@@ -488,7 +488,7 @@ export default function Profile() {
               <div className="flex gap-2 pb-1">
                 {!editing ? (
                   <button onClick={() => setEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-semibold transition-all shadow-sm shadow-indigo-200 hover:-translate-y-0.5">
+                    className="flex items-center gap-2 px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     <Pencil size={13} />Edit Profile
                   </button>
                 ) : (
@@ -498,7 +498,7 @@ export default function Profile() {
                       <X size={13} />Cancel
                     </button>
                     <button onClick={handleSave} disabled={saving}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-semibold transition-all shadow-sm shadow-indigo-200 disabled:opacity-60">
+                      className="flex items-center gap-2 px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 shadow-sm disabled:opacity-60" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                       {saving
                         ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>
                         : <><Save size={13} />Save</>}

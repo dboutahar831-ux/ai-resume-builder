@@ -58,7 +58,7 @@ function FriendCard({ user, onAction, myId }) {
       <div className="flex gap-2 flex-shrink-0">
         {!status && (
           <button onClick={() => onAction('request', user.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-xl hover:bg-indigo-700 transition-all">
+            className="flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-xl hover:opacity-90 transition-all" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             <UserPlus size={13} />Add
           </button>
         )}
@@ -228,7 +228,7 @@ export default function Friends() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleAction('accept', u.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-xl hover:bg-indigo-700 transition-all">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-medium rounded-xl hover:opacity-90 transition-all" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     <Check size={13} />Accept
                   </button>
                   <button onClick={() => handleAction('reject', u.id)}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio } from 'lucide-react';
+import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -14,6 +14,7 @@ const languages = [
 export default function Settings() {
   const { lang, setLang, dark, setDark, t } = useApp();
   const navigate = useNavigate();
+  const logout = () => { localStorage.clear(); navigate('/login'); };
   const [showOnline, setShowOnline] = useState(true);
   const [savingOnline, setSavingOnline] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -187,8 +188,9 @@ export default function Settings() {
             </div>
             <button onClick={() => { setShowPw(s => !s); setPwError(''); }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                showPw ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700'
-              }`}>
+                showPw ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'text-white border-transparent hover:opacity-90'
+              }`}
+              style={!showPw ? { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' } : {}}>
               {showPw ? <><ChevronUp size={14} />Cancel</> : <><ChevronDown size={14} />{t.changePassword}</>}
             </button>
           </div>
@@ -234,7 +236,7 @@ export default function Settings() {
                   onChange={e => setPwForm(f => ({ ...f, confirm_password: e.target.value }))} />
               </div>
               <button onClick={handlePasswordChange} disabled={pwSaving}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-60">
+                className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                 {pwSaving ? (
                   <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t.loading}</>
                 ) : (
@@ -244,6 +246,23 @@ export default function Settings() {
             </div>
           )}
         </div>
+        {/* Logout */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <LogOut size={16} className="text-gray-400" />
+              <div>
+                <h3 className="font-semibold text-gray-900">{t.logout}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Sign out of your account.</p>
+              </div>
+            </div>
+            <button onClick={logout}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all">
+              <LogOut size={14} />{t.logout}
+            </button>
+          </div>
+        </div>
+
         {/* Delete Account */}
         <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
           <div className="flex items-center justify-between">

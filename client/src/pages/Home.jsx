@@ -295,7 +295,7 @@ function RepostModal({ post, onClose, onRepost }) {
               setLoading(true);
               try { await onRepost(text); onClose(); } finally { setLoading(false); }
             }}
-            className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+            className="flex-1 px-4 py-2 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             {loading
               ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : <><Repeat2 size={14} />Share</>}
@@ -640,7 +640,7 @@ function ScheduleModal({ onClose, onSchedule }) {
           </button>
           <button onClick={() => { if (dt) { onSchedule(dt); onClose(); } }}
             disabled={!dt}
-            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 flex items-center justify-center gap-2 transition-all">
+            className="flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2 transition-all" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             <Clock size={14} />Schedule
           </button>
         </div>
@@ -1028,8 +1028,8 @@ export default function Home() {
                   <button onClick={aiEnhance}
                     disabled={!postText.trim() || enhancing || submitting}
                     title="AI Enhance"
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40
-                      bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-sm">
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 text-white shadow-sm hover:opacity-90"
+                    style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     {enhancing
                       ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       : <Sparkles size={13} />}
@@ -1046,7 +1046,7 @@ export default function Home() {
 
                   <button onClick={submitPost}
                     disabled={(!postText.trim() && !hasMedia) || submitting}
-                    className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-40 shadow-sm">
+                    className="px-4 py-1.5 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-40 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     {submitting
                       ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       : 'Post'}
@@ -1085,7 +1085,7 @@ export default function Home() {
                   Share your first post above, or add friends to see their updates here.
                 </p>
                 <Link to="/friends"
-                  className="inline-flex items-center gap-2 mt-5 px-5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200">
+                  className="inline-flex items-center gap-2 mt-5 px-5 py-2 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                   <Users size={14} />Find Friends
                 </Link>
               </div>

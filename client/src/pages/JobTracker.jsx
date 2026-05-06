@@ -81,7 +81,7 @@ export default function JobTracker() {
             <h1 className="text-2xl font-bold text-gray-900">Job Tracker</h1>
             <p className="text-gray-500 mt-1">{jobs.length} application{jobs.length !== 1 ? 's' : ''} tracked</p>
           </div>
-          <button onClick={openNew} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all">
+          <button onClick={openNew} className="flex items-center gap-2 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
             <Plus size={16} />Add Job
           </button>
         </div>
@@ -105,7 +105,8 @@ export default function JobTracker() {
         <div className="flex gap-2 flex-wrap">
           {['all', ...STATUSES].map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className={`px-4 py-1.5 rounded-xl text-sm font-medium capitalize transition-all ${filter === s ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              className={`px-4 py-1.5 rounded-xl text-sm font-medium capitalize transition-all ${filter === s ? 'text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+              style={filter === s ? { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' } : {}}>
               {s === 'all' ? `All (${jobs.length})` : `${s} (${jobs.filter(j => j.status === s).length})`}
             </button>
           ))}
@@ -217,7 +218,7 @@ export default function JobTracker() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-all">
+                <button type="submit" className="flex-1 py-2.5 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                   {editId ? 'Save Changes' : 'Add Application'}
                 </button>
               </div>

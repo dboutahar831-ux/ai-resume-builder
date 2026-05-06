@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, LogOut, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight, Moon, Sun } from 'lucide-react';
+import { NavLink, Link } from 'react-router-dom';
+import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight, Moon, Sun } from 'lucide-react';
 
 function NexlyIcon({ className = 'w-8 h-8' }) {
   return (
@@ -124,10 +124,8 @@ export default function Layout({ children }) {
   const [unreadMsgs, setUnreadMsgs] = useState(0);
   const [pendingReqs, setPendingReqs] = useState(0);
   const [dark, setDark] = useDarkMode();
-  const navigate = useNavigate();
   const { t } = useApp();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const logout = () => { localStorage.clear(); navigate('/login'); };
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -275,9 +273,6 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          <button onClick={logout} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all mt-1">
-            <LogOut size={17} />{t.logout}
-          </button>
         </div>
       </aside>
 

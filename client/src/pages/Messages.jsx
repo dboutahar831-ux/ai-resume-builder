@@ -353,7 +353,8 @@ export default function Messages() {
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || sending}
-                className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all disabled:opacity-40 flex-shrink-0 mb-0.5">
+                className="w-10 h-10 text-white rounded-xl flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-40 flex-shrink-0 mb-0.5"
+                style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                 <Send size={16} />
               </button>
             </div>
