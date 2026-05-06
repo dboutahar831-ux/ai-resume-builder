@@ -248,8 +248,7 @@ export default function Messages() {
     if (inputRef.current) inputRef.current.style.height = 'auto';
     try {
       const res = await api.post(`/messages/${activeUser.id}`, payload);
-      setMessages(m => [...m, res.data]);
-      // Update conversation list in background without blocking
+      if (res.data?.id) setMessages(m => [...m, res.data]);
       loadConversations().catch(() => {});
     } finally { setSending(false); }
   };
