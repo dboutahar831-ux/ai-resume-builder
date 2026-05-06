@@ -124,8 +124,8 @@ export default function Messages() {
   const mediaRecRef = useRef(null);
   const chunksRef = useRef([]);
   const recTimerRef = useRef(null);
-  const typingPollRef = useRef(null);
   const lastTypingPost = useRef(0);
+  const prevMsgCountRef = useRef(0);
 
   useEffect(() => { activeUserRef.current = activeUser; }, [activeUser]);
 
@@ -168,28 +168,45 @@ export default function Messages() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
-
-  // Poll messages
   useEffect(() => {
-    if (!activeUser) return;
-    pollRef.current = setInterval(() => loadMessages(activeUserRef.current?.id), 3000);
-    return () => clearInterval(pollRef.current);
-  }, [activeUser, loadMessages]);
+    const len = messages.length;
+    if (len > prevMsgCountRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: prevMsgCountRef.current === 0 ? 'instant' : 'smooth' });
+    }
+    prevMsgCountRef.current = len;
+  }, [messages.length]);
+  useEffect(() => {
+    if (isTyping) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [isTyping]);
 
-  // Poll typing status
+  // Combined poll: messages + typing in one interval
   useEffect(() => {
     if (!activeUser) { setIsTyping(false); return; }
-    typingPollRef.current = setInterval(() => {
-      api.get(`/messages/typing/${activeUser.id}`)
-        .then(r => setIsTyping(r.data.typing))
-        .catch(() => {});
-    }, 2000);
-    return () => clearInterval(typingPollRef.current);
+    const poll = async () => {
+      const uid = activeUserRef.current?.id;
+      if (!uid) return;
+      try {
+        const [msgRes, typRes] = await Promise.all([
+          api.get(`/messages/${uid}`),
+          api.get(`/messages/typing/${uid}`).catch(() => ({ data: { typing: false } })),
+        ]);
+        setMessages(prev => {
+          const d = msgRes.data;
+          if (prev.length === d.length && (prev.length === 0 || prev[prev.length - 1]?.id === d[d.length - 1]?.id)) return prev;
+          return d;
+        });
+        setIsTyping(typRes.data.typing ?? false);
+      } catch {}
+    };
+    pollRef.current = setInterval(poll, 3000);
+    return () => clearInterval(pollRef.current);
   }, [activeUser]);
 
   const openConversation = async (userId) => {
     clearInterval(pollRef.current);
+    prevMsgCountRef.current = 0;
+    setMessages([]);
+    setIsTyping(false);
     const fromFriends = friends.find(f => f.id === userId);
     const fromConvs = conversations.find(c => c.other_id === userId);
     let user = fromFriends
@@ -220,7 +237,8 @@ export default function Messages() {
     try {
       const res = await api.post(`/messages/${activeUser.id}`, payload);
       setMessages(m => [...m, res.data]);
-      loadConversations();
+      // Update conversation list in background without blocking
+      loadConversations().catch(() => {});
     } finally { setSending(false); }
   };
 

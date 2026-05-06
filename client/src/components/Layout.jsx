@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight, Heart, Repeat2, CornerDownRight, Moon, Sun } from 'lucide-react';
 
@@ -125,7 +125,7 @@ export default function Layout({ children }) {
   const [pendingReqs, setPendingReqs] = useState(0);
   const [dark, setDark] = useDarkMode();
   const { t } = useApp();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
 
   const loadNotifications = useCallback(async () => {
     try {
