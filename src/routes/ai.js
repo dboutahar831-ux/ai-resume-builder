@@ -72,17 +72,27 @@ The skills array should contain 8-12 specific, relevant skills for this role and
   }
 });
 
-// POST /api/ai/enhance — improve a social post text
+// POST /api/ai/enhance — improve a social post text (powered by Groq, free)
 router.post('/enhance', auth, async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'text is required.' });
   if (text.trim().length < 5) return res.status(400).json({ error: 'Text is too short to enhance.' });
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      system: `You are a professional content writer for Nexly, a career social platform.
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        max_tokens: 512,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional content writer for Nexly, a career social platform.
 Your job: rewrite the user's draft post to sound polished, engaging, and professional — suitable for a LinkedIn-style audience.
 Rules:
 - Keep the original meaning and language (if Arabic write Arabic, if English write English)
@@ -90,10 +100,19 @@ Rules:
 - Add a hook at the start if the text is long enough
 - Keep emojis only if the user already used them
 - Return ONLY the improved text, no explanations, no quotes, no labels`,
-      messages: [{ role: 'user', content: `Enhance this post:\n\n${text.trim()}` }],
+          },
+          { role: 'user', content: `Enhance this post:\n\n${text.trim()}` },
+        ],
+      }),
     });
 
-    const enhanced = response.content.find(b => b.type === 'text')?.text?.trim();
+    if (!groqRes.ok) {
+      const err = await groqRes.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Groq error ${groqRes.status}`);
+    }
+
+    const data = await groqRes.json();
+    const enhanced = data.choices?.[0]?.message?.content?.trim();
     if (!enhanced) throw new Error('No response from AI');
     res.json({ enhanced });
   } catch (err) {
