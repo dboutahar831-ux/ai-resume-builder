@@ -121,4 +121,58 @@ Rules:
   }
 });
 
+// POST /api/ai/cover-letter — generate full cover letter with Groq
+router.post('/cover-letter', auth, async (req, res) => {
+  const { job_title, company, recipient, tone, language, background, skills, why_this_job, years_experience } = req.body;
+  if (!job_title && !company) return res.status(400).json({ error: 'job_title or company is required.' });
+
+  const langInstruction = { en: 'Write in English.', fr: 'Écris en français.', ar: 'اكتب باللغة العربية.' }[language] || 'Write in English.';
+  const toneGuide = {
+    professional: 'Formal, polished, confident.',
+    friendly:     'Warm, approachable, personable.',
+    creative:     'Bold, distinctive, memorable — avoid clichés.',
+    enthusiastic: 'Genuinely excited, passionate, energetic.',
+    concise:      'Brief and direct — maximum 180 words total.',
+  }[tone] || 'Professional.';
+
+  const prompt = `Generate a cover letter for this candidate:
+- Position: ${job_title || 'Not specified'}
+- Company: ${company || 'Not specified'}
+- Recipient: ${recipient || 'Hiring Manager'}
+- Years of experience: ${years_experience || 'Not specified'}
+- Background: ${background || 'Not provided'}
+- Key skills: ${skills || 'Not provided'}
+- Why this company/role: ${why_this_job || 'Not provided'}
+
+Tone: ${toneGuide}
+Language: ${langInstruction}
+
+Write a complete, ready-to-send cover letter. Include: greeting, strong opening, 2 body paragraphs, closing paragraph, and sign-off.
+Return ONLY the letter text, nothing else.`;
+
+  try {
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 1024,
+        temperature: 0.75,
+        messages: [
+          { role: 'system', content: 'You are an expert career coach who writes compelling, personalized cover letters. Be specific, human, and avoid generic phrases. Never add placeholders like [Your Name].' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if (!groqRes.ok) { const e = await groqRes.json().catch(() => ({})); throw new Error(e.error?.message || 'Groq error'); }
+    const data = await groqRes.json();
+    const content = data.choices?.[0]?.message?.content?.trim();
+    if (!content) throw new Error('No response');
+    res.json({ content });
+  } catch (err) {
+    console.error('Cover letter AI error:', err.message);
+    res.status(500).json({ error: 'Failed to generate. Please try again.' });
+  }
+});
+
 module.exports = router;

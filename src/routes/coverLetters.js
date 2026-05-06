@@ -59,6 +59,20 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+router.post('/:id/duplicate', async (req, res) => {
+  try {
+    const src = await pool.query('SELECT * FROM cover_letters WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    if (!src.rows[0]) return res.status(404).json({ error: 'Not found' });
+    const s = src.rows[0];
+    const result = await pool.query(
+      `INSERT INTO cover_letters (user_id, title, job_title, company, recipient, tone, content)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.user.id, `${s.title} (Copy)`, s.job_title, s.company, s.recipient, s.tone, s.content]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const result = await pool.query(
