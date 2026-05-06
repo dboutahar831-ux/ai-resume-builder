@@ -135,13 +135,18 @@ router.post('/typing/:userId', auth, async (req, res) => {
   } catch { res.json({ ok: false }); }
 });
 
-// GET /api/messages/:userId — messages list (base64 media replaced with endpoint URLs)
+// GET /api/messages/:userId — messages list
+// NEVER fetches base64 blobs from DB — uses SQL CASE to build endpoint URLs directly
 router.get('/:userId', auth, async (req, res) => {
   let rows;
   try {
     const r = await pool.query(
       `SELECT m.id, m.sender_id, m.receiver_id, m.content,
-              m.image_url, m.voice_url, m.read, m.read_at, m.created_at,
+              CASE WHEN m.image_url IS NOT NULL AND m.image_url <> ''
+                   THEN '/api/messages/img/' || m.id ELSE NULL END AS image_url,
+              CASE WHEN m.voice_url IS NOT NULL AND m.voice_url <> ''
+                   THEN '/api/messages/voice/' || m.id ELSE NULL END AS voice_url,
+              m.read, m.read_at, m.created_at,
               u.name AS sender_name, u.avatar AS sender_avatar
        FROM messages m
        JOIN users u ON u.id = m.sender_id
@@ -167,18 +172,6 @@ router.get('/:userId', auth, async (req, res) => {
       rows = r.rows;
     } catch (err2) { return res.status(500).json({ error: err2.message }); }
   }
-
-  // Replace base64 data URIs with endpoint URLs — avoids huge response bodies (Netlify 6MB limit)
-  const baseUrl = process.env.BASE_URL || '';
-  rows = rows.map(msg => ({
-    ...msg,
-    image_url: msg.image_url?.startsWith('data:')
-      ? `${baseUrl}/api/messages/img/${msg.id}`
-      : (msg.image_url || null),
-    voice_url: msg.voice_url?.startsWith('data:')
-      ? `${baseUrl}/api/messages/voice/${msg.id}`
-      : (msg.voice_url || null),
-  }));
 
   res.json(rows);
 
@@ -216,12 +209,10 @@ router.post('/:userId', auth, async (req, res) => {
       [req.user.id, req.params.userId, content?.trim() || null, image_url || null, voice_url || null]
     );
     const msg = result.rows[0];
-    // Return endpoint URLs instead of base64 for the newly sent message too
-    const baseUrl = process.env.BASE_URL || '';
     res.json({
       ...msg,
-      image_url: msg.image_url?.startsWith('data:') ? `${baseUrl}/api/messages/img/${msg.id}` : (msg.image_url || null),
-      voice_url: msg.voice_url?.startsWith('data:') ? `${baseUrl}/api/messages/voice/${msg.id}` : (msg.voice_url || null),
+      image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
+      voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
     });
   } catch {
     try {
