@@ -6,8 +6,6 @@ import {
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
-import { useReactToPrint } from 'react-to-print';
-import { useRef } from 'react';
 
 function timeAgo(d) {
   const diff = Date.now() - new Date(d).getTime();
@@ -26,37 +24,40 @@ const TONE_META = {
   concise:      { label: 'Concise',      emoji: '⚡', cls: 'bg-sky-50 text-sky-700' },
 };
 
-function QuickPrintButton({ letter }) {
-  const ref = useRef();
+function printLetter(letter) {
   const myUser = JSON.parse(localStorage.getItem('user') || '{}');
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const html = `<!DOCTYPE html><html><head>
+    <title>${letter.title || 'Cover Letter'}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Georgia,serif;color:#111;padding:60px;line-height:1.6}
+      @page{margin:.75in}
+      .hdr{border-bottom:2px solid #6C5CE7;padding-bottom:14px;margin-bottom:26px}
+      .name{font-size:20px;font-weight:bold}
+      .meta{font-size:12px;color:#666;margin-top:4px}
+      .date{margin-bottom:14px;font-size:13px;color:#444}
+      .recip{font-size:13px;color:#444;margin-bottom:18px}
+      .subj{font-size:13px;font-weight:600;margin-bottom:18px}
+      .body{font-size:13px;line-height:1.9;white-space:pre-wrap}
+    </style>
+  </head><body>
+    <div class="hdr">
+      <div class="name">${myUser.name || 'Your Name'}</div>
+      <div class="meta">${myUser.email || ''}</div>
+    </div>
+    <div class="date">${today}</div>
+    ${letter.recipient || letter.company ? `<div class="recip">${letter.recipient ? `<strong>${letter.recipient}</strong><br>` : ''}${letter.company || ''}</div>` : ''}
+    ${letter.job_title ? `<div class="subj">Re: Application for ${letter.job_title} Position</div>` : ''}
+    <div class="body">${(letter.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+  </body></html>`;
 
-  const print = useReactToPrint({
-    contentRef: ref,
-    documentTitle: letter.title || 'Cover Letter',
-  });
-
-  return (
-    <>
-      <button onClick={print}
-        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition-all">
-        <Download size={13} />PDF
-      </button>
-      <div style={{ display: 'none' }}>
-        <div ref={ref} style={{ fontFamily: 'Georgia, serif', padding: '48px', color: '#111', background: '#fff' }}>
-          <div style={{ marginBottom: '32px', paddingBottom: '16px', borderBottom: '2px solid #6C5CE7' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{myUser.name || 'Your Name'}</h2>
-            {myUser.email && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#666' }}>{myUser.email}</p>}
-          </div>
-          <p style={{ marginBottom: '16px', fontSize: '13px' }}>{today}</p>
-          {letter.recipient && <p style={{ margin: '0 0 2px', fontWeight: '600', fontSize: '13px' }}>{letter.recipient}</p>}
-          {letter.company && <p style={{ margin: '0 0 20px', fontSize: '13px' }}>{letter.company}</p>}
-          {letter.job_title && <p style={{ fontWeight: '600', marginBottom: '20px', fontSize: '13px' }}>Re: Application for {letter.job_title} Position</p>}
-          <div style={{ fontSize: '13px', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>{letter.content}</div>
-        </div>
-      </div>
-    </>
-  );
+  const win = window.open('', '_blank');
+  if (!win) { alert('Please allow popups to export PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); win.close(); }, 400);
 }
 
 export default function CoverLetters() {
@@ -189,7 +190,10 @@ export default function CoverLetters() {
                         className="flex items-center justify-center gap-1 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition-all disabled:opacity-50">
                         <Copy size={12} />{duplicating === l.id ? '…' : 'Copy'}
                       </button>
-                      <QuickPrintButton letter={l} />
+                      <button onClick={() => printLetter(l)} disabled={!l.content}
+                        className="flex items-center justify-center gap-1 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition-all disabled:opacity-40">
+                        <Download size={12} />PDF
+                      </button>
                       <button onClick={() => handleDelete(l.id)}
                         className="flex items-center justify-center gap-1 py-2 text-xs font-semibold text-red-400 hover:bg-red-50 rounded-xl transition-all">
                         <Trash2 size={12} />Del

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useReactToPrint } from 'react-to-print';
 import {
   Save, Download, Sparkles, ArrowLeft, RefreshCw, Copy, Check,
   ChevronDown, ChevronUp, User, Building2, Briefcase, Globe,
@@ -48,7 +47,7 @@ export default function CoverLetterBuilder() {
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const printRef = useRef();
-  const myUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const myUser = JSON.parse(localStorage.getItem('user') || '{}')
 
   const [form, setForm] = useState({
     title: '', job_title: '', company: '', recipient: '',
@@ -76,10 +75,23 @@ export default function CoverLetterBuilder() {
     setWordCount(words);
   }, [form.content]);
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: form.title || 'Cover Letter',
-  });
+  const handlePrint = () => {
+    const el = printRef.current;
+    if (!el) return;
+    const win = window.open('', '_blank');
+    if (!win) { alert('Please allow popups to export PDF.'); return; }
+    win.document.write(`<!DOCTYPE html><html><head>
+      <title>${form.title || 'Cover Letter'}</title>
+      <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Georgia,serif;color:#111;padding:60px;line-height:1.6}
+        @page{margin:.75in}
+      </style>
+    </head><body>${el.innerHTML}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+  };
 
   const handleGenerate = async () => {
     setGenerating(true);
