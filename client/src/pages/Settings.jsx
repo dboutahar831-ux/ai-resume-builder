@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut } from 'lucide-react';
+import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -17,6 +17,8 @@ export default function Settings() {
   const logout = () => { localStorage.clear(); navigate('/login'); };
   const [showOnline, setShowOnline] = useState(true);
   const [savingOnline, setSavingOnline] = useState(false);
+  const [showReadReceipts, setShowReadReceipts] = useState(true);
+  const [savingReceipts, setSavingReceipts] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -33,6 +35,7 @@ export default function Settings() {
   useEffect(() => {
     api.get('/auth/profile').then(res => {
       setShowOnline(res.data.show_online_status !== false);
+      setShowReadReceipts(res.data.show_read_receipts !== false);
     }).catch(() => {});
   }, []);
 
@@ -43,6 +46,15 @@ export default function Settings() {
       await api.put('/auth/profile', { ...profile.data, show_online_status: val });
       setShowOnline(val);
     } catch {} finally { setSavingOnline(false); }
+  };
+
+  const toggleReadReceipts = async (val) => {
+    setSavingReceipts(true);
+    try {
+      const profile = await api.get('/auth/profile');
+      await api.put('/auth/profile', { ...profile.data, show_read_receipts: val });
+      setShowReadReceipts(val);
+    } catch {} finally { setSavingReceipts(false); }
   };
 
   const handlePasswordChange = async () => {
@@ -139,6 +151,31 @@ export default function Settings() {
                 ${showOnline ? 'bg-indigo-600' : 'bg-gray-300'}`}>
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
                 ${showOnline ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Read Receipts */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCheck size={16} className="text-gray-400" />
+            <h3 className="font-semibold text-gray-900">Read Receipts</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">Control whether others can see when you've read their messages.</p>
+          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+            <div>
+              <p className="text-sm font-medium text-gray-800">Show read receipts</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {showReadReceipts ? 'Others can see when you\'ve read their messages' : 'Read receipts are hidden — others won\'t see "Seen"'}
+              </p>
+            </div>
+            <button
+              onClick={() => toggleReadReceipts(!showReadReceipts)}
+              disabled={savingReceipts}
+              className={`relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50
+                ${showReadReceipts ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+                ${showReadReceipts ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
         </div>

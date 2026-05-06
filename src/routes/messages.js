@@ -3,7 +3,7 @@ const router = express.Router();
 const pool = require('../db');
 const auth = require('../middleware/auth');
 
-// GET /api/messages/conversations — all conversations with last message
+// GET /api/messages/conversations
 router.get('/conversations', auth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -11,13 +11,15 @@ router.get('/conversations', auth, async (req, res) => {
          other_id,
          u.name AS other_name, u.avatar AS other_avatar, u.last_seen_at AS other_last_seen_at,
          m.content AS last_message,
+         m.image_url AS last_image_url,
+         m.voice_url AS last_voice_url,
          m.created_at AS last_at,
          m.sender_id AS last_sender_id,
          (SELECT COUNT(*) FROM messages
           WHERE receiver_id=$1 AND sender_id=other_id AND read=FALSE) AS unread
        FROM (
          SELECT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,
-                id, content, created_at, sender_id
+                id, content, image_url, voice_url, created_at, sender_id
          FROM messages WHERE sender_id=$1 OR receiver_id=$1
        ) m
        JOIN users u ON u.id = m.other_id
@@ -28,11 +30,49 @@ router.get('/conversations', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /api/messages/:userId — messages with specific user
+// GET /api/messages/unread/count
+router.get('/unread/count', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*) AS count FROM messages WHERE receiver_id=$1 AND read=FALSE`,
+      [req.user.id]
+    );
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/messages/typing/:userId — is userId currently typing to me?
+router.get('/typing/:userId', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT typed_at FROM typing_status WHERE user_id=$1 AND to_user_id=$2`,
+      [req.params.userId, req.user.id]
+    );
+    if (!result.rows[0]) return res.json({ typing: false });
+    const diff = Date.now() - new Date(result.rows[0].typed_at).getTime();
+    res.json({ typing: diff < 3000 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/messages/typing/:userId — I am typing to userId
+router.post('/typing/:userId', auth, async (req, res) => {
+  try {
+    await pool.query(
+      `INSERT INTO typing_status (user_id, to_user_id, typed_at)
+       VALUES ($1,$2,NOW())
+       ON CONFLICT (user_id, to_user_id) DO UPDATE SET typed_at=NOW()`,
+      [req.user.id, req.params.userId]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/messages/:userId — messages with a specific user
 router.get('/:userId', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT m.id, m.sender_id, m.receiver_id, m.content, m.read, m.created_at,
+      `SELECT m.id, m.sender_id, m.receiver_id, m.content,
+              m.image_url, m.voice_url, m.read, m.read_at, m.created_at,
               u.name AS sender_name, u.avatar AS sender_avatar
        FROM messages m
        JOIN users u ON u.id = m.sender_id
@@ -42,37 +82,44 @@ router.get('/:userId', auth, async (req, res) => {
        LIMIT 100`,
       [req.user.id, req.params.userId]
     );
-    // Mark as read
-    await pool.query(
-      `UPDATE messages SET read=TRUE
-       WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
-      [req.user.id, req.params.userId]
+
+    // Check if I have read receipts enabled (if disabled, don't reveal read_at to sender)
+    const me = await pool.query(
+      `SELECT COALESCE(show_read_receipts, TRUE) AS show_read_receipts FROM users WHERE id=$1`,
+      [req.user.id]
     );
+    const myReceiptsOn = me.rows[0]?.show_read_receipts !== false;
+
+    if (myReceiptsOn) {
+      await pool.query(
+        `UPDATE messages SET read=TRUE, read_at=COALESCE(read_at, NOW())
+         WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
+        [req.user.id, req.params.userId]
+      );
+    } else {
+      await pool.query(
+        `UPDATE messages SET read=TRUE
+         WHERE sender_id=$2 AND receiver_id=$1 AND read=FALSE`,
+        [req.user.id, req.params.userId]
+      );
+    }
+
     res.json(result.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/messages/:userId — send message
+// POST /api/messages/:userId — send a message (text / image / voice)
 router.post('/:userId', auth, async (req, res) => {
-  const { content } = req.body;
-  if (!content?.trim()) return res.status(400).json({ error: 'Message cannot be empty.' });
+  const { content, image_url, voice_url } = req.body;
+  if (!content?.trim() && !image_url && !voice_url)
+    return res.status(400).json({ error: 'Message cannot be empty.' });
   try {
     const result = await pool.query(
-      `INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1,$2,$3) RETURNING *`,
-      [req.user.id, req.params.userId, content.trim()]
+      `INSERT INTO messages (sender_id, receiver_id, content, image_url, voice_url)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.user.id, req.params.userId, content?.trim() || null, image_url || null, voice_url || null]
     );
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET /api/messages/unread/count — total unread count
-router.get('/unread/count', auth, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT COUNT(*) AS count FROM messages WHERE receiver_id=$1 AND read=FALSE`,
-      [req.user.id]
-    );
-    res.json({ count: parseInt(result.rows[0].count) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

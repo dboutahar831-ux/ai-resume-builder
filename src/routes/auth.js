@@ -112,7 +112,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, COALESCE(show_online_status, TRUE) AS show_online_status, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });
@@ -124,16 +124,21 @@ router.get('/profile', auth, async (req, res) => {
 
 // PUT /api/auth/profile
 router.put('/profile', auth, async (req, res) => {
-  const { name, age, phone, location, linkedin, avatar, bio, cover_image, show_online_status } = req.body;
+  const { name, age, phone, location, linkedin, avatar, bio, cover_image, show_online_status, show_read_receipts } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required.' });
   try {
     const result = await pool.query(
       `UPDATE users SET name=$1, age=$2, phone=$3, location=$4, linkedin=$5, avatar=$6, bio=$7,
-        cover_image=$8, show_online_status=$9
-       WHERE id=$10
-       RETURNING id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, COALESCE(show_online_status, TRUE) AS show_online_status`,
+        cover_image=$8, show_online_status=$9, show_read_receipts=$10
+       WHERE id=$11
+       RETURNING id, name, email, age, phone, location, linkedin, avatar, bio, cover_image,
+         COALESCE(show_online_status, TRUE) AS show_online_status,
+         COALESCE(show_read_receipts, TRUE) AS show_read_receipts`,
       [name, age || null, phone || null, location || null, linkedin || null, avatar || null, bio || null,
-       cover_image || null, show_online_status !== undefined ? show_online_status : true, req.user.id]
+       cover_image || null,
+       show_online_status !== undefined ? show_online_status : true,
+       show_read_receipts !== undefined ? show_read_receipts : true,
+       req.user.id]
     );
     res.json(result.rows[0]);
   } catch (err) {
