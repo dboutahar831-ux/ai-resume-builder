@@ -175,4 +175,65 @@ Return ONLY the letter text, nothing else.`;
   }
 });
 
+// POST /api/ai/generate-resume — generate resume content with Groq (free)
+router.post('/generate-resume', auth, async (req, res) => {
+  const { job_title, years_experience, field, existing_skills } = req.body;
+  if (!job_title || !years_experience || !field) {
+    return res.status(400).json({ error: 'job_title, years_experience, and field are required.' });
+  }
+
+  const level =
+    years_experience <= 1 ? 'entry-level' :
+    years_experience <= 3 ? 'junior' :
+    years_experience <= 6 ? 'mid-level' :
+    years_experience <= 10 ? 'senior' : 'principal/staff';
+
+  const skillsHint = existing_skills
+    ? `Incorporate these skills if relevant: ${Array.isArray(existing_skills) ? existing_skills.join(', ') : existing_skills}.`
+    : '';
+
+  const prompt = `Generate ATS-optimized resume content for a ${level} ${job_title} in the ${field} field with ${years_experience} years of experience.
+${skillsHint}
+
+Return ONLY a valid JSON object — no markdown fences, no explanation:
+{
+  "summary": "2-3 sentence professional summary with strong action words, specific expertise, and value proposition",
+  "skills": ["skill1", "skill2", ...],
+  "experience_description": "• Strong action verb + quantifiable achievement 1\\n• Strong action verb + quantifiable achievement 2\\n• Strong action verb + quantifiable achievement 3"
+}
+
+Rules:
+- skills: 8-12 specific, relevant technical and professional skills for this exact role and field
+- Each experience bullet must start with a strong verb (Led, Built, Architected, Delivered, etc.)
+- Include realistic numbers: %, $, team sizes, timeframes
+- Match seniority: entry-level focuses on learning; senior on leadership and impact`;
+
+  try {
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 900,
+        temperature: 0.65,
+        messages: [
+          { role: 'system', content: 'You are an expert resume writer with 15+ years of experience. Always respond with valid JSON only — no markdown fences, no extra text.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    if (!groqRes.ok) { const e = await groqRes.json().catch(() => ({})); throw new Error(e.error?.message || 'Groq error'); }
+    const data = await groqRes.json();
+    const text = data.choices?.[0]?.message?.content?.trim();
+    if (!text) throw new Error('No response');
+    const generated = JSON.parse(text);
+    if (!generated.summary || !generated.skills || !generated.experience_description) throw new Error('Incomplete response');
+    res.json(generated);
+  } catch (err) {
+    console.error('Resume AI error:', err.message);
+    if (err instanceof SyntaxError) return res.status(502).json({ error: 'AI returned malformed response. Please try again.' });
+    res.status(500).json({ error: 'Failed to generate. Please try again.' });
+  }
+});
+
 module.exports = router;

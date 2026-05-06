@@ -108,6 +108,21 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// POST /api/resumes/:id/duplicate
+router.post('/:id/duplicate', async (req, res) => {
+  try {
+    const src = await pool.query('SELECT * FROM resumes WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    if (!src.rows[0]) return res.status(404).json({ error: 'Resume not found' });
+    const s = src.rows[0];
+    const result = await pool.query(
+      `INSERT INTO resumes (user_id, personal_info, experience, education, skills)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.user.id, JSON.stringify(s.personal_info), JSON.stringify(s.experience), JSON.stringify(s.education), JSON.stringify(s.skills)]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // DELETE /api/resumes/:id — delete a resume
 router.delete('/:id', async (req, res) => {
   try {
