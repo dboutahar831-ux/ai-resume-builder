@@ -67,7 +67,11 @@ export default function CoverLetterBuilder() {
   const setEx = (k, v) => setExtra(f => ({ ...f, [k]: v }));
 
   useEffect(() => {
-    if (isEdit) api.get(`/cover-letters/${id}`).then(r => setForm(r.data));
+    if (isEdit) {
+      api.get(`/cover-letters/${id}`)
+        .then(r => setForm(r.data))
+        .catch(() => setSaveError('Failed to load cover letter. Please go back and try again.'));
+    }
   }, [id]);
 
   useEffect(() => {

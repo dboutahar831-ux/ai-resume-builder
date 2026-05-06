@@ -129,15 +129,17 @@ export default function ResumeBuilder() {
 
   useEffect(() => {
     if (isEdit) {
-      api.get(`/resumes/${id}`).then(res => {
-        const d = res.data;
-        setForm({
-          personal_info: d.personal_info || emptyForm.personal_info,
-          experience: d.experience || [],
-          education: d.education || [],
-          skills: d.skills || [],
-        });
-      });
+      api.get(`/resumes/${id}`)
+        .then(res => {
+          const d = res.data;
+          setForm({
+            personal_info: d.personal_info || emptyForm.personal_info,
+            experience: d.experience || [],
+            education: d.education || [],
+            skills: d.skills || [],
+          });
+        })
+        .catch(() => setSaveError('Failed to load resume. Please go back and try again.'));
     }
   }, [id]);
 
