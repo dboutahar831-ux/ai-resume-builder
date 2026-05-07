@@ -39,19 +39,19 @@ function FriendCard({ user, onAction, myId }) {
   const iAmRequester = requester_id === myId;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 hover:shadow-sm transition-all">
+    <div className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 flex items-center gap-4 hover:shadow-md transition-all group">
       <Link to={`/friends/${user.id}`} className="relative flex-shrink-0">
         <Avatar user={user} size="lg" />
         <StatusDot lastSeenAt={user.last_seen_at} />
       </Link>
       <div className="flex-1 min-w-0">
-        <Link to={`/friends/${user.id}`} className="font-semibold text-gray-900 text-sm hover:text-indigo-600 transition-colors">
+        <Link to={`/friends/${user.id}`} className="font-bold text-gray-900 text-sm hover:text-indigo-600 transition-colors">
           {user.name}
         </Link>
         {user.location && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><MapPin size={10} />{user.location}</p>}
         {formatLastSeen(user.last_seen_at) && (
-          <p className={`text-xs mt-0.5 ${isOnline(user.last_seen_at) ? 'text-emerald-600' : 'text-gray-400'}`}>
-            {formatLastSeen(user.last_seen_at)}
+          <p className={`text-xs mt-0.5 font-medium ${isOnline(user.last_seen_at) ? 'text-emerald-500' : 'text-gray-400'}`}>
+            {isOnline(user.last_seen_at) ? '🟢 ' : ''}{formatLastSeen(user.last_seen_at)}
           </p>
         )}
       </div>
@@ -149,39 +149,47 @@ export default function Friends() {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Friends</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Connect with professionals and grow your network.</p>
+        {/* Header */}
+        <div className="rounded-2xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 70% 30%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          <div className="relative">
+            <h1 className="text-xl font-bold">Friends & Network</h1>
+            <p className="text-white/70 text-sm mt-0.5">Connect with professionals and grow your career network.</p>
+            <div className="flex items-center gap-4 mt-3 text-sm text-white/80">
+              <span><strong className="text-white">{friends.length}</strong> connections</span>
+              {requests.length > 0 && <span><strong className="text-white">{requests.length}</strong> pending requests</span>}
+            </div>
+          </div>
         </div>
 
-        {/* Search bar — always visible */}
+        {/* Search bar */}
         <div className="relative">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={query}
             onChange={e => { setQuery(e.target.value); setTab('search'); }}
             placeholder="Search people by name or email..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all"
           />
           {query && (
             <button onClick={() => { setQuery(''); setSearchResults([]); setTab('friends'); }}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={15} />
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 hover:bg-gray-100 rounded-full transition-all">
+              <X size={14} />
             </button>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-1 py-2 text-xs font-medium rounded-xl transition-all ${
-                tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
+                tab === t.key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}>
               {t.label}
               {t.count !== null && t.count > 0 && (
-                <span className={`ml-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full ${
-                  t.key === 'requests' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
+                <span className={`ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  t.key === 'requests' ? 'bg-red-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
                 }`}>{t.count}</span>
               )}
             </button>
@@ -245,10 +253,12 @@ export default function Friends() {
         {tab === 'friends' && (
           <div className="space-y-2">
             {friends.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
-                <Users size={32} className="text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium text-sm">No connections yet</p>
-                <p className="text-xs text-gray-400 mt-1">Use the search bar above to find people you know</p>
+              <div className="text-center py-14 bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mx-auto mb-4">
+                  <Users size={28} className="text-indigo-400" />
+                </div>
+                <p className="text-gray-700 font-bold text-base">No connections yet</p>
+                <p className="text-sm text-gray-400 mt-1.5 max-w-xs mx-auto">Use the search bar above to find and connect with people in your field</p>
               </div>
             ) : friends.map(f => (
               <FriendCard key={f.id} user={{ ...f, friendship_status: 'accepted' }} onAction={handleAction} myId={myId} />

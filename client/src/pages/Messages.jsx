@@ -338,14 +338,21 @@ export default function Messages() {
       <div className="h-[calc(100vh-7rem)] -m-6 flex border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
 
         {/* Conversation list */}
-        <div className={`w-full lg:w-72 xl:w-80 border-r border-gray-100 bg-white flex-shrink-0 flex flex-col ${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-4 border-b border-gray-100">
-            <h1 className="text-lg font-bold text-gray-900 mb-3">Messages</h1>
+        <div className={`w-full lg:w-72 xl:w-80 border-r border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 flex flex-col ${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="text-base font-bold text-gray-900 dark:text-white">Messages</h1>
+              {conversations.filter(c => c.unread > 0).length > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' }}>
+                  {conversations.reduce((s, c) => s + (c.unread || 0), 0)} unread
+                </span>
+              )}
+            </div>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search conversations..."
-                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white" />
+                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500 transition-all" />
               {query && (
                 <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                   <X size={13} />
@@ -420,43 +427,45 @@ export default function Messages() {
 
           {/* Header */}
           {activeUser ? (
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 bg-white flex-shrink-0">
-              <button onClick={() => setMobileView('list')} className="lg:hidden p-1 text-gray-400 hover:text-gray-600">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3 bg-white dark:bg-gray-900 flex-shrink-0 shadow-sm">
+              <button onClick={() => setMobileView('list')} className="lg:hidden p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
                 <ArrowLeft size={18} />
               </button>
               <Link to={`/friends/${activeUser.id}`} className="relative flex-shrink-0">
                 <Avatar user={activeUser} size="lg" />
                 <StatusDot lastSeenAt={activeUser.last_seen_at} />
               </Link>
-              <div>
+              <div className="flex-1 min-w-0">
                 <Link to={`/friends/${activeUser.id}`}
-                  className="font-semibold text-gray-900 text-sm hover:text-indigo-600 transition-colors block">
+                  className="font-bold text-gray-900 dark:text-white text-sm hover:text-indigo-600 transition-colors block truncate">
                   {activeUser.name}
                 </Link>
-                <p className={`text-xs ${isTyping ? 'text-emerald-500 font-medium' : isOnline(activeUser.last_seen_at) ? 'text-emerald-500' : 'text-gray-400'}`}>
-                  {isTyping ? 'typing...' : formatLastSeen(activeUser.last_seen_at)}
+                <p className={`text-xs font-medium ${isTyping ? 'text-emerald-500' : isOnline(activeUser.last_seen_at) ? 'text-emerald-500' : 'text-gray-400'}`}>
+                  {isTyping ? '● typing...' : formatLastSeen(activeUser.last_seen_at)}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0">
               <p className="text-sm font-semibold text-gray-500">Select a conversation</p>
             </div>
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-gray-50/60 dark:bg-gray-950">
             {!activeUser && (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <MessageSquare size={40} className="text-gray-200 mb-3" />
-                <p className="text-gray-400 font-medium">Select a conversation</p>
-                <p className="text-sm text-gray-300 mt-1">Or start a new one from your friends list</p>
+                <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
+                  <MessageSquare size={36} className="text-indigo-400" />
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 font-bold text-base">Your Messages</p>
+                <p className="text-sm text-gray-400 mt-1.5 max-w-xs">Select a conversation to start chatting, or pick a friend from the list</p>
               </div>
             )}
             {activeUser && messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <Avatar user={activeUser} size="lg" />
-                <p className="text-gray-600 font-medium mt-3">{activeUser.name}</p>
+                <p className="text-gray-700 dark:text-gray-200 font-bold mt-3 text-base">{activeUser.name}</p>
                 <p className="text-xs text-gray-400 mt-1">No messages yet — say hi! 👋</p>
               </div>
             )}

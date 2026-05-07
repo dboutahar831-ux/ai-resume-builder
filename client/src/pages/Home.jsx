@@ -794,17 +794,23 @@ export default function Home() {
   const handleReact = async (postId, type) => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
+    const removing = !type;
     const typeToSend = type || post.my_reaction;
     if (!typeToSend) return;
-    await api.post(`/posts/${postId}/react`, { type: typeToSend });
-    const removing = !type || type === post.my_reaction;
+    // Optimistic update
     setPosts(p => p.map(x => x.id === postId ? {
       ...x,
       my_reaction: removing ? null : type,
       reactions_count: removing
         ? Math.max(0, Number(x.reactions_count) - 1)
-        : post.my_reaction ? x.reactions_count : Number(x.reactions_count) + 1,
+        : post.my_reaction ? Number(x.reactions_count) : Number(x.reactions_count) + 1,
     } : x));
+    try {
+      await api.post(`/posts/${postId}/react`, { type: typeToSend });
+    } catch {
+      // Revert on error
+      setPosts(p => p.map(x => x.id === postId ? { ...x, my_reaction: post.my_reaction, reactions_count: post.reactions_count } : x));
+    }
   };
 
   const handleDelete = async (postId) => {
@@ -1061,18 +1067,20 @@ export default function Home() {
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
-                    <div className="flex gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-gray-100 rounded-full w-32" />
-                        <div className="h-2 bg-gray-100 rounded-full w-20" />
+                  <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <div className="flex gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full animate-shimmer flex-shrink-0" />
+                      <div className="flex-1 space-y-2 pt-1">
+                        <div className="h-3 animate-shimmer rounded-full w-36" />
+                        <div className="h-2 animate-shimmer rounded-full w-24" />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-gray-100 rounded-full" />
-                      <div className="h-3 bg-gray-100 rounded-full w-4/5" />
+                    <div className="space-y-2 mb-4">
+                      <div className="h-3 animate-shimmer rounded-full" />
+                      <div className="h-3 animate-shimmer rounded-full w-5/6" />
+                      <div className="h-3 animate-shimmer rounded-full w-3/4" />
                     </div>
+                    <div className="h-40 animate-shimmer rounded-xl" />
                   </div>
                 ))}
               </div>

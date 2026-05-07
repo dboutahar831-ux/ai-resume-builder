@@ -96,9 +96,13 @@ export default function Settings() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.settings}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your preferences and account security.</p>
+        {/* Header */}
+        <div className="rounded-2xl p-5 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' }}>
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          <div className="relative">
+            <h1 className="text-xl font-bold">{t.settings}</h1>
+            <p className="text-white/70 text-sm mt-0.5">Manage your preferences and account security.</p>
+          </div>
         </div>
 
         {pwSuccess && (
