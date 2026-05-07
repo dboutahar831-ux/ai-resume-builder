@@ -92,6 +92,7 @@ export default function Resumes() {
   const [copied, setCopied] = useState(null);
   const [duplicating, setDuplicating] = useState(null);
   const [aiMode, setAiMode] = useState(false);
+  const addToast = useToast();
 
   useEffect(() => {
     api.get('/resumes').then(r => setResumes(r.data)).finally(() => setLoading(false));

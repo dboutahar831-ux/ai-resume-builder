@@ -66,6 +66,7 @@ export default function CoverLetters() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [duplicating, setDuplicating] = useState(null);
+  const addToast = useToast();
 
   useEffect(() => {
     api.get('/cover-letters')

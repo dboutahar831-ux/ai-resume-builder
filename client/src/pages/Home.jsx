@@ -312,6 +312,7 @@ function RepostModal({ post, onClose, onRepost }) {
 }
 
 function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepost }) {
+  const addToast = useToast();
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);

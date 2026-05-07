@@ -124,7 +124,7 @@ export default function Admin() {
             <div className="bg-[#151921] rounded-2xl border border-[#21262E] p-5">
               <h2 className="text-sm font-bold text-[#E8ECF1] mb-3">Recent Posts</h2>
               <div className="space-y-2">
-                {activity.posts.slice(0, 10).map(p => (
+                {(activity.posts || []).slice(0, 10).map(p => (
                   <div key={p.id} className="flex items-start gap-2 text-sm">
                     <span className="text-[#6C5CE7] font-medium shrink-0">{p.user_name}:</span>
                     <p className="text-[#8B95A5] truncate">{(p.content || '').slice(0, 80)}</p>
@@ -135,7 +135,7 @@ export default function Admin() {
             <div className="bg-[#151921] rounded-2xl border border-[#21262E] p-5">
               <h2 className="text-sm font-bold text-[#E8ECF1] mb-3">New Users</h2>
               <div className="space-y-2">
-                {activity.users.map(u => (
+                {(activity.users || []).map(u => (
                   <div key={u.id} className="flex items-center justify-between text-sm">
                     <span className="text-[#E8ECF1] font-medium">{u.name}</span>
                     <span className="text-[#5A6375] text-xs">{new Date(u.created_at).toLocaleDateString()}</span>
