@@ -173,12 +173,13 @@ router.post('/:userId', auth, async (req, res) => {
       [req.user.id, req.params.userId, content?.trim() || null, image_url || null, voice_url || null]
     );
     const msg = result.rows[0];
+    const sender = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [req.user.id]);
     res.json({
       ...msg,
       image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
       voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
-      sender_name: req.user.name || 'Unknown',
-      sender_avatar: req.user.avatar || null,
+      sender_name: sender.rows[0]?.name || 'Unknown',
+      sender_avatar: sender.rows[0]?.avatar || null,
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send message.' });

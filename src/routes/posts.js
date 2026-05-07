@@ -42,12 +42,12 @@ router.get('/feed', auth, async (req, res) => {
       JOIN users u ON u.id = p.user_id
       LEFT JOIN posts op ON op.id = p.original_post_id
       LEFT JOIN users ou ON ou.id = op.user_id
-      WHERE p.user_id = $1
+      WHERE (p.user_id = $1
          OR p.user_id IN (
-           SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END
-           FROM friendships
-           WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
-         )
+            SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END
+            FROM friendships
+            WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
+          ))
       AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
       ORDER BY p.created_at DESC
       LIMIT 50

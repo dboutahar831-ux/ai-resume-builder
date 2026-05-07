@@ -364,9 +364,11 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
   };
 
   const handleDeleteComment = async (commentId) => {
-    await api.delete(`/posts/${post.id}/comments/${commentId}`);
-    setComments(c => c.filter(x => x.id !== commentId));
-    onCommentCountChange(post.id, -1);
+    try {
+      await api.delete(`/posts/${post.id}/comments/${commentId}`);
+      setComments(c => c.filter(x => x.id !== commentId));
+      onCommentCountChange(post.id, -1);
+    } catch { alert('Failed to delete comment.'); }
   };
 
   const handleCommentReact = async (commentId, type) => {
@@ -706,13 +708,14 @@ export default function Home() {
     clearTimeout(searchTimerRef.current);
     if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
     setSearchOpen(true);
+    const queryAtTime = searchQuery;
     searchTimerRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await api.get(`/friends/search?q=${encodeURIComponent(searchQuery)}`);
-        setSearchResults(res.data);
-      } catch { setSearchResults([]); }
-      finally { setSearchLoading(false); }
+        const res = await api.get(`/friends/search?q=${encodeURIComponent(queryAtTime)}`);
+        if (searchQuery === queryAtTime) setSearchResults(res.data);
+      } catch { if (searchQuery === queryAtTime) setSearchResults([]); }
+      finally { if (searchQuery === queryAtTime) setSearchLoading(false); }
     }, 350);
   }, [searchQuery]);
 
@@ -798,30 +801,35 @@ export default function Home() {
     const removing = !type;
     const typeToSend = type || post.my_reaction;
     if (!typeToSend) return;
+    const prevReaction = post.my_reaction;
+    const prevCount = post.reactions_count;
     // Optimistic update
     setPosts(p => p.map(x => x.id === postId ? {
       ...x,
       my_reaction: removing ? null : type,
       reactions_count: removing
         ? Math.max(0, Number(x.reactions_count) - 1)
-        : post.my_reaction ? Number(x.reactions_count) : Number(x.reactions_count) + 1,
+        : prevReaction ? Number(x.reactions_count) : Number(x.reactions_count) + 1,
     } : x));
     try {
       await api.post(`/posts/${postId}/react`, { type: typeToSend });
     } catch {
-      // Revert on error
-      setPosts(p => p.map(x => x.id === postId ? { ...x, my_reaction: post.my_reaction, reactions_count: post.reactions_count } : x));
+      setPosts(p => p.map(x => x.id === postId ? { ...x, my_reaction: prevReaction, reactions_count: prevCount } : x));
     }
   };
 
   const handleDelete = async (postId) => {
-    await api.delete(`/posts/${postId}`);
-    setPosts(p => p.filter(x => x.id !== postId));
+    try {
+      await api.delete(`/posts/${postId}`);
+      setPosts(p => p.filter(x => x.id !== postId));
+    } catch { alert('Failed to delete post.'); }
   };
 
   const handleRepost = async (postId, repost_text) => {
-    const res = await api.post(`/posts/${postId}/repost`, { repost_text });
-    setPosts(p => [res.data, ...p]);
+    try {
+      const res = await api.post(`/posts/${postId}/repost`, { repost_text });
+      setPosts(p => [res.data, ...p]);
+    } catch { alert('Failed to repost.'); }
   };
 
   const handleCommentCountChange = (postId, delta) => {

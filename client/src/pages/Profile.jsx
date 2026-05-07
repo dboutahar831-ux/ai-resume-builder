@@ -484,8 +484,10 @@ export default function Profile() {
   };
 
   const deleteNote = async () => {
-    await api.delete('/notes');
-    setNote(null);
+    try {
+      await api.delete('/notes');
+      setNote(null);
+    } catch { alert('Failed to delete note.'); }
   };
 
   const createHighlight = async (title, items) => {
@@ -499,8 +501,10 @@ export default function Profile() {
   };
 
   const deleteHighlight = async (id) => {
-    await api.delete(`/highlights/${id}`);
-    setHighlights(prev => prev.filter(h => h.id !== id));
+    try {
+      await api.delete(`/highlights/${id}`);
+      setHighlights(prev => prev.filter(h => h.id !== id));
+    } catch { alert('Failed to delete highlight.'); }
   };
 
   const inp = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 bg-white dark:bg-gray-800 dark:text-gray-200 transition-all';

@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
 
-const onlineUsers = new Map();
+const onlineUsers = new Map(); // userId -> Set of socketIds
 
 function setupSocket(io) {
   // JWT auth middleware for socket connections
@@ -19,7 +19,8 @@ function setupSocket(io) {
   io.on('connection', async (socket) => {
     const userId = socket.user.id;
     socket.join(`user:${userId}`);
-    onlineUsers.set(userId, true);
+    if (!onlineUsers.has(userId)) onlineUsers.set(userId, new Set());
+    onlineUsers.get(userId).add(socket.id);
 
     // Notify others that user is online
     socket.broadcast.emit('user:online', { userId });
@@ -46,7 +47,8 @@ function setupSocket(io) {
         // Acknowledge to sender
         callback?.({ ok: true, message: enriched });
       } catch (err) {
-        callback?.({ ok: false, error: err.message });
+        console.error('[Socket] message:send error:', err.message);
+        callback?.({ ok: false, error: 'Failed to send message.' });
       }
     });
 
@@ -81,13 +83,19 @@ function setupSocket(io) {
         }
         // Notify the other user that their messages were read
         io.to(`user:${fromUserId}`).emit('messages:seen', { byUserId: userId });
-      } catch {}
+      } catch (err) { console.error('[Socket] messages:read error:', err.message); }
     });
 
     // Disconnect
     socket.on('disconnect', () => {
-      onlineUsers.delete(userId);
-      socket.broadcast.emit('user:offline', { userId });
+      const sockets = onlineUsers.get(userId);
+      if (sockets) {
+        sockets.delete(socket.id);
+        if (sockets.size === 0) {
+          onlineUsers.delete(userId);
+          socket.broadcast.emit('user:offline', { userId });
+        }
+      }
     });
   });
 

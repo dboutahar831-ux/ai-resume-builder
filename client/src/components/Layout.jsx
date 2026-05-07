@@ -127,7 +127,10 @@ export default function Layout({ children }) {
   const [pendingReqs, setPendingReqs] = useState(0);
   const { dark, setDark, t } = useApp();
   const navigate = useNavigate();
-  const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
+  const user = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); }
+    catch { return {}; }
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear();

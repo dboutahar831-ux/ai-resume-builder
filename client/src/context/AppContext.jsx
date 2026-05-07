@@ -61,12 +61,15 @@ export function AppProvider({ children }) {
       } catch {}
       try { await api.put('/auth/heartbeat'); } catch {}
     };
+    let intervalId = null;
     const delay = setTimeout(() => {
       beat();
-      const id = setInterval(beat, 30000);
-      return () => clearInterval(id);
+      intervalId = setInterval(beat, 30000);
     }, 5000);
-    return () => clearTimeout(delay);
+    return () => {
+      clearTimeout(delay);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   useEffect(() => {

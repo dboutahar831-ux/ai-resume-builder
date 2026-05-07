@@ -59,20 +59,24 @@ export default function JobTracker() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = { ...form, interview_date: form.interview_date || null };
-    if (editId) {
-      const res = await api.put(`/jobs/${editId}`, payload);
-      setJobs(jobs.map(j => j.id === editId ? res.data : j));
-    } else {
-      const res = await api.post('/jobs', payload);
-      setJobs([res.data, ...jobs]);
-    }
-    setShowForm(false);
+    try {
+      if (editId) {
+        const res = await api.put(`/jobs/${editId}`, payload);
+        setJobs(prev => prev.map(j => j.id === editId ? res.data : j));
+      } else {
+        const res = await api.post('/jobs', payload);
+        setJobs(prev => [res.data, ...prev]);
+      }
+      setShowForm(false);
+    } catch { alert('Failed to save. Please try again.'); }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this application?')) return;
-    await api.delete(`/jobs/${id}`);
-    setJobs(jobs.filter(j => j.id !== id));
+    try {
+      await api.delete(`/jobs/${id}`);
+      setJobs(prev => prev.filter(j => j.id !== id));
+    } catch { alert('Failed to delete. Please try again.'); }
   };
 
   // Advanced filtering

@@ -41,20 +41,18 @@ export default function Settings() {
 
   const toggleOnlineStatus = async (val) => {
     setSavingOnline(true);
+    setShowOnline(val);
     try {
-      const profile = await api.get('/auth/profile');
-      await api.put('/auth/profile', { ...profile.data, show_online_status: val });
-      setShowOnline(val);
-    } catch {} finally { setSavingOnline(false); }
+      await api.put('/auth/profile', { show_online_status: val });
+    } catch { setShowOnline(!val); } finally { setSavingOnline(false); }
   };
 
   const toggleReadReceipts = async (val) => {
     setSavingReceipts(true);
+    setShowReadReceipts(val);
     try {
-      const profile = await api.get('/auth/profile');
-      await api.put('/auth/profile', { ...profile.data, show_read_receipts: val });
-      setShowReadReceipts(val);
-    } catch {} finally { setSavingReceipts(false); }
+      await api.put('/auth/profile', { show_read_receipts: val });
+    } catch { setShowReadReceipts(!val); } finally { setSavingReceipts(false); }
   };
 
   const handlePasswordChange = async () => {
@@ -104,8 +102,10 @@ export default function Settings() {
   };
 
   const handleUnblock = async (userId) => {
-    await api.post(`/friends/unblock/${userId}`);
-    setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+    try {
+      await api.post(`/friends/unblock/${userId}`);
+      setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+    } catch { alert('Failed to unblock user.'); }
   };
 
   const inp = 'w-full pr-10 pl-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 dark:text-gray-200';

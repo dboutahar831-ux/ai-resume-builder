@@ -123,16 +123,16 @@ router.get('/profile/:userId', auth, async (req, res) => {
 // POST /api/friends/request/:userId — send request
 router.post('/request/:userId', auth, async (req, res) => {
   const targetId = parseInt(req.params.userId);
+  if (isNaN(targetId) || targetId < 1) return res.status(400).json({ error: 'Invalid user ID.' });
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot add yourself.' });
-  // Check if blocked
-  const checkBlock = await pool.query(
-    `SELECT EXISTS(SELECT 1 FROM blocks WHERE blocker_id=$1 AND blocked_id=$2) AS blocked,
-            EXISTS(SELECT 1 FROM blocks WHERE blocker_id=$2 AND blocked_id=$1) AS blocked_by_them`,
-    [req.user.id, targetId]
-  );
-  if (checkBlock.rows[0].blocked) return res.status(400).json({ error: 'You have blocked this user.' });
-  if (checkBlock.rows[0].blocked_by_them) return res.status(400).json({ error: 'This user has blocked you.' });
   try {
+    const checkBlock = await pool.query(
+      `SELECT EXISTS(SELECT 1 FROM blocks WHERE blocker_id=$1 AND blocked_id=$2) AS blocked,
+              EXISTS(SELECT 1 FROM blocks WHERE blocker_id=$2 AND blocked_id=$1) AS blocked_by_them`,
+      [req.user.id, targetId]
+    );
+    if (checkBlock.rows[0].blocked) return res.status(400).json({ error: 'You have blocked this user.' });
+    if (checkBlock.rows[0].blocked_by_them) return res.status(400).json({ error: 'This user has blocked you.' });
     await pool.query(
       `INSERT INTO friendships (requester_id, addressee_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
       [req.user.id, targetId]
@@ -181,6 +181,7 @@ router.delete('/:userId', auth, async (req, res) => {
 // POST /api/friends/block/:userId — block a user
 router.post('/block/:userId', auth, async (req, res) => {
   const targetId = parseInt(req.params.userId);
+  if (isNaN(targetId) || targetId < 1) return res.status(400).json({ error: 'Invalid user ID.' });
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot block yourself.' });
   try {
     await pool.query(
