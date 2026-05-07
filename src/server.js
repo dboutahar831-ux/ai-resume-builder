@@ -29,7 +29,11 @@ const io = new Server(server, {
   cors: {
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(',')
-      : ['http://localhost:5173', 'http://localhost:3000'],
+      : [
+          'http://localhost:5173',
+          'http://localhost:3000',
+          'https://nexly-app-green.vercel.app',
+        ],
     credentials: true,
   },
 });
@@ -43,7 +47,11 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({
   origin: process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:5173', 'http://localhost:3000'],
+    : [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://nexly-app-green.vercel.app',
+      ],
   credentials: true,
 }));
 app.use(express.json({ limit: '20mb' }));
