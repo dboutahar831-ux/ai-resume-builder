@@ -56,6 +56,138 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET /api/groups/:id — group details with members
+router.get('/:id', async (req, res) => {
+  try {
+    const member = await pool.query(
+      'SELECT id, role FROM group_members WHERE group_id=$1 AND user_id=$2',
+      [req.params.id, req.user.id]
+    );
+    if (!member.rows[0]) return res.status(403).json({ error: 'Not a member.' });
+
+    const group = await pool.query(
+      `SELECT gc.*,
+              (SELECT COUNT(*) FROM group_members WHERE group_id = gc.id) AS member_count
+       FROM group_chats gc WHERE gc.id = $1`,
+      [req.params.id]
+    );
+    const members = await pool.query(
+      `SELECT gm.user_id, gm.role, gm.joined_at,
+              u.name, u.avatar, u.last_seen_at
+       FROM group_members gm
+       JOIN users u ON u.id = gm.user_id
+       WHERE gm.group_id = $1
+       ORDER BY gm.role = 'admin' DESC, gm.joined_at ASC`,
+      [req.params.id]
+    );
+    res.json({ ...group.rows[0], my_role: member.rows[0].role, members: members.rows });
+  } catch {
+    res.status(500).json({ error: 'Failed to load group.' });
+  }
+});
+
+// PATCH /api/groups/:id — edit group name/description (admin)
+router.patch('/:id', async (req, res) => {
+  const { name, description, avatar } = req.body;
+  try {
+    const admin = await pool.query(
+      "SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND role='admin'",
+      [req.params.id, req.user.id]
+    );
+    if (!admin.rows[0]) return res.status(403).json({ error: 'Only admins can edit the group.' });
+
+    const sets = [];
+    const vals = [];
+    let idx = 1;
+    if (name !== undefined) { sets.push(`name = $${idx++}`); vals.push(name.trim()); }
+    if (description !== undefined) { sets.push(`description = $${idx++}`); vals.push(description); }
+    if (avatar !== undefined) { sets.push(`avatar = $${idx++}`); vals.push(avatar); }
+    if (sets.length === 0) return res.status(400).json({ error: 'Nothing to update.' });
+    vals.push(req.params.id);
+
+    const r = await pool.query(
+      `UPDATE group_chats SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      vals
+    );
+    res.json(r.rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Failed to update group.' });
+  }
+});
+
+// DELETE /api/groups/:id — delete group (admin only)
+router.delete('/:id', async (req, res) => {
+  try {
+    const admin = await pool.query(
+      "SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND role='admin'",
+      [req.params.id, req.user.id]
+    );
+    if (!admin.rows[0]) return res.status(403).json({ error: 'Only admins can delete the group.' });
+
+    await pool.query('DELETE FROM group_chats WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete group.' });
+  }
+});
+
+// POST /api/groups/:id/leave — leave group
+router.post('/:id/leave', async (req, res) => {
+  try {
+    const member = await pool.query(
+      'SELECT id, role FROM group_members WHERE group_id=$1 AND user_id=$2',
+      [req.params.id, req.user.id]
+    );
+    if (!member.rows[0]) return res.status(400).json({ error: 'Not a member.' });
+
+    await pool.query(
+      'DELETE FROM group_members WHERE group_id=$1 AND user_id=$2',
+      [req.params.id, req.user.id]
+    );
+
+    // If last admin left, promote another member to admin
+    if (member.rows[0].role === 'admin') {
+      const remaining = await pool.query(
+        'SELECT id FROM group_members WHERE group_id=$1 LIMIT 1',
+        [req.params.id]
+      );
+      if (remaining.rows[0]) {
+        await pool.query(
+          "UPDATE group_members SET role='admin' WHERE id=$1",
+          [remaining.rows[0].id]
+        );
+      } else {
+        // No members left, delete the group
+        await pool.query('DELETE FROM group_chats WHERE id=$1', [req.params.id]);
+      }
+    }
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to leave group.' });
+  }
+});
+
+// PUT /api/groups/:id/members/:userId/role — change member role (admin)
+router.put('/:id/members/:userId/role', async (req, res) => {
+  const { role } = req.body;
+  if (!['admin', 'member'].includes(role)) return res.status(400).json({ error: 'Invalid role.' });
+  try {
+    const admin = await pool.query(
+      "SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND role='admin'",
+      [req.params.id, req.user.id]
+    );
+    if (!admin.rows[0]) return res.status(403).json({ error: 'Only admins can change roles.' });
+
+    await pool.query(
+      'UPDATE group_members SET role=$1 WHERE group_id=$2 AND user_id=$3',
+      [role, req.params.id, req.params.userId]
+    );
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to update role.' });
+  }
+});
+
 // GET /api/groups/:id/members — list group members
 router.get('/:id/members', async (req, res) => {
   try {

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail } from 'lucide-react';
+import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail, Info } from 'lucide-react';
 import Layout from '../components/Layout';
 import { getSocket } from '../services/socket';
 import { useToast } from '../components/Toast';
 import EmojiPicker from '../components/EmojiPicker';
 import MessageReactions from '../components/MessageReactions';
 import EmptyState from '../components/EmptyState';
-import GroupsPanel from '../components/GroupsPanel';
+import GroupsPanel, { GroupInfoModal } from '../components/GroupsPanel';
 import api from '../api/axios';
 
 function Avatar({ user, size = 'sm' }) {
@@ -132,6 +132,7 @@ export default function Messages() {
   const [activeGroup, setActiveGroup] = useState(null);
   const [groupMessages, setGroupMessages] = useState([]);
   const [groupSending, setGroupSending] = useState(false);
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
   const bottomRef = useRef();
   const inputRef = useRef();
@@ -586,6 +587,10 @@ export default function Messages() {
                 <p className="font-bold text-gray-900 text-sm truncate">{activeGroup.name}</p>
                 <p className="text-xs text-gray-500">{activeGroup.member_count || 0} members</p>
               </div>
+              <button onClick={() => setShowGroupInfo(true)}
+                className="p-1.5 text-gray-400 hover:text-[#6C5CE7] hover:bg-[#6C5CE7]/10 rounded-xl transition-all">
+                <Info size={17} />
+              </button>
             </div>
           ) : activeUser ? (
             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-3 bg-white flex-shrink-0 shadow-sm">
@@ -669,6 +674,17 @@ export default function Messages() {
                   )}
                   <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 group`}>
                     <div className={`max-w-xs lg:max-w-sm ${isMe ? 'order-1' : 'order-1'}`}>
+                      {!isMe && activeGroup && (
+                        <div className="flex items-center gap-2 mb-1.5 ml-1">
+                          {msg.sender_avatar
+                            ? <img src={msg.sender_avatar} loading="lazy" alt="" className="w-5 h-5 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                            : <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#BF5AF2] flex items-center justify-center text-white text-[9px] font-bold ring-2 ring-white shadow-sm">
+                                {msg.sender_name?.[0] || '?'}
+                              </div>
+                          }
+                          <span className="text-[11px] font-semibold text-gray-500">{msg.sender_name || 'Unknown'}</span>
+                        </div>
+                      )}
                       <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative transition-shadow ${
                         isMe
                           ? 'text-white rounded-br-sm shadow-md'
@@ -821,6 +837,16 @@ export default function Messages() {
           )}
         </div>
       </div>
+
+      {showGroupInfo && activeGroup && (
+        <GroupInfoModal
+          group={activeGroup}
+          onClose={() => setShowGroupInfo(false)}
+          onUpdated={() => {}}
+          onDeleted={() => { setActiveGroup(null); setGroupMessages([]); setShowGroupInfo(false); }}
+          onLeft={() => { setActiveGroup(null); setGroupMessages([]); setShowGroupInfo(false); }}
+        />
+      )}
     </Layout>
   );
 }
