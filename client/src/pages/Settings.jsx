@@ -7,9 +7,12 @@ import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 const languages = [
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'ar', label: 'العربية', flag: '🇲🇦' },
+  { code: 'en', label: 'English',   flag: '🇬🇧' },
+  { code: 'fr', label: 'Français',  flag: '🇫🇷' },
+  { code: 'ar', label: 'العربية',    flag: '🇲🇦' },
+  { code: 'es', label: 'Español',   flag: '🇪🇸' },
+  { code: 'de', label: 'Deutsch',   flag: '🇩🇪' },
+  { code: 'pt', label: 'Português', flag: '🇧🇷' },
 ];
 
 export default function Settings() {
