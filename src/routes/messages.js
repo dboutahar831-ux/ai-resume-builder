@@ -177,6 +177,8 @@ router.post('/:userId', auth, async (req, res) => {
       ...msg,
       image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
       voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
+      sender_name: req.user.name || 'Unknown',
+      sender_avatar: req.user.avatar || null,
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send message.' });

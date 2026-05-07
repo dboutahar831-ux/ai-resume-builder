@@ -117,6 +117,7 @@ export default function Messages() {
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
   const [pendingVoice, setPendingVoice] = useState(null);
+  const [sendError, setSendError] = useState('');
 
   const bottomRef = useRef();
   const inputRef = useRef();
@@ -333,7 +334,13 @@ export default function Messages() {
       const res = await api.post(`/messages/${activeUser.id}`, payload);
       if (res.data?.id) setMessages(m => [...m, res.data]);
       loadConversations().catch(() => {});
-    } catch {} finally { setSending(false); }
+    } catch {
+      if (payload?.content) setInput(payload.content);
+      if (payload?.image_url) setMsgImage(payload.image_url);
+      if (payload?.voice_url) setPendingVoice(payload.voice_url);
+      setSendError('Failed to send — tap to retry');
+      setTimeout(() => setSendError(''), 4000);
+    } finally { setSending(false); }
   };
 
   const handleKeyDown = (e) => {
@@ -626,6 +633,13 @@ export default function Messages() {
             {isTyping && activeUser && <TypingDots />}
             <div ref={bottomRef} />
           </div>
+
+          {/* Error toast */}
+          {sendError && (
+            <div className="px-4 py-2 bg-red-50 dark:bg-red-900/30 border-b border-red-100 dark:border-red-800 text-xs text-red-600 dark:text-red-400 font-medium text-center">
+              {sendError}
+            </div>
+          )}
 
           {/* Input area */}
           {activeUser && (
