@@ -52,7 +52,7 @@ function Avatar({ src, name, size = 'w-16 h-16', ring = false, allSeen = false, 
     <div className={`${ringClass} cursor-pointer`} onClick={onClick}>
       <div className={ring ? 'p-0.5 bg-white dark:bg-gray-900 rounded-full' : ''}>
         {src ? (
-          <img src={src} alt={name} className={`${size} rounded-full object-cover ring-2 ring-white dark:ring-gray-900`} />
+          <img src={src} loading="lazy" alt={name} className={`${size} rounded-full object-cover ring-2 ring-white dark:ring-gray-900`} />
         ) : (
           <div className={`${size} rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-900`}
             style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
@@ -126,7 +126,7 @@ export default function ProfileCard({
       {/* Cover */}
       <div className="relative h-52 rounded-t-3xl overflow-hidden">
         {coverImage
-          ? <img src={coverImage} alt="cover" className="w-full h-full object-cover" />
+          ? <img src={coverImage} loading="lazy" alt="cover" className="w-full h-full object-cover" />
           : <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2}, ${c3})` }} />
         }
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent" />

@@ -10,6 +10,7 @@ import {
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import StoryViewer from '../components/StoryViewer';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 import { useApp } from '../context/AppContext';
 
@@ -159,7 +160,7 @@ function ProfileTips({ user, onDismiss }) {
 function Avatar({ src, name, size = 'w-8 h-8', className = '' }) {
   const [c1, c2] = getGradientColors(name);
   return src
-    ? <img src={src} alt={name} className={`${size} rounded-full object-cover ring-2 ring-white ${className}`} />
+    ? <img src={src} loading="lazy" alt={name} className={`${size} rounded-full object-cover ring-2 ring-white ${className}`} />
     : <div className={`${size} rounded-full flex items-center justify-center ring-2 ring-white ${className}`}
         style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
         <span className="text-white font-bold text-sm select-none">{name?.[0]?.toUpperCase()}</span>
@@ -240,7 +241,7 @@ function HighlightViewer({ highlight, onClose }) {
         <div className="relative rounded-2xl overflow-hidden bg-black">
           {item.media_type === 'video'
             ? <video src={item.media_url} autoPlay controls className="w-full max-h-[70vh] object-contain" />
-            : <img src={item.media_url} alt="" className="w-full max-h-[70vh] object-contain" />
+            : <img src={item.media_url} loading="lazy" alt="" className="w-full max-h-[70vh] object-contain" />
           }
           {item.caption && (
             <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/70 to-transparent">
@@ -293,7 +294,7 @@ function AddHighlightModal({ onSave, onClose }) {
               <div key={i} className="aspect-square rounded-xl overflow-hidden relative">
                 {item.media_type === 'video'
                   ? <video src={item.media_url} className="w-full h-full object-cover" />
-                  : <img src={item.media_url} alt="" className="w-full h-full object-cover" />
+                  : <img src={item.media_url} loading="lazy" alt="" className="w-full h-full object-cover" />
                 }
                 <button onClick={() => setItems(p => p.filter((_, j) => j !== i))}
                   className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white">
@@ -362,7 +363,7 @@ function StoryAvatar({ avatar, name, hasStory, allSeen, size = 'w-28 h-28', onCl
     <div className={`rounded-full cursor-pointer ${ring}`} onClick={onClick}>
       <div className={`${ring ? 'p-1 bg-white dark:bg-gray-900 rounded-full' : ''}`}>
         {avatar
-          ? <img src={avatar} alt={name} className={`${size} rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-xl`} />
+          ? <img src={avatar} loading="lazy" alt={name} className={`${size} rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-xl`} />
           : <div className={`${size} rounded-full border-4 border-white dark:border-gray-900 shadow-xl flex items-center justify-center`}
               style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
               <span className="text-4xl font-bold text-white select-none">{name?.[0]?.toUpperCase()}</span>
@@ -377,6 +378,7 @@ function StoryAvatar({ avatar, name, hasStory, allSeen, size = 'w-28 h-28', onCl
    Main Profile Page
 ═══════════════════════════════════════════════════════════ */
 export default function Profile() {
+  const addToast = useToast();
   const { t } = useApp();
   const myId = JSON.parse(localStorage.getItem('user') || '{}').id;
 
@@ -487,7 +489,7 @@ export default function Profile() {
     try {
       await api.delete('/notes');
       setNote(null);
-    } catch { alert('Failed to delete note.'); }
+    } catch { addToast('Failed to delete note.', 'error'); }
   };
 
   const createHighlight = async (title, items) => {
@@ -504,7 +506,7 @@ export default function Profile() {
     try {
       await api.delete(`/highlights/${id}`);
       setHighlights(prev => prev.filter(h => h.id !== id));
-    } catch { alert('Failed to delete highlight.'); }
+    } catch { addToast('Failed to delete highlight.', 'error'); }
   };
 
   const inp = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 bg-white dark:bg-gray-800 dark:text-gray-200 transition-all';
@@ -610,7 +612,7 @@ export default function Profile() {
           <button onClick={() => setCoverModal(false)} className="absolute top-4 right-4 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
             <X size={18} />
           </button>
-          <img src={form.cover_image} alt="cover" className="max-w-3xl w-full rounded-2xl object-contain" />
+          <img src={form.cover_image} loading="lazy" alt="cover" className="max-w-3xl w-full rounded-2xl object-contain" />
         </div>
       )}
 
@@ -620,7 +622,7 @@ export default function Profile() {
           <button onClick={() => setAvatarModal(false)} className="absolute top-4 right-4 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
             <X size={18} />
           </button>
-          <img src={form.avatar} alt="profile" className="w-72 h-72 rounded-full object-cover shadow-2xl ring-4 ring-white/20" />
+          <img src={form.avatar} loading="lazy" alt="profile" className="w-72 h-72 rounded-full object-cover shadow-2xl ring-4 ring-white/20" />
         </div>
       )}
 
@@ -639,7 +641,7 @@ export default function Profile() {
             {/* Cover with glass overlay */}
             <div className="relative h-52 rounded-t-3xl overflow-hidden group">
               {form.cover_image
-                ? <img src={form.cover_image} alt="cover" className="w-full h-full object-cover" />
+                ? <img src={form.cover_image} loading="lazy" alt="cover" className="w-full h-full object-cover" />
                 : <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2}, ${c3})` }} />
               }
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
@@ -993,7 +995,7 @@ export default function Profile() {
                   <button onClick={() => hl.item_count > 0 && setViewingHL(hl)}
                     className="w-[88px] h-[112px] rounded-2xl overflow-hidden relative shadow-sm hover:shadow-md transition-shadow block">
                     {hl.cover_url
-                      ? <img src={hl.cover_url} alt={hl.title} className="w-full h-full object-cover" />
+                      ? <img src={hl.cover_url} loading="lazy" alt={hl.title} className="w-full h-full object-cover" />
                       : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
                           <Sparkles size={22} className="text-white" />
                         </div>

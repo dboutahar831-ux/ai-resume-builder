@@ -6,6 +6,7 @@ import {
   Wrench, Check, Globe, Phone, Mail, MapPin, ArrowLeft,
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 import { generateResumeContent } from '../utils/resumeGenerator';
 
@@ -28,7 +29,7 @@ function printResume(form) {
     </div>`).join('');
 
   const win = window.open('', '_blank');
-  if (!win) { alert('Please allow popups to export PDF.'); return; }
+  if (!win) { /* will be handled by caller */ return; }
 
   win.document.write(`<!DOCTYPE html><html><head>
     <title>${esc(p.full_name) || 'Resume'}</title>
@@ -112,6 +113,7 @@ const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ResumeBuilder() {
+  const addToast = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -165,7 +167,7 @@ export default function ResumeBuilder() {
   const removeSkill = i => setForm(f => ({ ...f, skills: f.skills.filter((_, idx) => idx !== i) }));
 
   const handleSave = async () => {
-    if (!form.personal_info.full_name) return alert('Full name is required');
+    if (!form.personal_info.full_name) return addToast('Full name is required', 'warning');
     setSaving(true); setSaveError('');
     try {
       if (isEdit) await api.put(`/resumes/${id}`, form);
@@ -253,7 +255,7 @@ export default function ResumeBuilder() {
               style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
               <Sparkles size={14} />Generate with AI
             </button>
-            <button onClick={() => printResume(form)}
+            <button onClick={() => { if (!window.open('', '_blank')) { addToast('Please allow popups to export PDF.', 'warning'); return; } printResume(form); }}
               className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">
               <Download size={14} />Export PDF
             </button>
@@ -522,7 +524,7 @@ export default function ResumeBuilder() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col">
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/60">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Live Preview</p>
-              <button onClick={() => printResume(form)}
+              <button onClick={() => { if (!window.open('', '_blank')) { addToast('Please allow popups to export PDF.', 'warning'); return; } printResume(form); }}
                 className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800">
                 <Download size={12} />Export PDF
               </button>

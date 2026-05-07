@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, X, Music, Type } from 'lucide-react';
+import { useToast } from './Toast';
 import api from '../api/axios';
 import StoryViewer from './StoryViewer';
 import MentionSuggestions from './MentionSuggestions';
 import { useMention } from '../hooks/useMention';
 
 function AddStoryModal({ onClose, onAdded }) {
+  const addToast = useToast();
   const [media, setMedia] = useState(null);
   const [mediaType, setMediaType] = useState('image');
   const [caption, setCaption] = useState('');
@@ -21,7 +23,7 @@ function AddStoryModal({ onClose, onAdded }) {
     if (!file) return;
     const isVideo = file.type.startsWith('video/');
     if (file.size > (isVideo ? 15 : 5) * 1024 * 1024)
-      return alert(`Max ${isVideo ? '15' : '5'}MB`);
+      return addToast(`Max ${isVideo ? '15' : '5'}MB`, 'warning');
     const reader = new FileReader();
     reader.onload = ev => { setMedia(ev.target.result); setMediaType(isVideo ? 'video' : 'image'); };
     reader.readAsDataURL(file);
@@ -31,7 +33,7 @@ function AddStoryModal({ onClose, onAdded }) {
   const pickMusic = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) return alert('Max 3MB for music');
+    if (file.size > 3 * 1024 * 1024) return addToast('Max 3MB for music', 'warning');
     const reader = new FileReader();
     reader.onload = ev => { setMusicFile(ev.target.result); setMusicName(file.name.replace(/\.[^/.]+$/, '')); };
     reader.readAsDataURL(file);
@@ -51,7 +53,7 @@ function AddStoryModal({ onClose, onAdded }) {
       });
       onAdded(res.data);
       onClose();
-    } catch { alert('Failed to post story'); }
+    } catch { addToast('Failed to post story', 'error'); }
     finally { setUploading(false); }
   };
 
@@ -76,7 +78,7 @@ function AddStoryModal({ onClose, onAdded }) {
             <div className="relative rounded-xl overflow-hidden">
               {mediaType === 'video'
                 ? <video src={media} className="w-full max-h-48 object-contain bg-black rounded-xl" controls />
-                : <img src={media} alt="" className="w-full max-h-48 object-cover rounded-xl" />
+                : <img src={media} loading="lazy" alt="" className="w-full max-h-48 object-cover rounded-xl" />
               }
               <button onClick={() => { setMedia(null); setMusicFile(null); }}
                 className="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white">
@@ -210,7 +212,7 @@ export default function StoriesBar({ myUser }) {
               <div className={`w-14 h-14 rounded-full ${hasMyStory ? 'p-[2.5px]' : ''} ${hasMyStory && !myAllSeen ? 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600' : hasMyStory ? 'bg-gray-300 dark:bg-gray-600' : ''}`}>
                 <div className={`w-full h-full rounded-full overflow-hidden ${hasMyStory ? 'p-0.5 bg-white dark:bg-gray-900' : ''}`}>
                   {myUser?.avatar
-                    ? <img src={myUser.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+                    ? <img src={myUser.avatar} loading="lazy" alt="" className="w-full h-full rounded-full object-cover" />
                     : <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
                         <span className="text-white font-bold text-lg">{myUser?.name?.[0]}</span>
                       </div>
@@ -236,7 +238,7 @@ export default function StoriesBar({ myUser }) {
               <div className={`w-14 h-14 rounded-full p-[2.5px] ${u.all_seen ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600'}`}>
                 <div className="w-full h-full rounded-full p-0.5 bg-white dark:bg-gray-900">
                   {u.avatar
-                    ? <img src={u.avatar} alt={u.name} className="w-full h-full rounded-full object-cover" />
+                    ? <img src={u.avatar} loading="lazy" alt={u.name} className="w-full h-full rounded-full object-cover" />
                     : <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
                         <span className="text-white font-bold text-lg">{u.name?.[0]}</span>
                       </div>

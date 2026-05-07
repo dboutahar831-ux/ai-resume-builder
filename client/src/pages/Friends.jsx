@@ -7,7 +7,7 @@ import api from '../api/axios';
 function Avatar({ user, size = 'md' }) {
   const sz = size === 'lg' ? 'w-12 h-12 text-base' : 'w-9 h-9 text-sm';
   return user.avatar
-    ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0 ring-2 ring-white`} />
+    ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0 ring-2 ring-white`} />
     : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>{user.name?.[0]}</div>;
 }
 

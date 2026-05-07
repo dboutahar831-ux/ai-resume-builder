@@ -97,6 +97,22 @@ router.post('/', auth, async (req, res) => {
       [req.user.id, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null]
     );
     const post = result.rows[0];
+    // Extract hashtags
+    const tags = (content || '').match(/#(\w+)/g);
+    if (tags) {
+      const unique = [...new Set(tags.map(t => t.slice(1).toLowerCase()))];
+      for (const tag of unique) {
+        await pool.query(
+          `INSERT INTO hashtags (tag) VALUES ($1) ON CONFLICT (tag) DO UPDATE SET post_count = hashtags.post_count + 1`,
+          [tag]
+        );
+        const ht = await pool.query('SELECT id FROM hashtags WHERE tag=$1', [tag]);
+        await pool.query(
+          'INSERT INTO post_hashtags (post_id, hashtag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [post.id, ht.rows[0].id]
+        );
+      }
+    }
     const u = await pool.query(
       'SELECT name, avatar, last_seen_at, COALESCE(show_online_status, TRUE) AS show_online FROM users WHERE id=$1',
       [req.user.id]

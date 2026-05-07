@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck, ShieldOff, UserX, ShieldAlert } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 const languages = [
@@ -12,6 +13,7 @@ const languages = [
 ];
 
 export default function Settings() {
+  const addToast = useToast();
   const { lang, setLang, dark, setDark, t } = useApp();
   const navigate = useNavigate();
   const logout = () => { localStorage.clear(); navigate('/login'); };
@@ -105,7 +107,7 @@ export default function Settings() {
     try {
       await api.post(`/friends/unblock/${userId}`);
       setBlockedUsers(prev => prev.filter(u => u.id !== userId));
-    } catch { alert('Failed to unblock user.'); }
+    } catch { addToast('Failed to unblock user.', 'error'); }
   };
 
   const inp = 'w-full pr-10 pl-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 dark:text-gray-200';
@@ -324,7 +326,7 @@ export default function Settings() {
                 <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
                   <Link to={`/friends/${u.id}`} className="flex-shrink-0">
                     {u.avatar
-                      ? <img src={u.avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-900" />
+                      ? <img src={u.avatar} loading="lazy" alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-900" />
                       : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
                           {u.name?.[0]}
                         </div>

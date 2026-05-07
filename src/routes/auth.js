@@ -35,7 +35,7 @@ router.post('/register', async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (name, email, password_hash, age, phone, location, linkedin, verified) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id, name, email, age, phone, location, linkedin, avatar, created_at',
+      'INSERT INTO users (name, email, password_hash, age, phone, location, linkedin, verified) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id, name, email, age, phone, location, linkedin, avatar, is_admin, created_at',
       [name.trim(), email.toLowerCase().trim(), password_hash, age ? parseInt(age) : null, phone || null, location || null, linkedin || null]
     );
     const user = result.rows[0];
@@ -66,7 +66,7 @@ router.post('/verify', async (req, res) => {
 
     await pool.query('DELETE FROM verification_codes WHERE email = $1', [email]);
     const update = await pool.query(
-      'UPDATE users SET verified=TRUE WHERE email=$1 RETURNING id, name, email, age, phone, location, linkedin, avatar, created_at',
+      'UPDATE users SET verified=TRUE WHERE email=$1 RETURNING id, name, email, age, phone, location, linkedin, avatar, is_admin, created_at',
       [email]
     );
     const user = update.rows[0];
@@ -110,7 +110,7 @@ router.post('/login', async (req, res) => {
     await pool.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [user.id]);
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({
-      user: { id: user.id, name: user.name, email: user.email, age: user.age, phone: user.phone, location: user.location, linkedin: user.linkedin, avatar: user.avatar },
+      user: { id: user.id, name: user.name, email: user.email, age: user.age, phone: user.phone, location: user.location, linkedin: user.linkedin, avatar: user.avatar, is_admin: user.is_admin },
       token,
     });
   } catch {
@@ -122,7 +122,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, is_admin, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });

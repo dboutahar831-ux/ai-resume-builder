@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Briefcase, Plus, Pencil, Trash2, X, ExternalLink, CalendarClock, AlertTriangle, ChevronDown, Lightbulb, Search, SlidersHorizontal, MapPin } from 'lucide-react';
+import { Briefcase, Plus, Pencil, Trash2, X, ExternalLink, CalendarClock, AlertTriangle, ChevronDown, Lightbulb, Search, SlidersHorizontal, MapPin, Bookmark } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 const STATUSES = ['pending', 'interview', 'offered', 'accepted', 'rejected'];
@@ -33,6 +34,7 @@ function daysUntil(dateStr) {
 }
 
 export default function JobTracker() {
+  const addToast = useToast();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -68,7 +70,7 @@ export default function JobTracker() {
         setJobs(prev => [res.data, ...prev]);
       }
       setShowForm(false);
-    } catch { alert('Failed to save. Please try again.'); }
+    } catch { addToast('Failed to save. Please try again.', 'error'); }
   };
 
   const handleDelete = async (id) => {
@@ -76,12 +78,12 @@ export default function JobTracker() {
     try {
       await api.delete(`/jobs/${id}`);
       setJobs(prev => prev.filter(j => j.id !== id));
-    } catch { alert('Failed to delete. Please try again.'); }
+    } catch { addToast('Failed to delete. Please try again.', 'error'); }
   };
 
   // Advanced filtering
   const filtered = useMemo(() => {
-    let result = filter === 'all' ? jobs : jobs.filter(j => j.status === filter);
+    let result = filter === 'all' ? jobs : filter === 'saved' ? jobs.filter(j => j.saved) : jobs.filter(j => j.status === filter);
 
     // Text search (company, role, location, notes)
     if (searchQuery.trim()) {
@@ -109,6 +111,13 @@ export default function JobTracker() {
 
     return result;
   }, [jobs, filter, searchQuery, dateRange]);
+
+  const toggleBookmark = async (id) => {
+    try {
+      const res = await api.post(`/jobs/${id}/bookmark`);
+      setJobs(prev => prev.map(j => j.id === id ? { ...j, saved: res.data.saved } : j));
+    } catch {}
+  };
 
   const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: jobs.filter(j => j.status === s).length }), {});
   const upcoming = jobs.filter(j => { const d = daysUntil(j.interview_date); return d !== null && d >= 0 && d <= 1; });
@@ -220,13 +229,12 @@ export default function JobTracker() {
 
         {/* Filter tabs */}
         <div className="flex gap-2 flex-wrap">
-          {['all', ...STATUSES].map(s => (
+          {['all', 'saved', ...STATUSES].map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className={`px-4 py-1.5 rounded-xl text-sm font-medium capitalize transition-all ${
-                filter === s ? 'text-white shadow-sm' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filter === s ? 'text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
               style={filter === s ? { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' } : {}}>
-              {s === 'all' ? `All (${filtered.length})` : `${s} (${counts[s]})`}
+              {s === 'saved' && <Bookmark size={10} fill={filter === s ? 'white' : 'currentColor'} />}
+              {s === 'all' ? `All (${filtered.length})` : s === 'saved' ? `Saved (${jobs.filter(j => j.saved).length})` : `${s} (${counts[s]})`}
             </button>
           ))}
         </div>
@@ -287,6 +295,10 @@ export default function JobTracker() {
                       {j.notes && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate max-w-md">{j.notes}</p>}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => toggleBookmark(j.id)}
+                        className={`p-2 rounded-xl transition-all ${j.saved ? 'text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20'}`}>
+                        <Bookmark size={16} fill={j.saved ? 'currentColor' : 'none'} />
+                      </button>
                       {j.url && (
                         <a href={j.url} target="_blank" rel="noreferrer"
                           className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all">

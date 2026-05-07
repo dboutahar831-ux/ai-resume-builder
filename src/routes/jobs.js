@@ -64,4 +64,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /:id/bookmark — toggle saved/bookmarked
+router.post('/:id/bookmark', async (req, res) => {
+  try {
+    const job = await pool.query('SELECT saved FROM jobs WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    if (!job.rows[0]) return res.status(404).json({ error: 'Job not found' });
+    const newSaved = !job.rows[0].saved;
+    await pool.query('UPDATE jobs SET saved=$1 WHERE id=$2 AND user_id=$3', [newSaved, req.params.id, req.user.id]);
+    res.json({ saved: newSaved });
+  } catch {
+    res.status(500).json({ error: 'Failed to toggle bookmark.' });
+  }
+});
+
 module.exports = router;

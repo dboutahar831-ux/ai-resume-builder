@@ -104,7 +104,7 @@ export default function StoryViewer({ userStories, initialUserIndex = 0, myId, o
         {/* Header */}
         <div className="absolute top-7 left-3 right-3 z-30 flex items-center gap-2.5">
           {cur.avatar
-            ? <img src={cur.avatar} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white/80 flex-shrink-0" />
+            ? <img src={cur.avatar} loading="lazy" alt="" className="w-9 h-9 rounded-full object-cover border-2 border-white/80 flex-shrink-0" />
             : <div className="w-9 h-9 rounded-full bg-indigo-500 border-2 border-white/80 flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-sm font-bold">{cur.name?.[0]}</span>
               </div>
@@ -138,7 +138,7 @@ export default function StoryViewer({ userStories, initialUserIndex = 0, myId, o
           {story.media_type === 'video'
             ? <video ref={videoRef} src={story.media_url} autoPlay muted={muted} loop
                 className="w-full h-full object-contain" />
-            : <img src={story.media_url} alt="" className="w-full h-full object-contain" />
+            : <img src={story.media_url} loading="lazy" alt="" className="w-full h-full object-contain" />
           }
         </div>
 

@@ -50,6 +50,59 @@
   }
 }
 
+/* ─── Ripple Effect ─────────────────────────────────────────────── */
+.ripple-btn {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.ripple-btn:hover::after { opacity: 1; }
+
+/* ─── Status Pulse ──────────────────────────────────────────────── */
+.status-pulse {
+  position: relative;
+}
+.status-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid #2EC4B6;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  50%  { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* ─── Custom Scrollbar ──────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #21262E; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #5A6375; }
+
+/* ─── RTL Support ──────────────────────────────────────────────── */
+[dir="rtl"] .space-x-reverse > * + * { margin-right: 0.5rem; margin-left: 0; }
+[dir="rtl"] .ml-auto { margin-right: auto; margin-left: 0; }
+[dir="rtl"] .mr-auto { margin-left: auto; margin-right: 0; }
+[dir="rtl"] .text-left { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }
+[dir="rtl"] .flex-row-reverse { flex-direction: row-reverse; }
+[dir="rtl"] .left-0 { right: 0; left: auto; }
+[dir="rtl"] .right-0 { left: 0; right: auto; }
+[dir="rtl"] .translate-x-\[-100\%\] { transform: translateX(100%); }
+[dir="rtl"] .translate-x-0 { transform: translateX(0); }
+[dir="rtl"] .absolute { /* override any left-bias with right */ }
+
 /* ─── Print / PDF ───────────────────────────────────────────────── */
 @media print {
   body * { visibility: hidden; }

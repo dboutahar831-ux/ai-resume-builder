@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const passport = require('passport');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const pool = require('./db');
@@ -17,6 +18,12 @@ const notificationsRouter = require('./routes/notifications');
 const storiesRouter    = require('./routes/stories');
 const highlightsRouter = require('./routes/highlights');
 const notesRouter      = require('./routes/notes');
+const passwordResetRouter = require('./routes/passwordReset');
+const hashtagsRouter   = require('./routes/hashtags');
+const linkPreviewRouter = require('./routes/linkPreview');
+const groupsRouter     = require('./routes/groups');
+const oauthRouter      = require('./routes/oauth');
+const adminRouter      = require('./routes/admin');
 
 const app = express();
 
@@ -34,6 +41,7 @@ const corsOrigins = process.env.CORS_ORIGIN
     ];
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(express.json({ limit: '20mb' }));
+app.use(passport.initialize());
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Rate limiting
@@ -70,6 +78,12 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/stories',       storiesRouter);
 app.use('/api/highlights',    highlightsRouter);
 app.use('/api/notes',         notesRouter);
+app.use('/api/auth', passwordResetRouter);
+app.use('/api/hashtags', hashtagsRouter);
+app.use('/api/link-preview', linkPreviewRouter);
+app.use('/api/groups', groupsRouter);
+app.use('/api/auth', oauthRouter);
+app.use('/api/admin', adminRouter);
 
 // Serve React frontend (only when client/dist exists)
 const clientDist = path.join(__dirname, '../client/dist');

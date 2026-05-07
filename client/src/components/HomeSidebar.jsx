@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Briefcase, Users, Bell, MessageSquare, UserPlus, ChevronRight, FileSignature } from 'lucide-react';
+import { FileText, Briefcase, Users, Bell, MessageSquare, UserPlus, ChevronRight, FileSignature, Hash } from 'lucide-react';
 import ProfileCard from './ProfileCard';
+import api from '../api/axios';
 
 function Avatar({ user, size = 'sm', showDot = false, lastSeen = null }) {
   const sz = { xl: 'w-14 h-14', lg: 'w-12 h-12', md: 'w-10 h-10', sm: 'w-8 h-8' }[size];
@@ -10,7 +12,7 @@ function Avatar({ user, size = 'sm', showDot = false, lastSeen = null }) {
   return (
     <div className="relative flex-shrink-0">
       {user?.avatar
-        ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-white dark:ring-gray-900`} />
+        ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-white dark:ring-gray-900`} />
         : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold`}>
             {user?.name?.[0] || '?'}
           </div>
@@ -23,6 +25,12 @@ function Avatar({ user, size = 'sm', showDot = false, lastSeen = null }) {
 }
 
 export default function HomeSidebar({ myUser, coverImage, stats, friends, suggestions, addedIds, sendRequest }) {
+  const [trending, setTrending] = useState([]);
+
+  useEffect(() => {
+    api.get('/hashtags/trending').then(r => setTrending(r.data)).catch(() => {});
+  }, []);
+
   return (
     <div className="hidden lg:flex flex-col gap-4 sticky top-6 self-start">
       {/* Profile Card */}
@@ -113,6 +121,24 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
                   <UserPlus size={11} />Add
                 </button>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trending Hashtags */}
+      {trending.length > 0 && (
+        <div className="bg-[#151921] rounded-2xl border border-[#21262E] p-4" style={{ animation: 'slideDown 0.5s ease' }}>
+          <p className="text-sm font-bold text-[#E8ECF1] mb-3 flex items-center gap-1.5">
+            <Hash size={14} className="text-[#6C5CE7]" /> Trending
+          </p>
+          <div className="space-y-2">
+            {trending.map(t => (
+              <Link key={t.tag} to={`/home?tag=${t.tag}`}
+                className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-[#1A1F2B] transition-colors group">
+                <span className="text-sm font-medium text-[#6C5CE7] group-hover:text-[#BF5AF2] transition-colors">#{t.tag}</span>
+                <span className="text-[10px] text-[#5A6375]">{t.post_count} posts</span>
+              </Link>
             ))}
           </div>
         </div>

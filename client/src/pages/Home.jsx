@@ -11,15 +11,19 @@ import StoriesBar from '../components/StoriesBar';
 import MentionSuggestions from '../components/MentionSuggestions';
 import HomeSidebar from '../components/HomeSidebar';
 import { useMention } from '../hooks/useMention';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 function renderWithMentions(text) {
   if (!text) return null;
-  return text.split(/(@\S+)/g).map((part, i) =>
-    part.startsWith('@')
-      ? <span key={i} className="font-semibold cursor-pointer hover:underline" style={{ color: '#6C5CE7' }}>{part}</span>
-      : part
-  );
+  const parts = text.split(/(@\S+|#\w+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@'))
+      return <span key={i} className="font-semibold cursor-pointer hover:underline" style={{ color: '#6C5CE7' }}>{part}</span>;
+    if (part.startsWith('#'))
+      return <Link key={i} to={`/home?tag=${part.slice(1)}`} className="font-semibold hover:underline" style={{ color: '#2EC4B6' }}>{part}</Link>;
+    return part;
+  });
 }
 
 const REACTIONS = [
@@ -59,7 +63,7 @@ function Avatar({ user, size = 'sm', showDot = false, lastSeen = null }) {
   return (
     <div className="relative flex-shrink-0">
       {user?.avatar
-        ? <img src={user.avatar} alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-white`} />
+        ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-white`} />
         : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold`}>
             {user?.name?.[0] || '?'}
           </div>
@@ -186,7 +190,7 @@ function CommentItem({ comment, postId, myId, onDelete, onReact, onReply, allCom
           )}
           {comment.content && <p className="text-sm text-gray-800 mt-0.5 leading-relaxed">{renderWithMentions(comment.content)}</p>}
           {comment.image_url && (
-            <img src={comment.image_url} alt="comment" className="mt-2 rounded-xl max-h-48 object-cover" />
+            <img src={comment.image_url} loading="lazy" alt="comment" className="mt-2 rounded-xl max-h-48 object-cover" />
           )}
         </div>
         <div className="flex items-center gap-3 mt-1 ml-1">
@@ -249,7 +253,7 @@ function OriginalPostBox({ post }) {
         <p className="px-3 pb-2 text-sm text-gray-700 leading-relaxed">{post.original_content}</p>
       )}
       {post.original_image_url && (
-        <img src={post.original_image_url} alt="original" className="w-full max-h-60 object-cover" />
+        <img src={post.original_image_url} loading="lazy" alt="original" className="w-full max-h-60 object-cover" />
       )}
       {post.original_video_url && (
         <video src={post.original_video_url} controls className="w-full max-h-60 bg-black" />
@@ -368,7 +372,7 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
       await api.delete(`/posts/${post.id}/comments/${commentId}`);
       setComments(c => c.filter(x => x.id !== commentId));
       onCommentCountChange(post.id, -1);
-    } catch { alert('Failed to delete comment.'); }
+    } catch { addToast('Failed to delete comment.', 'error'); }
   };
 
   const handleCommentReact = async (commentId, type) => {
@@ -490,7 +494,7 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
             )}
             {post.image_url && (
               <div className="cursor-pointer" onClick={() => setImgExpanded(v => !v)}>
-                <img src={post.image_url} alt="post"
+                <img src={post.image_url} loading="lazy" alt="post"
                   className={`w-full object-cover transition-all duration-300 ${imgExpanded ? 'max-h-[700px]' : 'max-h-96'}`} />
               </div>
             )}
@@ -564,7 +568,7 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
                 )}
                 {commentImage && (
                   <div className="relative p-2 pb-0">
-                    <img src={commentImage} alt="preview" className="h-24 rounded-xl object-cover" />
+                    <img src={commentImage} loading="lazy" alt="preview" className="h-24 rounded-xl object-cover" />
                     <button onClick={() => setCommentImage('')}
                       className="absolute top-3 right-3 w-5 h-5 bg-gray-700/80 text-white rounded-full flex items-center justify-center hover:bg-gray-800">
                       <X size={10} />
@@ -681,6 +685,7 @@ export default function Home() {
   const searchRef = useRef();
   const searchTimerRef = useRef();
   const postMention = useMention();
+  const addToast = useToast();
 
   const load = useCallback(async () => {
     api.get('/posts/feed')
@@ -781,7 +786,7 @@ export default function Home() {
 
   const handlePostVideo = (e) => {
     const file = e.target.files[0];
-    if (!file || file.size > 15 * 1024 * 1024) return alert('Video must be under 15MB.');
+    if (!file || file.size > 15 * 1024 * 1024) return addToast('Video must be under 15MB.', 'warning');
     const reader = new FileReader();
     reader.onload = ev => { setPostVideo(ev.target.result); setPostImage(''); };
     reader.readAsDataURL(file);
@@ -822,14 +827,14 @@ export default function Home() {
     try {
       await api.delete(`/posts/${postId}`);
       setPosts(p => p.filter(x => x.id !== postId));
-    } catch { alert('Failed to delete post.'); }
+    } catch { addToast('Failed to delete post.', 'error'); }
   };
 
   const handleRepost = async (postId, repost_text) => {
     try {
       const res = await api.post(`/posts/${postId}/repost`, { repost_text });
       setPosts(p => [res.data, ...p]);
-    } catch { alert('Failed to repost.'); }
+    } catch { addToast('Failed to repost.', 'error'); }
   };
 
   const handleCommentCountChange = (postId, delta) => {
@@ -987,7 +992,7 @@ export default function Home() {
                   />
                   {postImage && (
                     <div className="relative mt-2 inline-block">
-                      <img src={postImage} alt="preview"
+                      <img src={postImage} loading="lazy" alt="preview"
                         className="max-h-52 max-w-full rounded-xl object-cover border border-gray-200" />
                       <button onClick={() => setPostImage('')}
                         className="absolute top-2 right-2 w-6 h-6 bg-gray-800/75 text-white rounded-full flex items-center justify-center hover:bg-gray-900">

@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   show_online_status  BOOLEAN       NOT NULL DEFAULT TRUE,
   show_read_receipts  BOOLEAN       NOT NULL DEFAULT TRUE,
   last_seen_at        TIMESTAMPTZ,
+  is_admin            BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
@@ -237,6 +238,34 @@ CREATE INDEX IF NOT EXISTS idx_blocks_blocker ON blocks(blocker_id);
 CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id);
 
 -- ═══════════════════════════════════════════════════════
+-- GROUP CHATS
+-- ═══════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS group_chats (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(255)  NOT NULL,
+  description TEXT,
+  avatar      TEXT,
+  created_by  INTEGER       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS group_members (
+  id         SERIAL PRIMARY KEY,
+  group_id   INTEGER       NOT NULL REFERENCES group_chats(id) ON DELETE CASCADE,
+  user_id    INTEGER       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       VARCHAR(20)   NOT NULL DEFAULT 'member',
+  joined_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  UNIQUE(group_id, user_id)
+);
+
+-- Add group_id to messages table
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES group_chats(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_messages_group    ON messages(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id);
+
+-- ═══════════════════════════════════════════════════════
 -- VERIFICATION CODES (email verification)
 -- ═══════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS verification_codes (
@@ -265,5 +294,62 @@ CREATE INDEX IF NOT EXISTS idx_friendships_user1   ON friendships(requester_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_user2   ON friendships(addressee_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_status  ON friendships(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_user_id        ON jobs(user_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_saved          ON jobs(user_id, saved);
+
+-- ═══════════════════════════════════════════════════════
+-- SAVED JOBS (bookmarks)
+-- ═══════════════════════════════════════════════════════
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS saved BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Index for hashtag search
+CREATE INDEX IF NOT EXISTS idx_posts_content_gin   ON posts USING gin(to_tsvector('english', content));
+
+-- ═══════════════════════════════════════════════════════
+-- HASHTAGS
+-- ═══════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS hashtags (
+  id         SERIAL PRIMARY KEY,
+  tag        VARCHAR(100)  NOT NULL UNIQUE,
+  post_count INTEGER       NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS post_hashtags (
+  post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  hashtag_id INTEGER NOT NULL REFERENCES hashtags(id) ON DELETE CASCADE,
+  PRIMARY KEY (post_id, hashtag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hashtags_tag ON hashtags(tag);
+CREATE INDEX IF NOT EXISTS idx_hashtags_count ON hashtags(post_count DESC);
+
 CREATE INDEX IF NOT EXISTS idx_cover_letters_user  ON cover_letters(user_id);
 CREATE INDEX IF NOT EXISTS idx_verification_email  ON verification_codes(email);
+
+-- ═══════════════════════════════════════════════════════
+-- MESSAGE REACTIONS
+-- ═══════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS message_reactions (
+  id         SERIAL PRIMARY KEY,
+  message_id INTEGER       NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  user_id    INTEGER       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji      VARCHAR(50)   NOT NULL,
+  created_at TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  UNIQUE(message_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_msg_reactions_message ON message_reactions(message_id);
+
+-- ═══════════════════════════════════════════════════════
+-- PASSWORD RESET TOKENS
+-- ═══════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         SERIAL PRIMARY KEY,
+  email      VARCHAR(255)  NOT NULL,
+  token      VARCHAR(255)  NOT NULL,
+  used       BOOLEAN       NOT NULL DEFAULT FALSE,
+  expires_at TIMESTAMPTZ   NOT NULL,
+  created_at TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);

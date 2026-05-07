@@ -5,6 +5,7 @@ import {
   Briefcase, Copy, Download, Sparkles,
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 function timeAgo(d) {
@@ -53,7 +54,7 @@ function printLetter(letter) {
   </body></html>`;
 
   const win = window.open('', '_blank');
-  if (!win) { alert('Please allow popups to export PDF.'); return; }
+  if (!win) { /* will be handled by caller */ return; }
   win.document.write(html);
   win.document.close();
   win.focus();
@@ -85,7 +86,7 @@ export default function CoverLetters() {
       const res = await api.post(`/cover-letters/${id}/duplicate`);
       setLetters(prev => [res.data, ...prev]);
     } catch {
-      alert('Failed to duplicate.');
+      addToast('Failed to duplicate.', 'error');
     } finally { setDuplicating(null); }
   };
 
@@ -190,7 +191,7 @@ export default function CoverLetters() {
                         className="flex items-center justify-center gap-1 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition-all disabled:opacity-50">
                         <Copy size={12} />{duplicating === l.id ? '…' : 'Copy'}
                       </button>
-                      <button onClick={() => printLetter(l)} disabled={!l.content}
+                      <button onClick={() => { if (!window.open('', '_blank')) { addToast('Please allow popups to export PDF.', 'warning'); return; } printLetter(l); }} disabled={!l.content}
                         className="flex items-center justify-center gap-1 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl transition-all disabled:opacity-40">
                         <Download size={12} />PDF
                       </button>

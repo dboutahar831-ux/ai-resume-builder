@@ -124,7 +124,12 @@ router.get('/:userId', auth, async (req, res) => {
               CASE WHEN m.voice_url IS NOT NULL AND m.voice_url <> ''
                    THEN '/api/messages/voice/' || m.id ELSE NULL END AS voice_url,
               m.read, m.read_at, m.created_at,
-              u.name AS sender_name, u.avatar AS sender_avatar
+              u.name AS sender_name, u.avatar AS sender_avatar,
+              COALESCE(
+                (SELECT jsonb_agg(jsonb_build_object('emoji', mr.emoji, 'user_id', mr.user_id))
+                 FROM message_reactions mr WHERE mr.message_id = m.id),
+                '[]'::jsonb
+              ) AS reactions
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE (m.sender_id=$1 AND m.receiver_id=$2)
@@ -183,6 +188,53 @@ router.post('/:userId', auth, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send message.' });
+  }
+});
+
+// POST /api/messages/:msgId/react — react to a message
+router.post('/:msgId/react', auth, async (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji is required.' });
+  try {
+    // Verify message exists and user is participant
+    const msg = await pool.query('SELECT sender_id, receiver_id FROM messages WHERE id=$1', [req.params.msgId]);
+    if (!msg.rows[0]) return res.status(404).json({ error: 'Message not found.' });
+    const m = msg.rows[0];
+    if (m.sender_id !== req.user.id && m.receiver_id !== req.user.id)
+      return res.status(403).json({ error: 'Not a participant.' });
+
+    // Upsert reaction (toggle if same emoji)
+    const existing = await pool.query('SELECT emoji FROM message_reactions WHERE message_id=$1 AND user_id=$2', [req.params.msgId, req.user.id]);
+    if (existing.rows[0]?.emoji === emoji) {
+      await pool.query('DELETE FROM message_reactions WHERE message_id=$1 AND user_id=$2', [req.params.msgId, req.user.id]);
+      return res.json({ action: 'removed' });
+    }
+    await pool.query(
+      `INSERT INTO message_reactions (message_id, user_id, emoji)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (message_id, user_id) DO UPDATE SET emoji=$3`,
+      [req.params.msgId, req.user.id, emoji]
+    );
+    res.json({ action: 'added', emoji });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add reaction.' });
+  }
+});
+
+// GET /api/messages/:msgId/reactions — get reactions for a message
+router.get('/:msgId/reactions', auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT mr.*, u.name AS user_name, u.avatar AS user_avatar
+       FROM message_reactions mr
+       JOIN users u ON u.id = mr.user_id
+       WHERE mr.message_id=$1
+       ORDER BY mr.created_at ASC`,
+      [req.params.msgId]
+    );
+    res.json(r.rows);
+  } catch {
+    res.status(500).json({ error: 'Failed to load reactions.' });
   }
 });
 

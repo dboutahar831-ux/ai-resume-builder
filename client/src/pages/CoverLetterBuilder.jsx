@@ -6,6 +6,7 @@ import {
   FileText, Lightbulb, Star, Clock,
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 const TONES = [
@@ -43,6 +44,7 @@ const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:
 const ta  = `${inp} resize-none leading-relaxed`;
 
 export default function CoverLetterBuilder() {
+  const addToast = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -83,7 +85,7 @@ export default function CoverLetterBuilder() {
     const el = printRef.current;
     if (!el) return;
     const win = window.open('', '_blank');
-    if (!win) { alert('Please allow popups to export PDF.'); return; }
+    if (!win) { addToast('Please allow popups to export PDF.', 'warning'); return; }
     win.document.write(`<!DOCTYPE html><html><head>
       <title>${form.title || 'Cover Letter'}</title>
       <style>
@@ -122,7 +124,7 @@ export default function CoverLetterBuilder() {
   };
 
   const handleSave = async () => {
-    if (!form.title.trim()) { alert('Please enter a title.'); return; }
+    if (!form.title.trim()) { addToast('Please enter a title.', 'warning'); return; }
     setSaving(true); setSaveError('');
     try {
       if (isEdit) await api.put(`/cover-letters/${id}`, form);

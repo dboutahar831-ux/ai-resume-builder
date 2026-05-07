@@ -7,7 +7,7 @@ function MiniProfileCard({ user }) {
       style={{ animation: 'fadeInUp 0.15s ease' }}>
       <div className="flex items-center gap-2.5 mb-2">
         {user.avatar
-          ? <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-white" />
+          ? <img src={user.avatar} loading="lazy" alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-white" />
           : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
               style={{ background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' }}>
               {user.name?.[0]}
@@ -52,7 +52,7 @@ export default function MentionSuggestions({ suggestions, onSelect }) {
           >
             {hoveredUser?.id === user.id && <MiniProfileCard user={user} />}
             {user.avatar
-              ? <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0 ring-1 ring-white" />
+              ? <img src={user.avatar} loading="lazy" alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0 ring-1 ring-white" />
               : <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' }}>
                   {user.name?.[0]}

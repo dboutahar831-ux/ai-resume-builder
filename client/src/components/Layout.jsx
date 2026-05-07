@@ -291,7 +291,7 @@ export default function Layout({ children }) {
           {/* User card */}
           <div className="flex items-center gap-3 px-3 py-3 mt-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
             {user.avatar ? (
-              <img src={user.avatar} alt="avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-white dark:ring-gray-700" />
+              <img src={user.avatar} loading="lazy" alt="avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-white dark:ring-gray-700" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 select-none">
                 {user.name?.[0]?.toUpperCase()}

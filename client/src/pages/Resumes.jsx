@@ -6,6 +6,7 @@ import {
   Zap, Copy, Download, Briefcase, GraduationCap,
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 // ─── Quick PDF from list ──────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ function printResume(r) {
     </div>`).join('');
 
   const win = window.open('', '_blank');
-  if (!win) { alert('Please allow popups to export PDF.'); return; }
+  if (!win) { /* will be handled by caller */ return; }
   win.document.write(`<!DOCTYPE html><html><head>
     <title>${esc(p.full_name)||'Resume'}</title>
     <style>
@@ -116,7 +117,7 @@ export default function Resumes() {
     try {
       const res = await api.post(`/resumes/${id}/duplicate`);
       setResumes(prev => [res.data, ...prev]);
-    } catch { alert('Failed to duplicate.'); }
+    } catch { addToast('Failed to duplicate.', 'error'); }
     finally { setDuplicating(null); }
   };
 
@@ -257,7 +258,7 @@ export default function Resumes() {
                         className="flex items-center justify-center py-2 text-xs font-semibold text-gray-400 hover:bg-gray-50 rounded-xl transition-all disabled:opacity-40">
                         {duplicating === r.id ? <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" /> : <Copy size={12} />}
                       </button>
-                      <button onClick={() => printResume(r)}
+                      <button onClick={() => { if (!window.open('', '_blank')) { addToast('Please allow popups to export PDF.', 'warning'); return; } printResume(r); }}
                         className="flex items-center justify-center py-2 text-xs font-semibold text-gray-400 hover:bg-gray-50 rounded-xl transition-all">
                         <Download size={12} />
                       </button>
