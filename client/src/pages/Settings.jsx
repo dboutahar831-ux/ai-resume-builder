@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck, ShieldOff, UserX, ShieldAlert } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -91,7 +91,24 @@ export default function Settings() {
     } finally { setDeleting(false); }
   };
 
-  const inp = 'w-full pr-10 pl-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white';
+  // Blocked users
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [blockedLoading, setBlockedLoading] = useState(false);
+
+  const loadBlocked = async () => {
+    setBlockedLoading(true);
+    try {
+      const res = await api.get('/friends/blocked');
+      setBlockedUsers(res.data);
+    } catch {} finally { setBlockedLoading(false); }
+  };
+
+  const handleUnblock = async (userId) => {
+    await api.post(`/friends/unblock/${userId}`);
+    setBlockedUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  const inp = 'w-full pr-10 pl-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 dark:text-gray-200';
 
   return (
     <Layout>
@@ -287,8 +304,58 @@ export default function Settings() {
             </div>
           )}
         </div>
+        {/* Blocked Users */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <ShieldOff size={16} className="text-red-400" />
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Blocked Users</h3>
+            </div>
+            <button onClick={() => { if (!blockedLoading) loadBlocked(); }}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" style={{ color: '#6C5CE7' }}>
+              {blockedLoading ? 'Loading...' : `View (${blockedUsers.length})`}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Users you've blocked cannot contact you or interact with your posts.</p>
+
+          {blockedUsers.length > 0 && (
+            <div className="space-y-1 max-h-60 overflow-y-auto">
+              {blockedUsers.map(u => (
+                <div key={u.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                  <Link to={`/friends/${u.id}`} className="flex-shrink-0">
+                    {u.avatar
+                      ? <img src={u.avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-900" />
+                      : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                          {u.name?.[0]}
+                        </div>
+                    }
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/friends/${u.id}`}
+                      className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition-colors block truncate">
+                      {u.name}
+                    </Link>
+                    {u.bio && <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{u.bio}</p>}
+                  </div>
+                  <button onClick={() => handleUnblock(u.id)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0">
+                    <ShieldAlert size={11} />Unblock
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {blockedUsers.length === 0 && !blockedLoading && (
+            <div className="flex items-center gap-2 px-3 py-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500">
+              <UserX size={14} />
+              <p className="text-xs">No blocked users</p>
+            </div>
+          )}
+        </div>
+
         {/* Logout */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <LogOut size={16} className="text-gray-400" />

@@ -10,13 +10,23 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   const { name, email, password, age, phone, location, linkedin } = req.body;
   if (!name || !email || !password)
     return res.status(400).json({ error: 'name, email and password are required.' });
+  if (typeof name !== 'string' || name.trim().length < 1)
+    return res.status(400).json({ error: 'name must be a non-empty string.' });
+  if (typeof email !== 'string' || !isValidEmail(email))
+    return res.status(400).json({ error: 'A valid email is required.' });
   if (password.length < 6)
     return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  if (age && (isNaN(age) || age < 10 || age > 150))
+    return res.status(400).json({ error: 'Age must be a number between 10 and 150.' });
 
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -26,13 +36,13 @@ router.post('/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, age, phone, location, linkedin, verified) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING id, name, email, age, phone, location, linkedin, avatar, created_at',
-      [name, email, password_hash, age || null, phone || null, location || null, linkedin || null]
+      [name.trim(), email.toLowerCase().trim(), password_hash, age ? parseInt(age) : null, phone || null, location || null, linkedin || null]
     );
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ user, token });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 });
 
@@ -62,8 +72,8 @@ router.post('/verify', async (req, res) => {
     const user = update.rows[0];
     const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ user, token });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Verification failed. Please try again.' });
   }
 });
 
@@ -81,8 +91,8 @@ router.post('/resend-code', async (req, res) => {
     await pool.query('INSERT INTO verification_codes (email, code, expires_at) VALUES ($1,$2,$3)', [email, code, expires]);
     try { await sendVerificationCode(email, code); } catch (e) { console.error('Email error:', e.message); }
     res.json({ message: 'Code resent.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to resend code.' });
   }
 });
 
@@ -103,8 +113,8 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email, age: user.age, phone: user.phone, location: user.location, linkedin: user.linkedin, avatar: user.avatar },
       token,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Login failed. Please try again.' });
   }
 });
 
@@ -112,37 +122,39 @@ router.post('/login', async (req, res) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load profile.' });
   }
 });
 
 // PUT /api/auth/profile
 router.put('/profile', auth, async (req, res) => {
-  const { name, age, phone, location, linkedin, avatar, bio, cover_image, show_online_status, show_read_receipts } = req.body;
+  const { name, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, show_online_status, show_read_receipts } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required.' });
   try {
     const result = await pool.query(
       `UPDATE users SET name=$1, age=$2, phone=$3, location=$4, linkedin=$5, avatar=$6, bio=$7,
-        cover_image=$8, show_online_status=$9, show_read_receipts=$10
-       WHERE id=$11
-       RETURNING id, name, email, age, phone, location, linkedin, avatar, bio, cover_image,
+        cover_image=$8, skills=$9, availability_status=$10, show_online_status=$11, show_read_receipts=$12
+       WHERE id=$13
+       RETURNING id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status,
          COALESCE(show_online_status, TRUE) AS show_online_status,
          COALESCE(show_read_receipts, TRUE) AS show_read_receipts`,
       [name, age || null, phone || null, location || null, linkedin || null, avatar || null, bio || null,
        cover_image || null,
+       skills ? JSON.stringify(skills) : '[]',
+       ['open_to_work', 'not_looking', 'all'].includes(availability_status) ? availability_status : 'all',
        show_online_status !== undefined ? show_online_status : true,
        show_read_receipts !== undefined ? show_read_receipts : true,
        req.user.id]
     );
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to update profile.' });
   }
 });
 
@@ -158,8 +170,8 @@ router.put('/change-password', auth, async (req, res) => {
     const password_hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [password_hash, req.user.id]);
     res.json({ message: 'Password updated successfully.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to change password.' });
   }
 });
 
@@ -174,7 +186,7 @@ router.get('/users/search', auth, async (req, res) => {
       [req.user.id, `%${q}%`]
     );
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to search users.' }); }
 });
 
 // PUT /api/auth/heartbeat — update last_seen_at
@@ -182,7 +194,7 @@ router.put('/heartbeat', auth, async (req, res) => {
   try {
     await pool.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [req.user.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to update status.' }); }
 });
 
 // DELETE /api/auth/account
@@ -196,8 +208,8 @@ router.delete('/account', auth, async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Incorrect password.' });
     await pool.query('DELETE FROM users WHERE id = $1', [req.user.id]);
     res.json({ message: 'Account deleted successfully.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete account.' });
   }
 });
 

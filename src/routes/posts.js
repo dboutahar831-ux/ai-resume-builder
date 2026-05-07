@@ -53,7 +53,7 @@ router.get('/feed', auth, async (req, res) => {
       LIMIT 50
     `, [req.user.id]);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load feed.' }); }
 });
 
 // GET /api/posts/scheduled — user's upcoming scheduled posts
@@ -67,7 +67,7 @@ router.get('/scheduled', auth, async (req, res) => {
       [req.user.id]
     );
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load scheduled posts.' }); }
 });
 
 // GET /api/posts/trending — top hashtags from last 7 days
@@ -114,7 +114,7 @@ router.post('/', auth, async (req, res) => {
       user_last_seen_at: u.rows[0].show_online ? u.rows[0].last_seen_at : null,
       reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to create post.' }); }
 });
 
 // POST /api/posts/:postId/repost
@@ -148,15 +148,16 @@ router.post('/:postId/repost', auth, async (req, res) => {
       original_user_name: o?.name, original_user_avatar: o?.avatar,
       reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to repost.' }); }
 });
 
 // DELETE /api/posts/:id
 router.delete('/:id', auth, async (req, res) => {
   try {
-    await pool.query('DELETE FROM posts WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    const result = await pool.query('DELETE FROM posts WHERE id=$1 AND user_id=$2 RETURNING id', [req.params.id, req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Post not found.' });
     res.json({ message: 'Deleted.' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to delete post.' }); }
 });
 
 // POST /api/posts/:postId/react
@@ -180,7 +181,7 @@ router.post('/:postId/react', auth, async (req, res) => {
       if (owner.rows[0]) await notify(owner.rows[0].user_id, req.user.id, 'reaction', parseInt(req.params.postId));
     }
     res.json({ my_reaction: type });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to react.' }); }
 });
 
 // GET /api/posts/:postId/comments
@@ -201,7 +202,7 @@ router.get('/:postId/comments', auth, async (req, res) => {
       ORDER BY c.created_at ASC
     `, [req.params.postId, req.user.id]);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load comments.' }); }
 });
 
 // POST /api/posts/:postId/comments
@@ -243,7 +244,7 @@ router.post('/:postId/comments', auth, async (req, res) => {
       reactions_summary: null,
       my_reaction: null,
     });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to create comment.' }); }
 });
 
 // DELETE /api/posts/:postId/comments/:commentId
@@ -251,7 +252,7 @@ router.delete('/:postId/comments/:commentId', auth, async (req, res) => {
   try {
     await pool.query('DELETE FROM comments WHERE id=$1 AND user_id=$2', [req.params.commentId, req.user.id]);
     res.json({ message: 'Deleted.' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to delete comment.' }); }
 });
 
 // POST /api/posts/:postId/comments/:commentId/react
@@ -273,7 +274,7 @@ router.post('/:postId/comments/:commentId/react', auth, async (req, res) => {
       await pool.query('INSERT INTO comment_reactions (comment_id, user_id, type) VALUES ($1,$2,$3)', [req.params.commentId, req.user.id, type]);
     }
     res.json({ my_reaction: type });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to react.' }); }
 });
 
 module.exports = router;

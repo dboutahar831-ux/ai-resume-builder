@@ -11,7 +11,7 @@ router.get('/:userId', auth, async (req, res) => {
       [req.params.userId]
     );
     res.json(result.rows[0] || null);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load note.' }); }
 });
 
 // PUT /api/notes
@@ -27,7 +27,7 @@ router.put('/', auth, async (req, res) => {
       [req.user.id, content.trim()]
     );
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to save note.' }); }
 });
 
 // DELETE /api/notes
@@ -35,7 +35,7 @@ router.delete('/', auth, async (req, res) => {
   try {
     await pool.query(`DELETE FROM user_notes WHERE user_id=$1`, [req.user.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to delete note.' }); }
 });
 
 module.exports = router;

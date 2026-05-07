@@ -16,7 +16,7 @@ router.get('/', auth, async (req, res) => {
       LIMIT 40
     `, [req.user.id]);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load notifications.' }); }
 });
 
 // GET /api/notifications/unread/count
@@ -27,7 +27,7 @@ router.get('/unread/count', auth, async (req, res) => {
       [req.user.id]
     );
     res.json({ count: result.rows[0].count });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load unread count.' }); }
 });
 
 // PUT /api/notifications/read-all
@@ -35,7 +35,7 @@ router.put('/read-all', auth, async (req, res) => {
   try {
     await pool.query('UPDATE notifications SET read=TRUE WHERE user_id=$1', [req.user.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to mark as read.' }); }
 });
 
 module.exports = router;

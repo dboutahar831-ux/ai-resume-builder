@@ -4,6 +4,8 @@ import {
   MapPin, Link2, Calendar, Pencil, X, Image as ImageIcon,
   FileText, Briefcase, Users, MessageSquare, Shield,
   Plus, Sparkles, Smile, Trash2, ChevronRight, Play,
+  Share2, Trophy, Star, Activity, Lightbulb, Target,
+  Navigation, ExternalLink, Clock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -11,16 +13,160 @@ import StoryViewer from '../components/StoryViewer';
 import api from '../api/axios';
 import { useApp } from '../context/AppContext';
 
+/* ─── Deterministic gradient from name ─── */
+const GRADIENT_PALETTES = [
+  ['#2EC4B6','#6C5CE7','#BF5AF2'],
+  ['#FF6B6B','#EE5A24','#F0932B'],
+  ['#00B894','#00CEC9','#55EFC4'],
+  ['#6C5CE7','#A29BFE','#FD79A8'],
+  ['#0984E3','#74B9FF','#81ECEC'],
+  ['#E17055','#FDCB6E','#FAB1A0'],
+  ['#636E72','#B2BEC3','#DFE6E9'],
+  ['#2D3436','#0984E3','#00CEC9'],
+];
+
+function getGradientColors(name) {
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash |= 0;
+  }
+  return GRADIENT_PALETTES[Math.abs(hash) % GRADIENT_PALETTES.length];
+}
+
+/* ─── Animated Counter ─── */
+function AnimatedCounter({ value, duration = 800 }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || started.current) return;
+    started.current = true;
+
+    const start = performance.now();
+    const from = 0;
+    const diff = value - from;
+
+    const raf = () => {
+      const t = Math.min((performance.now() - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      setDisplay(Math.round(from + diff * ease));
+      if (t < 1) requestAnimationFrame(raf);
+    };
+    requestAnimationFrame(raf);
+  }, [value, duration]);
+
+  return <span ref={ref}>{display}</span>;
+}
+
+/* ─── Scroll Reveal ─── */
+function ScrollReveal({ children, className = '' }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className={`transition-all duration-700 ease-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ─── Availability Badge ─── */
+function AvailabilityBadge({ status, size = 'sm' }) {
+  if (!status || status === 'all') return null;
+  const isOpen = status === 'open_to_work';
+  const colors = isOpen
+    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700';
+  const dot = isOpen ? 'bg-emerald-500' : 'bg-gray-400';
+  const label = isOpen ? 'Open to Work' : 'Not Looking';
+  const s = size === 'sm' ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1';
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border font-medium ${s} ${colors}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {label}
+    </span>
+  );
+}
+
+/* ─── Profile Tips ─── */
+function ProfileTips({ user, onDismiss }) {
+  const [idx, setIdx] = useState(0);
+  if (!user) return null;
+
+  const tips = [];
+  if (!user.avatar) tips.push({ icon: Camera, msg: 'Add a profile picture to build trust', key: 'avatar' });
+  if (!user.bio) tips.push({ icon: FileText, msg: 'Write a short bio to tell your story', key: 'bio' });
+  if (!user.location) tips.push({ icon: MapPin, msg: 'Add your location for better networking', key: 'location' });
+  if (!user.linkedin) tips.push({ icon: Link2, msg: 'Link your LinkedIn profile', key: 'linkedin' });
+  if (!user.phone) tips.push({ icon: Phone, msg: 'Add a phone number for recruiters', key: 'phone' });
+  if (!user.skills?.length) tips.push({ icon: Star, msg: 'List your skills to stand out', key: 'skills' });
+
+  if (tips.length === 0 || idx >= tips.length) return null;
+  const tip = tips[idx];
+
+  return (
+    <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 rounded-2xl border border-amber-100 dark:border-amber-800/30 p-3 flex items-start gap-3">
+      <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Lightbulb size={13} className="text-amber-600 dark:text-amber-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+            <span className="text-[10px] opacity-60 mr-1">{idx + 1}/{tips.length}</span>
+            {tip.msg}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex gap-1">
+            {tips.map((_, i) => (
+              <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === idx ? 'bg-amber-400' : 'bg-amber-200 dark:bg-amber-700'}`} />
+            ))}
+          </div>
+          <div className="flex gap-2 ml-auto">
+            {idx < tips.length - 1 && (
+              <button onClick={() => setIdx(i => i + 1)}
+                className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline font-medium">
+                Next
+              </button>
+            )}
+            <button onClick={onDismiss}
+              className="text-[10px] text-amber-400 hover:text-amber-600">
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Helpers ─── */
 function Avatar({ src, name, size = 'w-8 h-8', className = '' }) {
+  const [c1, c2] = getGradientColors(name);
   return src
     ? <img src={src} alt={name} className={`${size} rounded-full object-cover ring-2 ring-white ${className}`} />
-    : <div className={`${size} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center ring-2 ring-white ${className}`}>
+    : <div className={`${size} rounded-full flex items-center justify-center ring-2 ring-white ${className}`}
+        style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
         <span className="text-white font-bold text-sm select-none">{name?.[0]?.toUpperCase()}</span>
       </div>;
 }
 
-/* ─── Note Bubble — Facebook-style: sits right above the avatar ─── */
+/* ─── Note Bubble ─── */
 function NoteBubble({ note, isOwn, onEdit, onDelete }) {
   if (!note && !isOwn) return null;
   return (
@@ -41,17 +187,16 @@ function NoteBubble({ note, isOwn, onEdit, onDelete }) {
           <button onClick={onDelete} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors">Delete</button>
         </div>
       )}
-      {/* Downward tail pointing towards the avatar */}
       <div className="w-3 h-3 -mt-px bg-white dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 rotate-45 rounded-br-sm" />
     </div>
   );
 }
 
-/* ─── Note Edit Modal ─── */
+/* ─── Note Modal ─── */
 function NoteModal({ current, onSave, onClose }) {
   const [val, setVal] = useState(current || '');
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-xs shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
@@ -59,13 +204,10 @@ function NoteModal({ current, onSave, onClose }) {
           <p className="font-bold text-gray-900 dark:text-gray-100 text-sm">Your Note</p>
         </div>
         <div className="p-4">
-          <input
-            autoFocus
-            value={val}
+          <input autoFocus value={val}
             onChange={e => setVal(e.target.value.slice(0, 60))}
             placeholder="What's on your mind? (60 chars)"
-            className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:bg-gray-800 dark:text-gray-200 transition-all"
-          />
+            className="w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:bg-gray-800 dark:text-gray-200 transition-all" />
           <p className="text-right text-xs text-gray-400 mt-1">{val.length}/60</p>
         </div>
         <div className="flex gap-3 px-4 pb-4">
@@ -88,7 +230,7 @@ function HighlightViewer({ highlight, onClose }) {
   const item = items[idx];
   if (!item) return null;
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="relative w-full max-w-sm" onClick={e => e.stopPropagation()}>
         <div className="flex gap-1 mb-3">
           {items.map((_, i) => (
@@ -136,7 +278,7 @@ function AddHighlightModal({ onSave, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -182,7 +324,7 @@ function AddHighlightModal({ onSave, onClose }) {
 /* ─── Friends Modal ─── */
 function FriendsModal({ friends, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -214,13 +356,15 @@ function StoryAvatar({ avatar, name, hasStory, allSeen, size = 'w-28 h-28', onCl
       ? 'p-[3px] bg-gray-300 dark:bg-gray-600'
       : 'p-[3px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600'
     : '';
+  const [c1, c2] = getGradientColors(name);
 
   return (
     <div className={`rounded-full cursor-pointer ${ring}`} onClick={onClick}>
       <div className={`${ring ? 'p-1 bg-white dark:bg-gray-900 rounded-full' : ''}`}>
         {avatar
           ? <img src={avatar} alt={name} className={`${size} rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-xl`} />
-          : <div className={`${size} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-700 border-4 border-white dark:border-gray-900 shadow-xl flex items-center justify-center`}>
+          : <div className={`${size} rounded-full border-4 border-white dark:border-gray-900 shadow-xl flex items-center justify-center`}
+              style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
               <span className="text-4xl font-bold text-white select-none">{name?.[0]?.toUpperCase()}</span>
             </div>
         }
@@ -239,14 +383,17 @@ export default function Profile() {
   const [user, setUser]       = useState(null);
   const [stats, setStats]     = useState({ resumes: 0, jobs: 0, friends: 0, messages: 0 });
   const [friends, setFriends] = useState([]);
-  const [form, setForm]       = useState({ name:'', age:'', phone:'', location:'', linkedin:'', avatar:'', bio:'', cover_image:'' });
+  const [form, setForm]       = useState({ name:'', age:'', phone:'', location:'', linkedin:'', avatar:'', bio:'', cover_image:'', skills:[], availability_status:'all' });
+  const [skillInput, setSkillInput] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving]   = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError]     = useState('');
+  const [tipDismissed, setTipDismissed] = useState(false);
+  const [latestExp, setLatestExp] = useState(null);
 
   // Stories
-  const [myStories, setMyStories]   = useState(null); // { stories, all_seen }
+  const [myStories, setMyStories]   = useState(null);
   const [storyViewer, setStoryViewer] = useState(false);
   const [coverModal, setCoverModal]  = useState(false);
   const [avatarModal, setAvatarModal] = useState(false);
@@ -279,11 +426,20 @@ export default function Profile() {
     if (profileRes.status === 'fulfilled') {
       const d = profileRes.value.data;
       setUser(d);
-      setForm({ name: d.name||'', age: d.age||'', phone: d.phone||'', location: d.location||'', linkedin: d.linkedin||'', avatar: d.avatar||'', bio: d.bio||'', cover_image: d.cover_image||'' });
+      setForm({ name: d.name||'', age: d.age||'', phone: d.phone||'', location: d.location||'', linkedin: d.linkedin||'', avatar: d.avatar||'', bio: d.bio||'', cover_image: d.cover_image||'', skills: d.skills||[], availability_status: d.availability_status||'all' });
     }
     if (statsArr.status === 'fulfilled') {
       const [r, j, f, m] = statsArr.value;
       setStats({ resumes: r.data.length, jobs: j.data.length, friends: f.data.length, messages: m.data.count });
+      // Extract latest experience from resumes
+      const resumeList = r.data;
+      if (resumeList.length > 0) {
+        const latest = resumeList.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0];
+        if (latest?.experience?.length > 0) {
+          const sortedExp = [...latest.experience].sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+          setLatestExp(sortedExp[0]);
+        }
+      }
     }
     if (storyRes.status === 'fulfilled') {
       const mine = storyRes.value.data.find(u => u.user_id === myId);
@@ -318,8 +474,8 @@ export default function Profile() {
   };
 
   const handleCancel = () => {
-    if (user) setForm({ name: user.name||'', age: user.age||'', phone: user.phone||'', location: user.location||'', linkedin: user.linkedin||'', avatar: user.avatar||'', bio: user.bio||'', cover_image: user.cover_image||'' });
-    setEditing(false); setError('');
+    if (user) setForm({ name: user.name||'', age: user.age||'', phone: user.phone||'', location: user.location||'', linkedin: user.linkedin||'', avatar: user.avatar||'', bio: user.bio||'', cover_image: user.cover_image||'', skills: user.skills||[], availability_status: user.availability_status||'all' });
+    setEditing(false); setError(''); setSkillInput('');
   };
 
   const saveNote = async (content) => {
@@ -349,6 +505,49 @@ export default function Profile() {
 
   const inp = 'w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 bg-white dark:bg-gray-800 dark:text-gray-200 transition-all';
 
+  /* ─── Profile completeness ─── */
+  const profileCompleteness = (() => {
+    const fields = [
+      { key: 'avatar', weight: 20 },
+      { key: 'bio', weight: 20 },
+      { key: 'location', weight: 15 },
+      { key: 'linkedin', weight: 10 },
+      { key: 'phone', weight: 10 },
+      { key: 'cover_image', weight: 10 },
+      { key: 'skills', weight: 15 },
+    ];
+    let score = 0;
+    for (const f of fields) {
+      const val = user?.[f.key];
+      if (f.key === 'skills') {
+        if (Array.isArray(val) && val.length > 0) score += f.weight;
+      } else if (val && val.trim()) {
+        score += f.weight;
+      }
+    }
+    return Math.min(100, score);
+  })();
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/profile/${myId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setSuccess('Profile link copied!');
+      setTimeout(() => setSuccess(''), 2000);
+    }).catch(() => setSuccess('Could not copy link.'));
+  };
+
+  const addSkill = () => {
+    const s = skillInput.trim();
+    if (s && !form.skills.includes(s)) {
+      setForm(f => ({ ...f, skills: [...f.skills, s] }));
+    }
+    setSkillInput('');
+  };
+
+  const removeSkill = (skill) => {
+    setForm(f => ({ ...f, skills: f.skills.filter(s => s !== skill) }));
+  };
+
   if (!user) return (
     <Layout>
       <div className="flex items-center justify-center h-64">
@@ -365,11 +564,25 @@ export default function Profile() {
   ];
 
   const storyFeedEntry = myStories ? [myStories] : [];
+  const [c1, c2, c3] = getGradientColors(user.name);
 
   return (
     <Layout>
       <style>{`
         @keyframes fadeInDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes scaleIn { from { opacity:0; transform:scale(0.9) } to { opacity:1; transform:scale(1) } }
+        @keyframes slideIn { from { opacity:0; transform:translateX(-12px) } to { opacity:1; transform:translateX(0) } }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .animate-fade-up { animation: fadeInUp 0.4s ease-out both }
+        .animate-scale-in { animation: scaleIn 0.3s ease-out both }
+        .animate-slide-in { animation: slideIn 0.3s ease-out both }
+        .stagger-1 { animation-delay:0.05s } .stagger-2 { animation-delay:0.1s } .stagger-3 { animation-delay:0.15s } .stagger-4 { animation-delay:0.2s } .stagger-5 { animation-delay:0.25s }
+        .animate-shimmer { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 2s ease-in-out infinite }
+        /* Custom scrollbar */
+        .profile-scroll::-webkit-scrollbar { width: 4px }
+        .profile-scroll::-webkit-scrollbar-track { background: transparent }
+        .profile-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #2EC4B6, #6C5CE7); border-radius: 99px }
       `}</style>
 
       {/* Modals */}
@@ -407,280 +620,485 @@ export default function Profile() {
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="max-w-3xl mx-auto space-y-4 profile-scroll">
 
         {success && (
-          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-3 rounded-2xl text-sm border border-emerald-100 dark:border-emerald-800">
+          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-3 rounded-2xl text-sm border border-emerald-100 dark:border-emerald-800 animate-fade-up">
             <Check size={15} />{success}
           </div>
         )}
 
         {/* ── Hero card ── */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-visible">
+        <ScrollReveal>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-visible">
 
-          {/* Cover */}
-          <div className="relative h-52 rounded-t-3xl overflow-hidden group">
-            {form.cover_image
-              ? <img src={form.cover_image} alt="cover" className="w-full h-full object-cover" />
-              : <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500" />
-            }
-            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+            {/* Cover with glass overlay */}
+            <div className="relative h-52 rounded-t-3xl overflow-hidden group">
+              {form.cover_image
+                ? <img src={form.cover_image} alt="cover" className="w-full h-full object-cover" />
+                : <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2}, ${c3})` }} />
+              }
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
 
-            {/* Cover actions */}
-            <div className={`absolute top-3 right-3 flex gap-2 transition-all ${editing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-              {form.cover_image && !editing && (
-                <button onClick={() => setCoverModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-black/50 hover:bg-black/70 text-white text-xs font-medium rounded-xl backdrop-blur-md transition-all">
-                  <Play size={11} />View
+              {/* Cover actions */}
+              <div className={`absolute top-3 right-3 flex gap-2 transition-all ${editing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {form.cover_image && !editing && (
+                  <button onClick={() => setCoverModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-medium rounded-xl transition-all">
+                    <Play size={11} />View
+                  </button>
+                )}
+                <button onClick={() => { if (!editing) setEditing(true); setTimeout(() => coverRef.current?.click(), 50); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-medium rounded-xl transition-all">
+                  <ImageIcon size={11} />{form.cover_image ? 'Change' : 'Add Cover'}
                 </button>
+                {form.cover_image && editing && (
+                  <button onClick={() => setForm(f => ({ ...f, cover_image: '' }))}
+                    className="px-2.5 py-1.5 bg-white/20 hover:bg-red-500/60 backdrop-blur-md text-white text-xs rounded-xl transition-all">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 sm:px-8 pb-8 overflow-visible">
+              {/* Avatar row */}
+              <div className="flex items-end justify-between -mt-14 mb-5 relative overflow-visible">
+                <div className="relative overflow-visible" style={{ marginTop: '-56px', paddingTop: '56px' }}>
+                  <div className="relative inline-block">
+                    <NoteBubble
+                      note={note}
+                      isOwn
+                      onEdit={() => setNoteModal(true)}
+                      onDelete={deleteNote}
+                    />
+                    <StoryAvatar
+                      avatar={form.avatar}
+                      name={form.name}
+                      hasStory={!!myStories?.story_count}
+                      allSeen={myStories?.all_seen ?? false}
+                      size="w-28 h-28"
+                      onClick={() => {
+                        if (myStories?.story_count) setStoryViewer(true);
+                        else if (form.avatar && !editing) setAvatarModal(true);
+                      }}
+                    />
+                    <button
+                      onClick={() => { if (!editing) setEditing(true); setTimeout(() => fileRef.current?.click(), 50); }}
+                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 hover:rotate-12 border-2 border-white dark:border-gray-900 z-10" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+                      <Camera size={13} className="text-white" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Edit / Save / Share */}
+                <div className="flex gap-2 pb-1">
+                  {!editing ? (
+                    <>
+                      <button onClick={handleShare}
+                        className="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                        <Share2 size={12} />Share
+                      </button>
+                      <button onClick={() => setEditing(true)}
+                        className="flex items-center gap-2 px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+                        <Pencil size={13} />Edit Profile
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={handleCancel}
+                        className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                        <X size={13} />Cancel
+                      </button>
+                      <button onClick={handleSave} disabled={saving}
+                        className="flex items-center gap-2 px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 shadow-sm disabled:opacity-60" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+                        {saving
+                          ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>
+                          : <><Save size={13} />Save</>}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Name + info */}
+              {!editing ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{user.name}</h1>
+                    <AvailabilityBadge status={user.availability_status} />
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                  {user.bio && <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-lg">{user.bio}</p>}
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    {user.location && <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400"><MapPin size={12} className="text-gray-400" />{user.location}</span>}
+                    {user.linkedin && (
+                      <a href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
+                        target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-indigo-600 hover:underline">
+                        <Link2 size={12} />LinkedIn
+                      </a>
+                    )}
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <Calendar size={12} />Member since {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+
+                  {/* Skills tags */}
+                  {user.skills?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-2">
+                      {user.skills.map(skill => (
+                        <span key={skill}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full border"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(46,196,182,0.08), rgba(108,92,231,0.08))',
+                            borderColor: 'rgba(108,92,231,0.2)',
+                            color: '#6C5CE7',
+                          }}>
+                          <Star size={9} className="opacity-60" />
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Profile completeness */}
+                  <div className="pt-2">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden relative">
+                        <div className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                          style={{
+                            width: `${profileCompleteness}%`,
+                            background: profileCompleteness === 100
+                              ? 'linear-gradient(90deg, #2EC4B6, #6C5CE7)'
+                              : 'linear-gradient(90deg, #2EC4B6, #6C5CE7)',
+                          }}>
+                          {profileCompleteness > 0 && profileCompleteness < 100 && (
+                            <div className="absolute inset-0 animate-shimmer" />
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-gray-400 flex items-center gap-1">
+                        {profileCompleteness === 100 ? <Trophy size={10} className="text-amber-500" /> : null}
+                        {profileCompleteness}% complete
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 mt-2">
+                  {error && (
+                    <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm border border-red-100 dark:border-red-800">
+                      <AlertCircle size={14} />{error}
+                    </div>
+                  )}
+
+                  {/* Availability toggle */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Availability</label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 'all', label: 'All', icon: Users },
+                        { value: 'open_to_work', label: 'Open to Work', icon: Briefcase },
+                        { value: 'not_looking', label: 'Not Looking', icon: Shield },
+                      ].map(opt => (
+                        <button key={opt.value} onClick={() => setForm(f => ({ ...f, availability_status: opt.value }))}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
+                            form.availability_status === opt.value
+                              ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
+                          }`}>
+                          <opt.icon size={12} />
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.fullName}</label>
+                      <input className={inp} value={form.name} placeholder="Full name" onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+                    <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.age}</label>
+                      <input className={inp} type="number" min="10" max="100" placeholder="Age" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
+                  </div>
+                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.email}</label>
+                    <input className={inp + ' opacity-50 cursor-not-allowed'} value={user.email} disabled /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.phone}</label>
+                      <input className={inp} placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+                    <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.location}</label>
+                      <input className={inp} placeholder="City, Country" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} /></div>
+                  </div>
+                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.linkedin}</label>
+                    <input className={inp} placeholder="linkedin.com/in/..." value={form.linkedin} onChange={e => setForm(f => ({ ...f, linkedin: e.target.value }))} /></div>
+                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Bio</label>
+                    <textarea className={inp + ' resize-none'} rows={3} placeholder="Tell people about yourself..." value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} /></div>
+
+                  {/* Skills */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Skills</label>
+                    <div className="flex gap-2 mb-2">
+                      <input className={inp + ' flex-1'} placeholder="Add a skill..." value={skillInput}
+                        onChange={e => setSkillInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }} />
+                      <button onClick={addSkill} disabled={!skillInput.trim()}
+                        className="px-3 py-2 text-white rounded-xl text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-all flex items-center gap-1" style={{ background: 'linear-gradient(135deg,#2EC4B6,#6C5CE7)' }}>
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                      {form.skills.map(skill => (
+                        <span key={skill}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full border"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(46,196,182,0.08), rgba(108,92,231,0.08))',
+                            borderColor: 'rgba(108,92,231,0.2)',
+                            color: '#6C5CE7',
+                          }}>
+                          {skill}
+                          <button onClick={() => removeSkill(skill)} className="hover:text-red-500 transition-colors">
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                      {form.skills.length === 0 && <span className="text-xs text-gray-300 dark:text-gray-600">No skills added yet</span>}
+                    </div>
+                  </div>
+                </div>
               )}
-              <button onClick={() => { if (!editing) setEditing(true); setTimeout(() => coverRef.current?.click(), 50); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-black/50 hover:bg-black/70 text-white text-xs font-medium rounded-xl backdrop-blur-md transition-all">
-                <ImageIcon size={11} />{form.cover_image ? 'Change' : 'Add Cover'}
+            </div>
+
+            <input ref={fileRef}  type="file" accept="image/*" className="hidden" onChange={e => { readFile(e.target.files[0], 2, 'avatar');  e.target.value=''; }} />
+            <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={e => { readFile(e.target.files[0], 5, 'cover_image'); e.target.value=''; }} />
+          </div>
+        </ScrollReveal>
+
+        {/* ── Stats ── */}
+        <ScrollReveal>
+          <div className="grid grid-cols-4 gap-3">
+            {statCards.map((s, i) => (
+              <Link key={s.label} to={s.to}
+                className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all group`}>
+                <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                  <s.icon size={18} className={s.color} />
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    <AnimatedCounter value={s.value} />
+                  </p>
+                  <p className="text-xs text-gray-400 font-medium">{s.label}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </ScrollReveal>
+
+        {/* ── Quick Actions ── */}
+        <ScrollReveal>
+          <div className="grid grid-cols-3 gap-2">
+            <Link to="/resumes"
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+              <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileText size={16} className="text-indigo-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Create Resume</p>
+                <p className="text-[10px] text-gray-400">Build a new resume</p>
+              </div>
+            </Link>
+            <Link to="/jobs"
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+              <div className="w-9 h-9 bg-sky-50 dark:bg-sky-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Briefcase size={16} className="text-sky-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Browse Jobs</p>
+                <p className="text-[10px] text-gray-400">Find opportunities</p>
+              </div>
+            </Link>
+            <button onClick={handleShare}
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group text-left">
+              <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Share2 size={16} className="text-emerald-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Share Profile</p>
+                <p className="text-[10px] text-gray-400">Copy profile link</p>
+              </div>
+            </button>
+          </div>
+        </ScrollReveal>
+
+        {/* ── Work Experience Preview ── */}
+        {latestExp && !editing && (
+          <ScrollReveal>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 bg-sky-50 dark:bg-sky-900/30 rounded-xl flex items-center justify-center">
+                  <Briefcase size={13} className="text-sky-500" />
+                </div>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Latest Experience</p>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                <div className="w-9 h-9 rounded-lg" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{latestExp.role || 'Role'}</p>
+                  <p className="text-xs text-gray-500">{latestExp.company || 'Company'} · {latestExp.start_date ? `${latestExp.start_date}${latestExp.end_date ? ` - ${latestExp.end_date}` : ''}` : ''}</p>
+                  {latestExp.description && (
+                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">{latestExp.description}</p>
+                  )}
+                </div>
+                <Link to="/resumes" className="text-indigo-500 hover:text-indigo-600 p-1 flex-shrink-0">
+                  <ExternalLink size={13} />
+                </Link>
+              </div>
+            </div>
+          </ScrollReveal>
+        )}
+
+        {/* ── Profile Tips ── */}
+        {!tipDismissed && !editing && (
+          <ScrollReveal>
+            <ProfileTips user={user} onDismiss={() => setTipDismissed(true)} />
+          </ScrollReveal>
+        )}
+
+        {/* ── Highlights ── */}
+        <ScrollReveal>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Sparkles size={14} className="text-amber-500" />Highlights
+              </p>
+              <button onClick={() => setAddHLModal(true)}
+                className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded-lg transition-colors">
+                <Plus size={12} />New
               </button>
-              {form.cover_image && editing && (
-                <button onClick={() => setForm(f => ({ ...f, cover_image: '' }))}
-                  className="px-2.5 py-1.5 bg-black/50 hover:bg-red-600/80 text-white text-xs rounded-xl backdrop-blur-md transition-all">
-                  <X size={11} />
-                </button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              <button onClick={() => setAddHLModal(true)}
+                className="flex-shrink-0 w-[88px] h-[112px] rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-1.5 text-gray-300 dark:text-gray-600 hover:border-indigo-300 hover:text-indigo-400 dark:hover:border-indigo-500 transition-colors">
+                <Plus size={22} />
+                <span className="text-[10px] font-medium">New</span>
+              </button>
+
+              {highlights.length > 0 ? highlights.map(hl => (
+                <div key={hl.id} className="flex-shrink-0 group relative">
+                  <button onClick={() => hl.item_count > 0 && setViewingHL(hl)}
+                    className="w-[88px] h-[112px] rounded-2xl overflow-hidden relative shadow-sm hover:shadow-md transition-shadow block">
+                    {hl.cover_url
+                      ? <img src={hl.cover_url} alt={hl.title} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+                          <Sparkles size={22} className="text-white" />
+                        </div>
+                    }
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 pt-6 pb-2">
+                      <p className="text-white text-[10px] font-semibold truncate text-center leading-tight">{hl.title}</p>
+                    </div>
+                  </button>
+                  <button onClick={() => deleteHighlight(hl.id)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10">
+                    <X size={10} />
+                  </button>
+                </div>
+              )) : (
+                <div className="flex items-center gap-3 px-3 py-2 text-gray-300 dark:text-gray-600">
+                  <Sparkles size={16} className="opacity-50" />
+                  <p className="text-xs">No highlights yet — click <span className="font-semibold">New</span> to add one</p>
+                </div>
               )}
             </div>
           </div>
+        </ScrollReveal>
 
-          {/* Body */}
-          <div className="px-6 sm:px-8 pb-8 overflow-visible">
-            {/* Avatar row */}
-            <div className="flex items-end justify-between -mt-14 mb-5 relative overflow-visible">
-
-              {/* Avatar + Note + Story ring */}
-              <div className="relative overflow-visible" style={{ marginTop: '-56px', paddingTop: '56px' }}>
-                {/* Avatar with story ring — note is positioned relative to this */}
-                <div className="relative inline-block">
-                  {/* Note bubble — positioned just above the avatar */}
-                  <NoteBubble
-                    note={note}
-                    isOwn
-                    onEdit={() => setNoteModal(true)}
-                    onDelete={deleteNote}
-                  />
-
-                  <StoryAvatar
-                    avatar={form.avatar}
-                    name={form.name}
-                    hasStory={!!myStories?.story_count}
-                    allSeen={myStories?.all_seen ?? false}
-                    size="w-28 h-28"
-                    onClick={() => {
-                      if (myStories?.story_count) setStoryViewer(true);
-                      else if (form.avatar && !editing) setAvatarModal(true);
-                    }}
-                  />
-                  {/* Camera button */}
-                  <button
-                    onClick={() => { if (!editing) setEditing(true); setTimeout(() => fileRef.current?.click(), 50); }}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 hover:opacity-90 border-2 border-white dark:border-gray-900 z-10" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
-                    <Camera size={13} className="text-white" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Edit / Save */}
-              <div className="flex gap-2 pb-1">
-                {!editing ? (
-                  <button onClick={() => setEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
-                    <Pencil size={13} />Edit Profile
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={handleCancel}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                      <X size={13} />Cancel
-                    </button>
-                    <button onClick={handleSave} disabled={saving}
-                      className="flex items-center gap-2 px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 shadow-sm disabled:opacity-60" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
-                      {saving
-                        ? <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving...</>
-                        : <><Save size={13} />Save</>}
-                    </button>
-                  </>
-                )}
-              </div>
+        {/* ── Friends Grid ── */}
+        <ScrollReveal>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Users size={14} className="text-emerald-500" />
+                Friends <span className="text-gray-400 font-normal">· {stats.friends}</span>
+              </p>
+              {friends.length > 0 && (
+                <button onClick={() => setFriendsModal(true)}
+                  className="text-xs text-indigo-600 font-semibold hover:underline">
+                  See all
+                </button>
+              )}
             </div>
-
-            {/* Name + info */}
-            {!editing ? (
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{user.name}</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
-                {user.bio && <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-lg">{user.bio}</p>}
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {user.location && <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400"><MapPin size={12} className="text-gray-400" />{user.location}</span>}
-                  {user.linkedin && (
-                    <a href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
-                      target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-indigo-600 hover:underline">
-                      <Link2 size={12} />LinkedIn
-                    </a>
-                  )}
-                  <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <Calendar size={12} />Member since {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
+            {friends.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {friends.slice(0, 9).map(f => (
+                  <button key={f.id} onClick={() => setFriendsModal(true)}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                    <Avatar src={f.avatar} name={f.name} size="w-12 h-12" />
+                    <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate w-full text-center group-hover:text-indigo-600">{f.name?.split(' ')[0]}</p>
+                  </button>
+                ))}
               </div>
             ) : (
-              <div className="space-y-4 mt-2">
-                {error && (
-                  <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm border border-red-100 dark:border-red-800">
-                    <AlertCircle size={14} />{error}
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.fullName}</label>
-                    <input className={inp} value={form.name} placeholder="Full name" onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.age}</label>
-                    <input className={inp} type="number" min="10" max="100" placeholder="Age" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
-                </div>
-                <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.email}</label>
-                  <input className={inp + ' opacity-50 cursor-not-allowed'} value={user.email} disabled /></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.phone}</label>
-                    <input className={inp} placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
-                  <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.location}</label>
-                    <input className={inp} placeholder="City, Country" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} /></div>
-                </div>
-                <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.linkedin}</label>
-                  <input className={inp} placeholder="linkedin.com/in/..." value={form.linkedin} onChange={e => setForm(f => ({ ...f, linkedin: e.target.value }))} /></div>
-                <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Bio</label>
-                  <textarea className={inp + ' resize-none'} rows={3} placeholder="Tell people about yourself..." value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} /></div>
+              <div className="flex flex-col items-center justify-center py-6 text-gray-300 dark:text-gray-600">
+                <Users size={28} className="mb-2 opacity-50" />
+                <p className="text-xs font-medium">No friends yet</p>
+                <p className="text-[10px] mt-0.5">Connect with others to build your network</p>
               </div>
             )}
           </div>
-
-          <input ref={fileRef}  type="file" accept="image/*" className="hidden" onChange={e => { readFile(e.target.files[0], 2, 'avatar');  e.target.value=''; }} />
-          <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={e => { readFile(e.target.files[0], 5, 'cover_image'); e.target.value=''; }} />
-        </div>
-
-        {/* ── Stats ── */}
-        <div className="grid grid-cols-4 gap-3">
-          {statCards.map(s => (
-            <Link key={s.label} to={s.to}
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all group">
-              <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <s.icon size={18} className={s.color} />
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{s.value}</p>
-                <p className="text-xs text-gray-400 font-medium">{s.label}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* ── Highlights ── */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Sparkles size={14} className="text-amber-500" />Highlights
-            </p>
-            <button onClick={() => setAddHLModal(true)}
-              className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded-lg transition-colors">
-              <Plus size={12} />New
-            </button>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-            {/* New highlight button */}
-            <button onClick={() => setAddHLModal(true)}
-              className="flex-shrink-0 w-[88px] h-[112px] rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-1.5 text-gray-300 dark:text-gray-600 hover:border-indigo-300 hover:text-indigo-400 dark:hover:border-indigo-500 transition-colors">
-              <Plus size={22} />
-              <span className="text-[10px] font-medium">New</span>
-            </button>
-
-            {highlights.map(hl => (
-              <div key={hl.id} className="flex-shrink-0 group relative">
-                <button onClick={() => hl.item_count > 0 && setViewingHL(hl)}
-                  className="w-[88px] h-[112px] rounded-2xl overflow-hidden relative shadow-sm hover:shadow-md transition-shadow block">
-                  {hl.cover_url
-                    ? <img src={hl.cover_url} alt={hl.title} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-                        <Sparkles size={22} className="text-white" />
-                      </div>
-                  }
-                  {/* Title overlay at bottom */}
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2 pt-6 pb-2">
-                    <p className="text-white text-[10px] font-semibold truncate text-center leading-tight">{hl.title}</p>
-                  </div>
-                </button>
-                {/* Delete button — top-right on hover */}
-                <button onClick={() => deleteHighlight(hl.id)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10">
-                  <X size={10} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Friends Grid ── */}
-        {friends.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                Friends <span className="text-gray-400 font-normal">· {stats.friends}</span>
-              </p>
-              <button onClick={() => setFriendsModal(true)}
-                className="text-xs text-indigo-600 font-semibold hover:underline">
-                See all
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {friends.slice(0, 9).map(f => (
-                <button key={f.id} onClick={() => setFriendsModal(true)}
-                  className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
-                  <Avatar src={f.avatar} name={f.name} size="w-12 h-12" />
-                  <p className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate w-full text-center group-hover:text-indigo-600">{f.name?.split(' ')[0]}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        </ScrollReveal>
 
         {/* ── Account info (view mode) ── */}
         {!editing && (
-          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-800 flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
-                <Shield size={14} className="text-indigo-500" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Account Information</p>
-                <p className="text-xs text-gray-400">Your personal details</p>
-              </div>
-            </div>
-            <div className="divide-y divide-gray-50 dark:divide-gray-800">
-              {[
-                { icon: User,     label: 'Full Name',  value: user.name },
-                { icon: Mail,     label: 'Email',      value: user.email },
-                { icon: Calendar, label: 'Age',        value: user.age ? `${user.age} years old` : null },
-                { icon: Phone,    label: 'Phone',      value: user.phone },
-                { icon: MapPin,   label: 'Location',   value: user.location },
-                { icon: Link2,    label: 'LinkedIn',   value: user.linkedin },
-              ].map(({ icon: Icon, label, value }) => (
-                <div key={label} className="flex items-center gap-4 px-6 py-3.5">
-                  <div className="w-8 h-8 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                    <Icon size={14} className="text-gray-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-                    {value
-                      ? <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{value}</p>
-                      : <p className="text-sm text-gray-300 dark:text-gray-600">Not set</p>
-                    }
-                  </div>
+          <ScrollReveal>
+            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-800 flex items-center gap-3">
+                <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                  <Shield size={14} className="text-indigo-500" />
                 </div>
-              ))}
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Account Information</p>
+                  <p className="text-xs text-gray-400">Your personal details</p>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                {[
+                  { icon: User,     label: 'Full Name',  value: user.name },
+                  { icon: Mail,     label: 'Email',      value: user.email },
+                  { icon: Calendar, label: 'Age',        value: user.age ? `${user.age} years old` : null },
+                  { icon: Phone,    label: 'Phone',      value: user.phone },
+                  { icon: MapPin,   label: 'Location',   value: user.location },
+                  { icon: Navigation, label: 'Status',   value: user.availability_status === 'open_to_work' ? 'Open to Work' : user.availability_status === 'not_looking' ? 'Not Looking' : null, badge: user.availability_status },
+                  { icon: Link2,    label: 'LinkedIn',   value: user.linkedin },
+                  { icon: Star,     label: 'Skills',     value: user.skills?.length > 0 ? `${user.skills.length} skills` : null, extra: user.skills },
+                ].map(({ icon: Icon, label, value, extra, badge }) => (
+                  <div key={label} className="flex items-center gap-4 px-6 py-3.5">
+                    <div className="w-8 h-8 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                      <Icon size={14} className="text-gray-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+                      {badge ? (
+                        <AvailabilityBadge status={badge} size="md" />
+                      ) : label === 'Skills' && extra?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {extra.slice(0, 5).map(s => (
+                            <span key={s} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'rgba(108,92,231,0.08)', color: '#6C5CE7' }}>{s}</span>
+                          ))}
+                          {extra.length > 5 && <span className="text-[10px] text-gray-400">+{extra.length - 5}</span>}
+                        </div>
+                      ) : value ? (
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{value}</p>
+                      ) : (
+                        <p className="text-sm text-gray-300 dark:text-gray-600">Not set</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </ScrollReveal>
         )}
 
       </div>

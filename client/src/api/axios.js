@@ -20,6 +20,9 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    if (err.response?.status === 429) {
+      console.warn('Rate limited:', err.response?.data?.error || 'Too many requests');
+    }
     return Promise.reject(err);
   }
 );

@@ -37,10 +37,10 @@ const testimonials = [
 ];
 
 const stats = [
-  { label: 'Active Users', value: '12K+', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Resumes Created', value: '48K+', icon: FileText, color: 'text-teal-600', bg: 'bg-teal-50' },
-  { label: 'Jobs Tracked', value: '95K+', icon: Briefcase, color: 'text-violet-600', bg: 'bg-violet-50' },
-  { label: 'Interviews Landed', value: '8K+', icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
+  { label: 'Active Users', value: 'Growing', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { label: 'Resumes Created', value: '500+', icon: FileText, color: 'text-teal-600', bg: 'bg-teal-50' },
+  { label: 'Jobs Tracked', value: '1K+', icon: Briefcase, color: 'text-violet-600', bg: 'bg-violet-50' },
+  { label: 'Interviews Landed', value: '100+', icon: TrendingUp, color: 'text-rose-600', bg: 'bg-rose-50' },
 ];
 
 export default function Landing() {

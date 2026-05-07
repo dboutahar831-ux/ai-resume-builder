@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Briefcase, TrendingUp, Plus, ChevronRight, CheckCircle2, Circle, Target, Lightbulb, ArrowUpRight } from 'lucide-react';
+import { FileText, Briefcase, TrendingUp, Plus, ChevronRight, CheckCircle2, Circle, Target, Lightbulb, ArrowUpRight, BarChart3, Activity } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Layout from '../components/Layout';
 import api from '../api/axios';
 
@@ -19,6 +20,8 @@ const tips = [
   'Follow up within a week of submitting an application.',
   'Research the company before every interview.',
 ];
+
+const PIE_COLORS = ['#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EF4444'];
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -65,11 +68,11 @@ export default function Dashboard() {
   const progress = Math.round((checklist.filter(c => c.done).length / checklist.length) * 100);
 
   const statusBreakdown = [
-    { label: 'Pending',   count: pending,   color: '#F59E0B' },
-    { label: 'Interview', count: interview, color: '#3B82F6' },
-    { label: 'Offered',   count: offered,   color: '#8B5CF6' },
-    { label: 'Accepted',  count: accepted,  color: '#10B981' },
-    { label: 'Rejected',  count: rejected,  color: '#EF4444' },
+    { name: 'Pending',   value: pending,   color: '#F59E0B' },
+    { name: 'Interview', value: interview, color: '#3B82F6' },
+    { name: 'Offered',   value: offered,   color: '#8B5CF6' },
+    { name: 'Accepted',  value: accepted,  color: '#10B981' },
+    { name: 'Rejected',  value: rejected,  color: '#EF4444' },
   ];
 
   if (loading) return (
@@ -99,14 +102,14 @@ export default function Dashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(({ label, value, icon: Icon, gradient, link }) => (
-            <Link key={label} to={link} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+            <Link key={label} to={link} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all group overflow-hidden">
               <div className={`h-1 w-full bg-gradient-to-r ${gradient}`} />
               <div className="p-5">
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
                   <Icon size={18} className="text-white" />
                 </div>
-                <p className="text-2xl font-bold text-gray-900">{value}</p>
-                <p className="text-sm text-gray-400 mt-0.5">{label}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{label}</p>
               </div>
             </Link>
           ))}
@@ -116,69 +119,69 @@ export default function Dashboard() {
         <div className="grid lg:grid-cols-3 gap-5">
 
           {/* Recent Resumes */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
             <div className="h-1" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7)' }} />
-            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+            <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-2">
                 <FileText size={14} className="text-indigo-400" />Recent Resumes
               </h2>
               <Link to="/resumes" className="text-xs font-medium flex items-center gap-1" style={{ color: '#6C5CE7' }}>
                 View all <ChevronRight size={12} />
               </Link>
             </div>
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {resumes.length === 0 ? (
                 <div className="px-5 py-8 text-center">
-                  <FileText size={24} className="text-gray-200 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">No resumes yet</p>
+                  <FileText size={24} className="text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400 dark:text-gray-500">No resumes yet</p>
                   <Link to="/resumes/new" className="inline-flex items-center gap-1 mt-2 text-xs font-semibold" style={{ color: '#6C5CE7' }}>
                     <Plus size={12} />Create one
                   </Link>
                 </div>
               ) : resumes.slice(0, 4).map(r => (
                 <Link key={r.id} to={`/resumes/${r.id}/edit`}
-                  className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors group">
+                  className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#2EC4B6,#6C5CE7)' }}>
                     <FileText size={13} className="text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{r.personal_info?.full_name || 'Untitled'}</p>
-                    <p className="text-xs text-gray-400 truncate">{r.personal_info?.location || 'No location'}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{r.personal_info?.full_name || 'Untitled'}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{r.personal_info?.location || 'No location'}</p>
                   </div>
-                  <ChevronRight size={13} className="text-gray-300 group-hover:text-indigo-400 transition-colors flex-shrink-0" />
+                  <ChevronRight size={13} className="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors flex-shrink-0" />
                 </Link>
               ))}
             </div>
           </div>
 
           {/* Recent Applications */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
             <div className="h-1" style={{ background: 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' }} />
-            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
+            <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-2">
                 <Briefcase size={14} className="text-purple-400" />Recent Applications
               </h2>
               <Link to="/jobs" className="text-xs font-medium flex items-center gap-1" style={{ color: '#6C5CE7' }}>
                 View all <ChevronRight size={12} />
               </Link>
             </div>
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {jobs.length === 0 ? (
                 <div className="px-5 py-8 text-center">
-                  <Briefcase size={24} className="text-gray-200 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">No applications yet</p>
+                  <Briefcase size={24} className="text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400 dark:text-gray-500">No applications yet</p>
                   <Link to="/jobs" className="inline-flex items-center gap-1 mt-2 text-xs font-semibold" style={{ color: '#6C5CE7' }}>
                     <Plus size={12} />Track one
                   </Link>
                 </div>
               ) : jobs.slice(0, 4).map(j => (
-                <div key={j.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-600">
+                <div key={j.id} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-100 dark:from-gray-700 to-gray-200 dark:to-gray-600 flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-600 dark:text-gray-300">
                     {j.company?.[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{j.company}</p>
-                    <p className="text-xs text-gray-400 truncate">{j.role}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{j.company}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{j.role}</p>
                   </div>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${statusColors[j.status]?.bg || 'bg-gray-50'} ${statusColors[j.status]?.text || 'text-gray-600'}`}>
                     {j.status}
@@ -191,14 +194,14 @@ export default function Dashboard() {
           {/* Right column */}
           <div className="space-y-4">
             {/* Progress checklist */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
               <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }} />
               <div className="p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="font-semibold text-gray-900 text-sm">Checklist</h2>
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Checklist</h2>
                   <span className="text-xs font-bold" style={{ color: '#6C5CE7' }}>{progress}%</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4">
+                <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 mb-4">
                   <div className="h-1.5 rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }} />
                 </div>
                 <ul className="space-y-2.5">
@@ -206,9 +209,9 @@ export default function Dashboard() {
                     <li key={text} className="flex items-start gap-2.5">
                       {done
                         ? <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0 mt-0.5" />
-                        : <Circle size={15} className="text-gray-300 flex-shrink-0 mt-0.5" />
+                        : <Circle size={15} className="text-gray-300 dark:text-gray-600 flex-shrink-0 mt-0.5" />
                       }
-                      <span className={`text-xs leading-relaxed ${done ? 'text-gray-400 line-through' : 'text-gray-600'}`}>{text}</span>
+                      <span className={`text-xs leading-relaxed ${done ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-600 dark:text-gray-300'}`}>{text}</span>
                     </li>
                   ))}
                 </ul>
@@ -229,27 +232,65 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Application pipeline */}
+        {/* Charts row */}
         {jobs.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#3B82F6,#8B5CF6,#10B981,#EF4444)' }} />
-            <div className="p-5">
-              <h2 className="font-semibold text-gray-900 text-sm mb-4">Application Pipeline</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {statusBreakdown.map(({ label, count, color }) => (
-                  <div key={label} className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center relative overflow-hidden">
-                    <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: color }} />
-                    <p className="text-2xl font-bold text-gray-900">{count}</p>
-                    <p className="text-xs font-medium text-gray-400 mt-0.5">{label}</p>
-                    {jobs.length > 0 && (
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
-                        <div className="h-1 rounded-full transition-all" style={{ width: `${Math.round((count / jobs.length) * 100)}%`, background: color }} />
-                      </div>
-                    )}
-                  </div>
-                ))}
+          <div className="grid lg:grid-cols-2 gap-5">
+
+            {/* Bar chart — application pipeline */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 size={16} className="text-indigo-500" />
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Application Pipeline</h2>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={statusBreakdown.filter(d => d.value > 0)}>
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8B95A5' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#8B95A5' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                    cursor={{ fill: 'rgba(99,102,241,0.05)' }}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={36}>
+                    {statusBreakdown.filter(d => d.value > 0).map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Pie chart — distribution */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity size={16} className="text-purple-500" />
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Status Distribution</h2>
+              </div>
+              <div className="flex items-center justify-center gap-6">
+                <ResponsiveContainer width={140} height={140}>
+                  <PieChart>
+                    <Pie data={statusBreakdown.filter(d => d.value > 0)} cx="50%" cy="50%" innerRadius={35} outerRadius={65}
+                      dataKey="value" paddingAngle={3}>
+                      {statusBreakdown.filter(d => d.value > 0).map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-1.5">
+                  {statusBreakdown.filter(d => d.value > 0).map(s => (
+                    <div key={s.name} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                      <span className="text-xs text-gray-600 dark:text-gray-300">{s.name}</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-gray-100">{s.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+
           </div>
         )}
 
@@ -265,15 +306,15 @@ export default function Dashboard() {
             </div>
             <ArrowUpRight size={18} className="text-white/60 ml-auto group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </Link>
-          <Link to="/jobs" className="group flex items-center gap-4 bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-all">
-            <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
+          <Link to="/jobs" className="group flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
               <Briefcase size={20} className="text-violet-500" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">Track Application</p>
-              <p className="text-sm text-gray-400">Add a new job application</p>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">Track Application</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">Add a new job application</p>
             </div>
-            <ArrowUpRight size={18} className="text-gray-300 ml-auto group-hover:text-violet-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+            <ArrowUpRight size={18} className="text-gray-300 dark:text-gray-600 ml-auto group-hover:text-violet-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
           </Link>
         </div>
 

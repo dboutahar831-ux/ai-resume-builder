@@ -12,8 +12,8 @@ router.get('/public/:slug', async (req, res) => {
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Resume not found' });
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load resume.' });
   }
 });
 
@@ -42,8 +42,8 @@ router.post('/', async (req, res) => {
       ]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to create resume.' });
   }
 });
 
@@ -55,8 +55,8 @@ router.get('/', async (req, res) => {
       [req.user.id]
     );
     res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load resumes.' });
   }
 });
 
@@ -71,8 +71,8 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load resume.' });
   }
 });
 
@@ -103,8 +103,8 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to update resume.' });
   }
 });
 
@@ -120,7 +120,7 @@ router.post('/:id/duplicate', async (req, res) => {
       [req.user.id, JSON.stringify(s.personal_info), JSON.stringify(s.experience), JSON.stringify(s.education), JSON.stringify(s.skills)]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to duplicate resume.' }); }
 });
 
 // DELETE /api/resumes/:id — delete a resume
@@ -134,8 +134,8 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Resume not found' });
     }
     res.json({ message: 'Resume deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete resume.' });
   }
 });
 

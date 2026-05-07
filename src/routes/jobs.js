@@ -13,8 +13,8 @@ router.get('/', async (req, res) => {
       [req.user.id]
     );
     res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load jobs.' });
   }
 });
 
@@ -29,8 +29,8 @@ router.post('/', async (req, res) => {
       [req.user.id, company, role, status || 'pending', location || '', url || '', notes || '', applied_at || new Date(), interview_date || null]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to create job.' });
   }
 });
 
@@ -45,8 +45,8 @@ router.put('/:id', async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Job not found' });
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to update job.' });
   }
 });
 
@@ -59,8 +59,8 @@ router.delete('/:id', async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Job not found' });
     res.json({ message: 'Job deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete job.' });
   }
 });
 

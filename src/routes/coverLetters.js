@@ -12,8 +12,8 @@ router.get('/', async (req, res) => {
       [req.user.id]
     );
     res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load cover letters.' });
   }
 });
 
@@ -25,8 +25,8 @@ router.get('/:id', async (req, res) => {
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Cover letter not found' });
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to load cover letter.' });
   }
 });
 
@@ -39,8 +39,8 @@ router.post('/', async (req, res) => {
       [req.user.id, title || 'Untitled Cover Letter', job_title || '', company || '', recipient || '', tone || 'professional', content || '']
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to create cover letter.' });
   }
 });
 
@@ -54,8 +54,8 @@ router.put('/:id', async (req, res) => {
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Cover letter not found' });
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to update cover letter.' });
   }
 });
 
@@ -70,7 +70,7 @@ router.post('/:id/duplicate', async (req, res) => {
       [req.user.id, `${s.title} (Copy)`, s.job_title, s.company, s.recipient, s.tone, s.content]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to duplicate cover letter.' }); }
 });
 
 router.delete('/:id', async (req, res) => {
@@ -81,8 +81,8 @@ router.delete('/:id', async (req, res) => {
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Cover letter not found' });
     res.json({ message: 'Deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch {
+    res.status(500).json({ error: 'Failed to delete cover letter.' });
   }
 });
 

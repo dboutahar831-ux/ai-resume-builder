@@ -48,7 +48,17 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const beat = async () => {
-      if (!localStorage.getItem('token')) return;
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp * 1000 < Date.now()) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return;
+        }
+      } catch {}
       try { await api.put('/auth/heartbeat'); } catch {}
     };
     const delay = setTimeout(() => {

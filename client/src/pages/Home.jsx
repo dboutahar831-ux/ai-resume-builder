@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, Users, ThumbsUp,
-  MoreHorizontal, Trash2, Briefcase, FileText, Bell,
-  Repeat2, Video, CornerDownRight, Sparkles, Search, FileSignature, ChevronRight, UserPlus,
+  MoreHorizontal, Trash2,
+  Repeat2, Video, CornerDownRight, Sparkles, Search,
   Clock, Hash, SlidersHorizontal, CalendarClock,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import StoriesBar from '../components/StoriesBar';
 import MentionSuggestions from '../components/MentionSuggestions';
+import HomeSidebar from '../components/HomeSidebar';
 import { useMention } from '../hooks/useMention';
 import api from '../api/axios';
 
@@ -1114,129 +1115,15 @@ export default function Home() {
           </div>
 
           {/* Sidebar */}
-          <div className="hidden lg:flex flex-col gap-4 sticky top-6 self-start">
-
-            {/* Profile card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              style={{ animation: 'slideDown 0.35s ease' }}>
-              <div className="h-16 overflow-hidden">
-                {coverImage
-                  ? <img src={coverImage} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-                }
-              </div>
-              <div className="px-4 pb-4 -mt-7">
-                <Link to="/profile" className="block w-14 h-14 rounded-2xl ring-4 ring-white dark:ring-gray-900 mb-2 overflow-hidden">
-                  {myUser.avatar
-                    ? <img src={myUser.avatar} alt="me" className="w-full h-full object-cover" />
-                    : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">{myUser.name?.[0]}</span>
-                      </div>
-                  }
-                </Link>
-                <p className="text-sm font-bold text-gray-900">{myUser.name}</p>
-                <Link to="/profile" className="text-xs text-indigo-600 hover:underline">View profile</Link>
-
-                <div className="grid grid-cols-2 gap-1.5 mt-3">
-                  {[
-                    { label: 'Resumes', value: stats.resumes, to: '/resumes',  icon: FileText,      color: 'text-indigo-500' },
-                    { label: 'Jobs',    value: stats.jobs,    to: '/jobs',     icon: Briefcase,     color: 'text-blue-500'   },
-                    { label: 'Friends', value: stats.friends, to: '/friends',  icon: Users,         color: 'text-emerald-500'},
-                    { label: 'Unread',  value: stats.unread,  to: '/messages', icon: Bell,          color: 'text-yellow-500' },
-                  ].map(s => (
-                    <Link key={s.label} to={s.to}
-                      className="flex flex-col items-center py-2 rounded-xl hover:bg-gray-50 transition-colors group">
-                      <s.icon size={14} className={`${s.color} mb-0.5 group-hover:scale-110 transition-transform`} />
-                      <span className="text-base font-bold text-gray-900">{s.value}</span>
-                      <span className="text-xs text-gray-400">{s.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Friends online */}
-            {friends.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
-                style={{ animation: 'slideDown 0.45s ease' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-bold text-gray-900">Connections</p>
-                  <Link to="/friends" className="text-xs text-indigo-600 hover:underline font-medium">See all</Link>
-                </div>
-                <div className="space-y-1">
-                  {friends.map(f => (
-                    <Link key={f.id} to={`/friends/${f.id}`}
-                      className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 transition-colors group">
-                      <Avatar user={f} size="sm" showDot lastSeen={f.last_seen_at} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-gray-800 truncate group-hover:text-indigo-700">{f.name}</p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {isOnline(f.last_seen_at) ? '🟢 Active now' : f.location || 'Nexly'}
-                        </p>
-                      </div>
-                      <Link to={`/messages?user=${f.id}`} onClick={e => e.stopPropagation()}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-indigo-500 transition-all">
-                        <MessageSquare size={12} />
-                      </Link>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* People you may know */}
-            {suggestions.filter(u => !addedIds.has(u.id)).length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
-                style={{ animation: 'slideDown 0.5s ease' }}>
-                <p className="text-sm font-bold text-gray-900 mb-3">People you may know</p>
-                <div className="space-y-3">
-                  {suggestions.filter(u => !addedIds.has(u.id)).map(user => (
-                    <div key={user.id} className="flex items-center gap-2.5">
-                      <Link to={`/friends/${user.id}`} className="flex-shrink-0">
-                        <Avatar user={user} size="sm" />
-                      </Link>
-                      <div className="flex-1 min-w-0">
-                        <Link to={`/friends/${user.id}`}
-                          className="text-xs font-semibold text-gray-800 hover:text-indigo-600 transition-colors block truncate">
-                          {user.name}
-                        </Link>
-                        <p className="text-[10px] text-gray-400 truncate">{user.location || 'Nexly member'}</p>
-                      </div>
-                      <button onClick={() => sendRequest(user.id)}
-                        className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors flex-shrink-0">
-                        <UserPlus size={11} />Add
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Quick Access */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
-              style={{ animation: 'slideDown 0.55s ease' }}>
-              <p className="text-sm font-bold text-gray-900 mb-2">Quick Access</p>
-              <div className="space-y-0.5">
-                {[
-                  { to: '/resumes',       icon: FileText,      label: 'Resume Builder',  sub: 'Build your resume',    color: 'text-indigo-500', bg: 'bg-indigo-50' },
-                  { to: '/cover-letters', icon: FileSignature, label: 'Cover Letters',   sub: 'Craft cover letters',  color: 'text-violet-500', bg: 'bg-violet-50' },
-                  { to: '/jobs',          icon: Briefcase,     label: 'Job Tracker',     sub: 'Track applications',   color: 'text-blue-500',   bg: 'bg-blue-50'   },
-                ].map(item => (
-                  <Link key={item.to} to={item.to}
-                    className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors group">
-                    <div className={`w-7 h-7 rounded-lg ${item.bg} flex items-center justify-center flex-shrink-0`}>
-                      <item.icon size={13} className={item.color} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800">{item.label}</p>
-                      <p className="text-[10px] text-gray-400">{item.sub}</p>
-                    </div>
-                    <ChevronRight size={12} className="text-gray-300 group-hover:text-gray-400 flex-shrink-0" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
+          <HomeSidebar
+            myUser={myUser}
+            coverImage={coverImage}
+            stats={stats}
+            friends={friends}
+            suggestions={suggestions}
+            addedIds={addedIds}
+            sendRequest={sendRequest}
+          />
 
         </div>
       </div>

@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+.env.example
 
 # Dependencies
 node_modules/
@@ -21,4 +22,18 @@ client/vite-err.log
 .DS_Store
 Thumbs.db
 
+# Deployment folders
 .vercel
+.netlify
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Local machine config
+.claude/settings.local.json
+
+# Misc
+ads/

@@ -7,6 +7,9 @@ const auth = require('../middleware/auth');
 router.get('/feed', auth, async (req, res) => {
   try {
     const result = await pool.query(`
+      WITH viewed_stories AS (
+        SELECT story_id FROM story_views WHERE viewer_id = $1
+      )
       SELECT
         u.id AS user_id, u.name, u.avatar,
         json_agg(
@@ -14,13 +17,14 @@ router.get('/feed', auth, async (req, res) => {
             'id', s.id, 'media_url', s.media_url, 'media_type', s.media_type,
             'caption', s.caption, 'music_name', s.music_name, 'music_url', s.music_url,
             'created_at', s.created_at,
-            'viewed', EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id = $1)
+            'viewed', vs.story_id IS NOT NULL
           ) ORDER BY s.created_at ASC
         ) AS stories,
         COUNT(*)::int AS story_count,
-        BOOL_AND(EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id = $1)) AS all_seen
+        BOOL_AND(vs.story_id IS NOT NULL) AS all_seen
       FROM stories s
       JOIN users u ON u.id = s.user_id
+      LEFT JOIN viewed_stories vs ON vs.story_id = s.id
       WHERE s.expires_at > NOW()
         AND (
           s.user_id = $1 OR
@@ -33,11 +37,11 @@ router.get('/feed', auth, async (req, res) => {
       GROUP BY u.id, u.name, u.avatar
       ORDER BY
         CASE WHEN u.id = $1 THEN 0 ELSE 1 END,
-        BOOL_AND(EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id = $1)) ASC,
+        BOOL_AND(vs.story_id IS NOT NULL) ASC,
         MAX(s.created_at) DESC
     `, [req.user.id]);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load stories.' }); }
 });
 
 // POST /api/stories — create story
@@ -52,7 +56,7 @@ router.post('/', auth, async (req, res) => {
       [req.user.id, media_url, media_type, caption || null, music_url || null, music_name || null]
     );
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to create story.' }); }
 });
 
 // POST /api/stories/:id/view
@@ -63,7 +67,7 @@ router.post('/:id/view', auth, async (req, res) => {
       [req.params.id, req.user.id]
     );
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to record view.' }); }
 });
 
 // DELETE /api/stories/:id
@@ -71,7 +75,7 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     await pool.query(`DELETE FROM stories WHERE id=$1 AND user_id=$2`, [req.params.id, req.user.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to delete story.' }); }
 });
 
 module.exports = router;

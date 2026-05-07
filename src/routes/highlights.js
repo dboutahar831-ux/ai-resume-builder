@@ -19,7 +19,7 @@ router.get('/:userId', auth, async (req, res) => {
       ORDER BY h.created_at DESC
     `, [req.params.userId]);
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to load highlights.' }); }
 });
 
 // POST /api/highlights
@@ -32,7 +32,7 @@ router.post('/', auth, async (req, res) => {
       [req.user.id, title.trim(), cover_url || null]
     );
     res.json({ ...result.rows[0], items: [], item_count: 0 });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to create highlight.' }); }
 });
 
 // POST /api/highlights/:id/items
@@ -49,7 +49,7 @@ router.post('/:id/items', auth, async (req, res) => {
     );
     await pool.query(`UPDATE highlights SET cover_url = COALESCE(cover_url, $1) WHERE id=$2`, [media_url, req.params.id]);
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to add item.' }); }
 });
 
 // DELETE /api/highlights/:id
@@ -57,7 +57,7 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     await pool.query(`DELETE FROM highlights WHERE id=$1 AND user_id=$2`, [req.params.id, req.user.id]);
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Failed to delete highlight.' }); }
 });
 
 module.exports = router;

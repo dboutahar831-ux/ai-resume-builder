@@ -1,23 +1,15 @@
 const express = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert resume writer and career coach with 15+ years of experience crafting professional resumes that get interviews. Your role is to generate polished, ATS-optimized resume content that is specific, impactful, and tailored to the candidate's field and experience level.
-
-Guidelines:
-- Use strong action verbs (Led, Built, Optimized, Delivered, Architected, etc.)
-- Include quantifiable achievements where plausible (percentages, team sizes, timelines)
-- Keep tone professional yet natural — avoid buzzword overload
-- Match seniority: junior roles focus on learning and contributions; senior roles emphasize leadership and impact
-- Skills should be specific technologies, tools, and methodologies relevant to the field
-- Experience descriptions should be 2-3 bullet points, each on its own line starting with •
-
-Always respond with valid JSON only — no markdown fences, no explanation.`;
+if (!process.env.GROQ_API_KEY) {
+  console.warn('[WARN] GROQ_API_KEY is not set — AI enhancement & generation via Groq will fail');
+}
 
 router.post('/generate', auth, async (req, res) => {
+  if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'AI service not configured.' });
+
   const { job_title, years_experience, field, existing_skills } = req.body;
 
   if (!job_title || !years_experience || !field) {
@@ -30,45 +22,53 @@ router.post('/generate', auth, async (req, res) => {
     years_experience <= 6 ? 'mid-level' :
     years_experience <= 10 ? 'senior' : 'principal/staff';
 
-  const userPrompt = `Generate resume content for:
-- Job Title: ${job_title}
-- Field: ${field}
-- Experience: ${years_experience} year${years_experience !== 1 ? 's' : ''} (${level})
-${existing_skills ? `- Existing Skills: ${Array.isArray(existing_skills) ? existing_skills.join(', ') : existing_skills}` : ''}
+  const skillsHint = existing_skills
+    ? `Incorporate these skills if relevant: ${Array.isArray(existing_skills) ? existing_skills.join(', ') : existing_skills}.`
+    : '';
 
-Return a JSON object with exactly these three keys:
+  const prompt = `Generate ATS-optimized resume content for a ${level} ${job_title} in the ${field} field with ${years_experience} years of experience.
+${skillsHint}
+
+Return ONLY a valid JSON object — no markdown fences, no explanation:
 {
-  "summary": "A 2-3 sentence professional summary highlighting expertise, key strengths, and value proposition",
-  "skills": ["skill1", "skill2", "skill3", ...],
-  "experience_description": "• Bullet 1\\n• Bullet 2\\n• Bullet 3"
+  "summary": "2-3 sentence professional summary with strong action words, specific expertise, and value proposition",
+  "skills": ["skill1", "skill2", ...],
+  "experience_description": "• Strong action verb + quantifiable achievement 1\\n• Strong action verb + quantifiable achievement 2\\n• Strong action verb + quantifiable achievement 3"
 }
 
-The skills array should contain 8-12 specific, relevant skills for this role and field.`;
+Rules:
+- skills: 8-12 specific, relevant technical and professional skills for this exact role and field
+- Each experience bullet must start with a strong verb (Led, Built, Architected, Delivered, etc.)
+- Include realistic numbers: %, $, team sizes, timeframes
+- Match seniority: entry-level focuses on learning; senior on leadership and impact`;
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 900,
+        temperature: 0.65,
+        messages: [
+          { role: 'system', content: 'You are an expert resume writer with 15+ years of experience. Always respond with valid JSON only — no markdown fences, no extra text.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
     });
-
-    const textBlock = response.content.find(b => b.type === 'text');
-    if (!textBlock) throw new Error('No text in Claude response');
-
-    const generated = JSON.parse(textBlock.text);
-
-    if (!generated.summary || !generated.skills || !generated.experience_description) {
-      throw new Error('Incomplete response from AI');
-    }
-
+    if (!groqRes.ok) { const e = await groqRes.json().catch(() => ({})); throw new Error(e.error?.message || 'Groq error'); }
+    const data = await groqRes.json();
+    const text = data.choices?.[0]?.message?.content?.trim();
+    if (!text) throw new Error('No response');
+    const generated = JSON.parse(text);
+    if (!generated.summary || !generated.skills || !generated.experience_description) throw new Error('Incomplete response');
     res.json(generated);
   } catch (err) {
     console.error('AI generation error:', err.message);
     if (err instanceof SyntaxError) {
       return res.status(502).json({ error: 'AI returned malformed response. Please try again.' });
     }
-    res.status(500).json({ error: err.message || 'AI generation failed' });
+    res.status(500).json({ error: 'AI generation failed. Please try again.' });
   }
 });
 
@@ -77,6 +77,7 @@ router.post('/enhance', auth, async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'text is required.' });
   if (text.trim().length < 5) return res.status(400).json({ error: 'Text is too short to enhance.' });
+  if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'AI service not configured.' });
 
   try {
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -125,6 +126,7 @@ Rules:
 router.post('/cover-letter', auth, async (req, res) => {
   const { job_title, company, recipient, tone, language, background, skills, why_this_job, years_experience } = req.body;
   if (!job_title && !company) return res.status(400).json({ error: 'job_title or company is required.' });
+  if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'AI service not configured.' });
 
   const langInstruction = { en: 'Write in English.', fr: 'Écris en français.', ar: 'اكتب باللغة العربية.' }[language] || 'Write in English.';
   const toneGuide = {
@@ -181,6 +183,7 @@ router.post('/generate-resume', auth, async (req, res) => {
   if (!job_title || !years_experience || !field) {
     return res.status(400).json({ error: 'job_title, years_experience, and field are required.' });
   }
+  if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'AI service not configured.' });
 
   const level =
     years_experience <= 1 ? 'entry-level' :
