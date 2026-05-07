@@ -563,16 +563,16 @@ export default function Messages() {
 
           {/* Header */}
           {activeGroup ? (
-            <div className="px-4 py-3 border-b border-[#21262E] flex items-center gap-3 bg-[#151921] flex-shrink-0">
-              <button onClick={() => { setMobileView('list'); setActiveGroup(null); setGroupMessages([]); }} className="lg:hidden p-1.5 text-[#5A6375] hover:text-[#E8ECF1] hover:bg-[#1A1F2B] rounded-xl transition-all">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-[#21262E] flex items-center gap-3 bg-white dark:bg-[#151921] flex-shrink-0">
+              <button onClick={() => { setMobileView('list'); setActiveGroup(null); setGroupMessages([]); }} className="lg:hidden p-1.5 text-gray-400 dark:text-[#5A6375] hover:text-gray-600 dark:hover:text-[#E8ECF1] hover:bg-gray-100 dark:hover:bg-[#1A1F2B] rounded-xl transition-all">
                 <ArrowLeft size={18} />
               </button>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#BF5AF2] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                 {activeGroup.name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-[#E8ECF1] text-sm truncate">{activeGroup.name}</p>
-                <p className="text-xs text-[#8B95A5]">{activeGroup.member_count || 0} members</p>
+                <p className="font-bold text-gray-900 dark:text-[#E8ECF1] text-sm truncate">{activeGroup.name}</p>
+                <p className="text-xs text-gray-500 dark:text-[#8B95A5]">{activeGroup.member_count || 0} members</p>
               </div>
             </div>
           ) : activeUser ? (
@@ -595,13 +595,13 @@ export default function Messages() {
               </div>
             </div>
           ) : (
-            <div className="px-4 py-3 border-b border-[#21262E] bg-[#151921] flex-shrink-0">
-              <p className="text-sm font-semibold text-[#8B95A5]">Select a conversation</p>
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-[#21262E] bg-white dark:bg-[#151921] flex-shrink-0">
+              <p className="text-sm font-semibold text-gray-500 dark:text-[#8B95A5]">Select a conversation</p>
             </div>
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-[#0B0E14]">
+          <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-gray-50 dark:bg-[#0B0E14]">
             {!activeUser && !activeGroup && (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
@@ -619,7 +619,7 @@ export default function Messages() {
             {activeUser && messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <Avatar user={activeUser} size="lg" />
-                <p className="text-[#E8ECF1] font-bold mt-3 text-base">{activeUser.name}</p>
+                <p className="text-gray-900 dark:text-[#E8ECF1] font-bold mt-3 text-base">{activeUser.name}</p>
                 <EmptyState
                   icon={<MessageSquare size={20} className="text-[#6C5CE7]" />}
                   title="No messages yet"
@@ -710,12 +710,12 @@ export default function Messages() {
 
           {/* Input area */}
           {(activeUser || activeGroup) && (
-            <div className="border-t border-[#21262E] bg-[#151921] flex-shrink-0">
+            <div className="border-t border-gray-200 dark:border-[#21262E] bg-white dark:bg-[#151921] flex-shrink-0">
 
               {msgImage && (
                 <div className="px-4 pt-3 flex items-start gap-2">
                   <div className="relative inline-block">
-                    <img src={msgImage} loading="lazy" alt="preview" className="h-20 rounded-xl object-cover border border-[#21262E]" />
+                    <img src={msgImage} loading="lazy" alt="preview" className="h-20 rounded-xl object-cover border border-gray-200 dark:border-[#21262E]" />
                     <button onClick={() => setMsgImage('')}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center hover:bg-gray-900">
                       <X size={10} />
@@ -777,7 +777,7 @@ export default function Messages() {
                     onKeyDown={(e) => { if (activeGroup) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGroupMessage(); } } else handleKeyDown(e); }}
                     placeholder={activeGroup ? `Message ${activeGroup.name}…` : pendingVoice ? 'Add a caption... (optional)' : activeUser ? `Message ${activeUser.name}…` : 'Type a message…'}
                     rows={1}
-                    className="flex-1 px-4 py-2.5 border border-[#21262E] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30 bg-[#1A1F2B] text-[#E8ECF1] placeholder-[#5A6375] resize-none overflow-hidden leading-relaxed"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-[#21262E] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30 bg-gray-100 dark:bg-[#1A1F2B] text-gray-900 dark:text-[#E8ECF1] placeholder-gray-400 dark:placeholder-[#5A6375] resize-none overflow-hidden leading-relaxed"
                     style={{ minHeight: '42px', maxHeight: '120px' }}
                   />
 
