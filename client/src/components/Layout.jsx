@@ -3,7 +3,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare,
   Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight,
-  Heart, Repeat2, CornerDownRight, Moon, Sun, LogOut,
+  Heart, Repeat2, CornerDownRight, LogOut,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -218,11 +218,6 @@ export default function Layout({ children }) {
             <span className="font-bold text-gray-900 dark:text-white tracking-tight text-base">Nexly</span>
           </Link>
           <div className="flex items-center gap-0.5">
-            <button onClick={() => setDark(d => !d)}
-              className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 transition-all"
-              title={dark ? 'Light mode' : 'Dark mode'}>
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
             <NotificationBell items={notifItems} count={notifCount} onMarkRead={markAllRead} onClose={() => setOpen(false)} />
             <button onClick={() => setOpen(false)} className="lg:hidden p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
               <X size={17} />

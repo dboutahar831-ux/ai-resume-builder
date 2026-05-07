@@ -15,7 +15,7 @@ export function Skeleton({ className = '', count = 1 }) {
 
 export function PostSkeleton() {
   return (
-    <div className="bg-[#151921] rounded-2xl border border-[#21262E] p-5 space-y-4">
+    <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
       <div className="flex items-center gap-3">
         <Skeleton className="w-10 h-10 rounded-full" />
         <div className="flex-1 space-y-1.5">
@@ -36,7 +36,7 @@ export function PostSkeleton() {
 
 export function ProfileSkeleton() {
   return (
-    <div className="bg-[#151921] rounded-2xl border border-[#21262E] p-6 space-y-4">
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
       <div className="flex items-center gap-4">
         <Skeleton className="w-16 h-16 rounded-full" />
         <div className="flex-1 space-y-2">

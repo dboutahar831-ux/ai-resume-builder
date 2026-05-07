@@ -38,7 +38,7 @@ export function ToastProvider({ children }) {
               toast.type === 'success' ? 'bg-emerald-900/90 border-emerald-700' :
               toast.type === 'error'   ? 'bg-rose-900/90 border-rose-700' :
               toast.type === 'warning' ? 'bg-amber-900/90 border-amber-700' :
-              'bg-[#151921] border-[#21262E]'
+              'bg-white border-gray-200'
             }`}
             style={{ backdropFilter: 'blur(12px)' }}>
             {icons[toast.type] || icons.info}

@@ -6,7 +6,7 @@ import { useToast } from './Toast';
 function AvatarCircle({ user, size = 'sm' }) {
   const sz = size === 'lg' ? 'w-10 h-10' : 'w-8 h-8';
   return user?.avatar
-    ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-[#21262E]`} />
+    ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-gray-200`} />
     : <div className={`${sz} rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#BF5AF2] flex items-center justify-center text-white font-bold text-xs`}>
         {user?.name?.[0] || 'G'}
       </div>;
@@ -43,27 +43,27 @@ function CreateGroupModal({ onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#151921] rounded-2xl border border-[#21262E] w-full max-w-md p-6 animate-pop" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md p-6 animate-pop" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-[#E8ECF1]">Create Group</h2>
-          <button onClick={onClose} className="p-1 text-[#5A6375] hover:text-[#E8ECF1]"><X size={18} /></button>
+          <h2 className="text-lg font-bold text-gray-900">Create Group</h2>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-900"><X size={18} /></button>
         </div>
         <div className="space-y-4">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Group name" maxLength={100}
-            className="w-full px-4 py-2.5 bg-[#1A1F2B] border border-[#21262E] rounded-xl text-sm text-[#E8ECF1] placeholder-[#5A6375] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30" />
+            className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30" />
           <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" maxLength={200}
-            className="w-full px-4 py-2.5 bg-[#1A1F2B] border border-[#21262E] rounded-xl text-sm text-[#E8ECF1] placeholder-[#5A6375] focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30" />
+            className="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30" />
           {friends.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-[#8B95A5] mb-2">Add members ({selected.length} selected)</p>
+              <p className="text-xs font-medium text-gray-500 mb-2">Add members ({selected.length} selected)</p>
               <div className="max-h-48 overflow-y-auto space-y-1 custom-scrollbar">
                 {friends.map(f => (
                   <button key={f.id} onClick={() => toggle(f.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all text-left ${
-                      selected.includes(f.id) ? 'bg-[#6C5CE7]/20 border border-[#6C5CE7]/40' : 'hover:bg-[#1A1F2B] border border-transparent'
+                      selected.includes(f.id) ? 'bg-[#6C5CE7]/20 border border-[#6C5CE7]/40' : 'hover:bg-gray-100 border border-transparent'
                     }`}>
                     <AvatarCircle user={f} />
-                    <span className="text-sm text-[#E8ECF1]">{f.name}</span>
+                    <span className="text-sm text-gray-900">{f.name}</span>
                   </button>
                 ))}
               </div>
@@ -107,11 +107,11 @@ export default function GroupsPanel({ onSelectGroup, activeGroupId }) {
 
   return (
     <>
-      <div className="px-4 py-3 border-b border-[#21262E]">
+      <div className="px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-semibold text-[#8B95A5] uppercase tracking-wider">Groups</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Groups</p>
           <button onClick={() => setShowCreate(true)}
-            className="p-1 text-[#5A6375] hover:text-[#6C5CE7] transition-colors">
+            className="p-1 text-gray-400 hover:text-[#6C5CE7] transition-colors">
             <Plus size={14} />
           </button>
         </div>
@@ -119,14 +119,14 @@ export default function GroupsPanel({ onSelectGroup, activeGroupId }) {
           {groups.map(g => (
             <button key={g.id} onClick={() => onSelectGroup(g)}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                activeGroupId === g.id ? 'bg-[#6C5CE7]/20 text-[#6C5CE7] border border-[#6C5CE7]/40' : 'bg-[#1A1F2B] text-[#8B95A5] hover:bg-[#21262E] border border-transparent'
+                activeGroupId === g.id ? 'bg-[#6C5CE7]/20 text-[#6C5CE7] border border-[#6C5CE7]/40' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-transparent'
               }`}>
               <UsersRound size={12} />
               <span className="truncate max-w-[80px]">{g.name}</span>
             </button>
           ))}
           {!loading && groups.length === 0 && (
-            <p className="text-[10px] text-[#5A6375] py-1">No groups yet</p>
+            <p className="text-[10px] text-gray-400 py-1">No groups yet</p>
           )}
         </div>
       </div>

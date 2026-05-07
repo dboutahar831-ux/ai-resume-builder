@@ -13,11 +13,11 @@ export default class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center p-6">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-[#E8ECF1] mb-2">Something went wrong</h2>
-            <p className="text-sm text-[#8B95A5] mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-sm text-gray-500 mb-6">
               {this.state.error?.message || 'An unexpected error occurred.'}
             </p>
             <button

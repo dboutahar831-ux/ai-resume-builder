@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Globe, Moon, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck, ShieldOff, UserX, ShieldAlert } from 'lucide-react';
+import { Globe, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck, ShieldOff, UserX, ShieldAlert } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../components/Toast';
@@ -206,34 +206,10 @@ export default function Settings() {
         {/* Theme */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-1">
-            {dark ? <Moon size={16} className="text-gray-400" /> : <Sun size={16} className="text-gray-400" />}
+            <Sun size={16} className="text-gray-400" />
             <h3 className="font-semibold text-gray-900">{t.theme}</h3>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Switch between light and dark appearance.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setDark(false)}
-              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
-                !dark ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-              }`}>
-              <Sun size={20} />
-              <div className="text-left">
-                <p className="font-medium">{t.lightMode}</p>
-                <p className="text-xs opacity-60 mt-0.5">Clean & bright</p>
-              </div>
-              {!dark && <Check size={14} className="ml-auto text-indigo-600" />}
-            </button>
-            <button onClick={() => setDark(true)}
-              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
-                dark ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-              }`}>
-              <Moon size={20} />
-              <div className="text-left">
-                <p className="font-medium">{t.darkMode}</p>
-                <p className="text-xs opacity-60 mt-0.5">Easy on the eyes</p>
-              </div>
-              {dark && <Check size={14} className="ml-auto text-indigo-600" />}
-            </button>
-          </div>
+          <p className="text-xs text-gray-400">Light mode — always on.</p>
         </div>
 
         {/* Password */}

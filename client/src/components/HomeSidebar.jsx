@@ -128,16 +128,16 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
 
       {/* Trending Hashtags */}
       {trending.length > 0 && (
-        <div className="bg-[#151921] rounded-2xl border border-[#21262E] p-4" style={{ animation: 'slideDown 0.5s ease' }}>
-          <p className="text-sm font-bold text-[#E8ECF1] mb-3 flex items-center gap-1.5">
+        <div className="bg-white rounded-2xl border border-gray-200 p-4" style={{ animation: 'slideDown 0.5s ease' }}>
+          <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1.5">
             <Hash size={14} className="text-[#6C5CE7]" /> Trending
           </p>
           <div className="space-y-2">
             {trending.map(t => (
               <Link key={t.tag} to={`/home?tag=${t.tag}`}
-                className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-[#1A1F2B] transition-colors group">
+                className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors group">
                 <span className="text-sm font-medium text-[#6C5CE7] group-hover:text-[#BF5AF2] transition-colors">#{t.tag}</span>
-                <span className="text-[10px] text-[#5A6375]">{t.post_count} posts</span>
+                <span className="text-[10px] text-gray-400">{t.post_count} posts</span>
               </Link>
             ))}
           </div>

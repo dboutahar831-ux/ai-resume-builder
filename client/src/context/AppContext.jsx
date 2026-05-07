@@ -44,7 +44,7 @@ const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [lang, setLang] = useState(() => localStorage.getItem('lang') || 'en');
-  const [dark, setDark] = useState(() => localStorage.getItem('dark') === 'true');
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
     const beat = async () => {

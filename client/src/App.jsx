@@ -26,10 +26,10 @@ const Admin = lazy(() => import('./pages/Admin'));
 
 function Loader() {
   return (
-    <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-[#6C5CE7] border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-[#8B95A5]">Loading…</p>
+        <p className="text-sm text-gray-500">Loading…</p>
       </div>
     </div>
   );
@@ -42,10 +42,10 @@ function PrivateRoute({ children }) {
 function NotFound() {
   const isLoggedIn = !!localStorage.getItem('token');
   return (
-    <div className="min-h-screen bg-[#0B0E14] flex flex-col items-center justify-center text-center px-6">
-      <div className="text-8xl font-black text-[#151921] mb-4 select-none">404</div>
-      <h1 className="text-2xl font-bold text-[#E8ECF1] mb-2">Page not found</h1>
-      <p className="text-[#8B95A5] mb-8 max-w-sm">The page you're looking for doesn't exist or has been moved.</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center px-6">
+      <div className="text-8xl font-black text-gray-200 mb-4 select-none">404</div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Page not found</h1>
+      <p className="text-gray-500 mb-8 max-w-sm">The page you're looking for doesn't exist or has been moved.</p>
       <div className="flex gap-3">
         <Link to={isLoggedIn ? '/home' : '/'}
           className="px-6 py-2.5 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all"
@@ -54,7 +54,7 @@ function NotFound() {
         </Link>
         {isLoggedIn && (
           <Link to="/dashboard"
-            className="px-6 py-2.5 border border-[#21262E] text-[#8B95A5] text-sm font-medium rounded-xl hover:bg-[#151921] transition-all">
+            className="px-6 py-2.5 border border-gray-200 text-gray-500 text-sm font-medium rounded-xl hover:bg-white transition-all">
             Dashboard
           </Link>
         )}
