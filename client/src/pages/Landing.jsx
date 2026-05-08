@@ -58,9 +58,6 @@ export default function Landing() {
             <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
             <a href="#how" className="hover:text-gray-900 transition-colors">How It Works</a>
             <a href="#testimonials" className="hover:text-gray-900 transition-colors">Reviews</a>
-            <Link to="/promo" className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors">
-              <span>🎬</span> Promo
-            </Link>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-2 hidden sm:block">
@@ -260,7 +257,6 @@ export default function Landing() {
               <a href="#testimonials" className="hover:text-gray-600 transition-colors">Reviews</a>
               <Link to="/register" className="hover:text-gray-600 transition-colors">Sign Up</Link>
               <Link to="/login" className="hover:text-gray-600 transition-colors">Log In</Link>
-              <Link to="/promo" className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 transition-colors font-medium">🎬 Promo</Link>
             </div>
             <span className="text-sm text-gray-400">© 2026 Nexly. All rights reserved.</span>
           </div>

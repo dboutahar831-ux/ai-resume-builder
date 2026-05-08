@@ -10,7 +10,6 @@ import Layout from '../components/Layout';
 import StoriesBar from '../components/StoriesBar';
 import MentionSuggestions from '../components/MentionSuggestions';
 import HomeSidebar from '../components/HomeSidebar';
-import PromoBanner from '../components/PromoBanner';
 import { useMention } from '../hooks/useMention';
 import { useToast } from '../components/Toast';
 import api from '../api/axios';
@@ -680,7 +679,6 @@ export default function Home() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [trendingTopics, setTrendingTopics] = useState(FALLBACK_TOPICS);
   const [scheduleModal, setScheduleModal] = useState(false);
-  const [showPromo, setShowPromo] = useState(true);
   const [scheduledAt, setScheduledAt] = useState(null);
   const postFileRef = useRef();
   const postVideoRef = useRef();
@@ -967,9 +965,6 @@ export default function Home() {
 
           {/* Feed */}
           <div className="lg:col-span-2 space-y-4">
-
-            {/* Promo Banner */}
-            {showPromo && <PromoBanner onDismiss={() => setShowPromo(false)} />}
 
             {/* Stories Bar */}
             <StoriesBar myUser={myUser} />

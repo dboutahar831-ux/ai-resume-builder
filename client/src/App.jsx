@@ -23,7 +23,6 @@ const CoverLetters = lazy(() => import('./pages/CoverLetters'));
 const CoverLetterBuilder = lazy(() => import('./pages/CoverLetterBuilder'));
 const PublicResume = lazy(() => import('./pages/PublicResume'));
 const Admin = lazy(() => import('./pages/Admin'));
-const Promo = lazy(() => import('./pages/Promo'));
 
 function Loader() {
   return (
@@ -77,7 +76,6 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/cv/:slug" element={<PublicResume />} />
-            <Route path="/promo" element={<Promo />} />
 
             <Route path="/home"       element={<PrivateRoute><Home /></PrivateRoute>} />
             <Route path="/dashboard"  element={<PrivateRoute><Dashboard /></PrivateRoute>} />
