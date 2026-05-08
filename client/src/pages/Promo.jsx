@@ -1,404 +1,408 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// ─── Scene data ──────────────────────────────────────────────
-const SCENES = [
-  { start: 0,   end: 5,   title: 'Nexly',     sub: 'AI · Career · Future', tag: 'منصتك الذكية للمستقبل المهني', icon: 'logo' },
-  { start: 5,   end: 10,  title: 'منشئ السيرة الذاتية',  tag: 'Resume Builder', icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2 14 8 20 8 M16 13 8 13 M16 17 8 17' },
-  { start: 10,  end: 15,  title: 'خطابات التغطية',       tag: 'Cover Letters',  icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2 14 8 20 8 M9 15h6 M12 12v6' },
-  { start: 15,  end: 20,  title: 'متتبع الوظائف',        tag: 'Job Tracker',   icon: 'M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16' },
-  { start: 20,  end: 25,  title: 'لوحة التحكم',          tag: 'Dashboard',     icon: 'M18 20 18 10 M12 20 12 4 M6 20 6 14' },
-  { start: 25,  end: 30,  title: 'التواصل الاجتماعي',    tag: 'Social Feed',   icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8' },
-  { start: 30,  end: 35,  title: 'الرسائل والمجموعات',   tag: 'Messaging',     icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
-  { start: 35,  end: 40,  title: '6 لغات عالمية',         tag: '6 Languages',   icon: 'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z M2 12h20' },
-  { start: 40,  end: 47,  title: 'انطلق الآن',           tag: 'ابدأ مجاناً',   icon: 'cta' },
-];
-
-const DURATION = 47; // seconds
 const C1 = '#2EC4B6', C2 = '#6C5CE7', C3 = '#BF5AF2';
 
-// ─── Particle system ──────────────────────────────────────────
-class Particle {
-  constructor(w, h) {
-    this.reset(w, h);
+// 15s content at 3x speed = 5s real recording
+const SCENES = [
+  { t: 0,   d: 1.8, title: 'Nexly',     tag: 'AI · Career · Future',   desc: 'منصتك الذكية لبناء المستقبل المهني' },
+  { t: 1.8, d: 1.5, title: 'منشئ السيرة الذاتية',  tag: 'Resume Builder',     icon: 0 },
+  { t: 3.3, d: 1.5, title: 'خطابات التغطية',       tag: 'Cover Letters',      icon: 1 },
+  { t: 4.8, d: 1.5, title: 'متتبع الوظائف',         tag: 'Job Tracker',        icon: 2 },
+  { t: 6.3, d: 1.5, title: 'لوحة التحكم',           tag: 'Dashboard',          icon: 3 },
+  { t: 7.8, d: 1.5, title: 'التواصل الاجتماعي',      tag: 'Social Feed',        icon: 4 },
+  { t: 9.3, d: 1.5, title: 'الرسائل والمجموعات',    tag: 'Messaging',          icon: 5 },
+  { t: 10.8,d: 1.5, title: '6 لغات عالمية',         tag: '6 Languages',        icon: 6 },
+  { t: 12.3,d: 2.7, title: 'انطلق الآن',            tag: 'ابدأ مجاناً' },
+];
+
+const SPEED = 3;
+const CONTENT_DURATION = SCENES[SCENES.length - 1].t + SCENES[SCENES.length - 1].d;
+const RECORD_DURATION = CONTENT_DURATION / SPEED;
+
+// Simple icon drawers
+function drawIcon(ctx, id, x, y, size) {
+  const s = size || 36;
+  const h = s / 2;
+  ctx.strokeStyle = C2;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.shadowColor = 'rgba(108,92,231,0.2)';
+  ctx.shadowBlur = 15;
+
+  ctx.beginPath();
+  switch (id) {
+    case 0: // Resume — document
+      ctx.roundRect(x - h * 0.7, y - h * 0.85, s * 0.7, s * 1.7, 4);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.35, y - h * 0.2); ctx.lineTo(x + h * 0.35, y - h * 0.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.35, y + h * 0.1); ctx.lineTo(x + h * 0.35, y + h * 0.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.35, y + h * 0.4); ctx.lineTo(x + h * 0.35, y + h * 0.4); ctx.stroke();
+      break;
+    case 1: // Cover letter — envelope
+      ctx.roundRect(x - h * 0.85, y - h * 0.65, s * 0.85, s * 0.65, 3);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.85, y - h * 0.65); ctx.lineTo(x, y - h * 0.1); ctx.lineTo(x + h * 0.85, y - h * 0.65); ctx.stroke();
+      break;
+    case 2: // Job — briefcase
+      ctx.roundRect(x - h * 0.8, y - h * 0.2, s * 0.8, s * 0.7, 3);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.4, y - h * 0.2); ctx.lineTo(x - h * 0.4, y - h * 0.5);
+      ctx.moveTo(x + h * 0.4, y - h * 0.2); ctx.lineTo(x + h * 0.4, y - h * 0.5);
+      ctx.stroke();
+      break;
+    case 3: // Dashboard — bars
+      for (let i = 0; i < 3; i++) {
+        const bx = x - h * 0.7 + i * s * 0.35;
+        const bh = h * (0.5 + i * 0.25);
+        ctx.beginPath(); ctx.moveTo(bx, y + h * 0.7); ctx.lineTo(bx, y + h * 0.7 - bh); ctx.stroke();
+      }
+      break;
+    case 4: // Social — people
+      ctx.arc(x - h * 0.3, y - h * 0.3, h * 0.3, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x - h * 0.3, y + h * 0.3, h * 0.3, Math.PI, 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + h * 0.4, y - h * 0.1, h * 0.22, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + h * 0.4, y + h * 0.4, h * 0.22, Math.PI, 0); ctx.stroke();
+      break;
+    case 5: // Messages — chat bubble
+      ctx.roundRect(x - h * 0.8, y - h * 0.6, s * 0.8, s * 0.6, 6);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.15, y + h * 0.05); ctx.lineTo(x + h * 0.15, y + h * 0.5); ctx.lineTo(x + h * 0.15, y + h * 0.05); ctx.stroke();
+      break;
+    case 6: // Languages — globe
+      ctx.arc(x, y, h * 0.75, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x, y, h * 0.75, h * 0.3, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y - h * 0.75); ctx.lineTo(x, y + h * 0.75); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.4, y - h * 0.5); ctx.lineTo(x + h * 0.4, y - h * 0.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - h * 0.4, y + h * 0.5); ctx.lineTo(x + h * 0.4, y + h * 0.5); ctx.stroke();
+      break;
   }
-  reset(w, h) {
-    this.x = Math.random() * w;
-    this.y = Math.random() * h;
-    this.size = 1.5 + Math.random() * 3;
-    this.speedX = (Math.random() - 0.5) * 0.3;
-    this.speedY = (Math.random() - 0.5) * 0.3 - 0.15;
-    this.opacity = 0.1 + Math.random() * 0.3;
-    this.hue = Math.random() * 60 + 150; // teal-purple range
-  }
-  update(w, h) {
-    this.x += this.speedX;
-    this.y += this.speedY;
-    if (this.x < 0) this.x = w;
-    if (this.x > w) this.x = 0;
-    if (this.y < 0) this.y = h;
-    if (this.y > h) this.y = 0;
-  }
-  draw(ctx) {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(108,92,231,${this.opacity})`;
-    ctx.fill();
-  }
+  ctx.shadowBlur = 0;
 }
 
 export default function Promo() {
   const navigate = useNavigate();
   const canvasRef = useRef(null);
-  const [time, setTime] = useState(0);
-  const [playing, setPlaying] = useState(true);
-  const afRef = useRef(null);
-  const startRef = useRef(Date.now());
-  const particlesRef = useRef([]);
-  const soundRef = useRef(false);
-  const utterRef = useRef(null);
+  const [state, setState] = useState('generating');
+  const [progress, setProgress] = useState(0);
+  const videoUrlRef = useRef(null);
+  const [error, setError] = useState('');
 
-  // Canvas animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let w, h;
+    const w = 1280, h = 720;
+    canvas.width = w; canvas.height = h;
 
-    const resize = () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-      if (particlesRef.current.length === 0) {
-        particlesRef.current = Array.from({ length: 50 }, () => new Particle(w, h));
-      }
+    // Check MediaRecorder support
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setError('متصفحك لا يدعم تسجيل الفيديو. استخدم Chrome أو Edge.');
+      return;
+    }
+
+    const stream = canvas.captureStream(30);
+    let recorder, animId;
+    const chunks = [];
+    let startTime, done = false;
+
+    try {
+      recorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9' : 'video/webm',
+      });
+    } catch {
+      recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    }
+
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      videoUrlRef.current = URL.createObjectURL(blob);
+      setState('ready');
     };
-    resize();
-    window.addEventListener('resize', resize);
+    recorder.onerror = () => {
+      setError('فشل في تسجيل الفيديو. حاول مرة أخرى.');
+    };
 
-    const drawBg = (t) => {
-      // Animated gradient
-      const t1 = t * 0.0003;
+    recorder.start();
+    startTime = performance.now();
+
+    // Particles
+    const particles = Array.from({ length: 40 }, () => ({
+      x: Math.random() * w, y: Math.random() * h,
+      size: 1.5 + Math.random() * 3,
+      sx: (Math.random() - 0.5) * 0.5, sy: (Math.random() - 0.5) * 0.5 - 0.2,
+      op: 0.1 + Math.random() * 0.3,
+    }));
+
+    const easeOut = (x) => 1 - Math.pow(1 - x, 2);
+    const easeBounce = (x) => {
+      if (x < 0.5) return 2 * x * x;
+      return 1 - Math.pow(-2 * x + 2, 2) / 2;
+    };
+
+    function drawScene(time) {
+      // BG gradient
+      const tt = time * 0.003;
       const g = ctx.createRadialGradient(
-        w * (0.5 + Math.sin(t1) * 0.3), h * (0.3 + Math.cos(t1 * 0.7) * 0.2), 0,
-        w * 0.5, h * 0.5, w * 0.7
+        w * (0.5 + Math.sin(tt) * 0.3), h * 0.4, 0, w * 0.5, h * 0.5, w * 0.7
       );
-      g.addColorStop(0, `hsl(${250 + Math.sin(t1) * 20}, 70%, 25%)`);
-      g.addColorStop(0.5, `hsl(${270 + Math.sin(t1 * 0.5) * 15}, 60%, 15%)`);
+      g.addColorStop(0, `hsl(${250 + Math.sin(tt) * 20}, 70%, 25%)`);
+      g.addColorStop(0.5, `hsl(${270 + Math.sin(tt * 0.5) * 15}, 60%, 15%)`);
       g.addColorStop(1, '#0B0E14');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
 
       // Accent glow
-      const g2 = ctx.createRadialGradient(
-        w * (0.7 + Math.sin(t1 * 0.5) * 0.2), h * 0.7, 0,
-        w * 0.7, h * 0.7, w * 0.4
-      );
-      g2.addColorStop(0, 'rgba(46,196,182,0.06)');
-      g2.addColorStop(1, 'transparent');
-      ctx.fillStyle = g2;
-      ctx.fillRect(0, 0, w, h);
-    };
+      const g2 = ctx.createRadialGradient(w * 0.75, h * 0.75, 0, w * 0.75, h * 0.75, w * 0.35);
+      g2.addColorStop(0, 'rgba(46,196,182,0.06)'); g2.addColorStop(1, 'transparent');
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, w, h);
 
-    const drawParticles = () => {
-      particlesRef.current.forEach(p => {
-        p.update(w, h);
-        p.draw(ctx);
+      // Particles
+      particles.forEach(p => {
+        p.x += p.sx; p.y += p.sy;
+        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(108,92,231,${p.op})`; ctx.fill();
       });
-    };
 
-    const drawConnections = () => {
-      const ps = particlesRef.current;
-      for (let i = 0; i < ps.length; i++) {
-        for (let j = i + 1; j < ps.length; j++) {
-          const dx = ps[i].x - ps[j].x;
-          const dy = ps[i].y - ps[j].y;
+      // Connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(ps[i].x, ps[i].y);
-            ctx.lineTo(ps[j].x, ps[j].y);
-            ctx.strokeStyle = `rgba(108,92,231,${0.06 * (1 - dist / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
+          if (dist < 100) {
+            ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(108,92,231,${0.05 * (1 - dist / 100)})`;
+            ctx.lineWidth = 0.5; ctx.stroke();
           }
         }
       }
+
+      // Find current scene
+      const scene = [...SCENES].reverse().find(s => time >= s.t) || SCENES[0];
+      const sp = Math.min((time - scene.t) / scene.d, 1);
+      const i = SCENES.indexOf(scene);
+      const isLogo = i === 0;
+      const isCTA = i === SCENES.length - 1;
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      if (isLogo) {
+        // Logo bars
+        const ls = 0.4 + 0.6 * easeBounce(Math.min(sp * 2.5, 1));
+        ctx.save();
+        ctx.globalAlpha = Math.min(sp * 3, 1);
+        ctx.translate(w / 2 - 40, h / 2 - 90); ctx.scale(ls, ls);
+        ctx.fillStyle = C1; ctx.beginPath(); ctx.roundRect(-25, -30, 24, 50, 5); ctx.fill();
+        ctx.fillStyle = C2; ctx.beginPath(); ctx.roundRect(0, -40, 24, 70, 5); ctx.fill();
+        ctx.fillStyle = C3; ctx.beginPath(); ctx.roundRect(25, -20, 24, 40, 5); ctx.fill();
+        ctx.restore();
+
+        // Title
+        const tA = Math.max(0, Math.min((sp - 0.2) * 5, 1));
+        const tY = -15 + 15 * Math.max(0, Math.min((sp - 0.2) * 5, 1));
+        ctx.save(); ctx.globalAlpha = tA;
+        ctx.font = 'bold 58px Tajawal, sans-serif';
+        const grad = ctx.createLinearGradient(w / 2 - 120, 0, w / 2 + 120, 0);
+        grad.addColorStop(0, C1); grad.addColorStop(0.5, C2); grad.addColorStop(1, C3);
+        ctx.fillStyle = grad; ctx.fillText('Nexly', w / 2, h / 2 - 20 + tY);
+        ctx.restore();
+
+        // Tag
+        const tgA = Math.max(0, Math.min((sp - 0.4) * 5, 1));
+        ctx.save(); ctx.globalAlpha = tgA;
+        ctx.font = '500 13px Tajawal, sans-serif';
+        ctx.fillStyle = '#6b7494'; ctx.fillText('AI · Career · Future', w / 2, h / 2 + 25);
+        ctx.restore();
+
+        // Desc
+        const dA = Math.max(0, Math.min((sp - 0.55) * 5, 1));
+        ctx.save(); ctx.globalAlpha = dA;
+        ctx.font = '500 17px Tajawal, sans-serif';
+        ctx.fillStyle = '#8B95A5'; ctx.fillText('منصتك الذكية لبناء المستقبل المهني', w / 2, h / 2 + 65);
+        ctx.restore();
+      } else if (isCTA) {
+        // Logo small
+        const cS = 0.5 + 0.5 * easeBounce(Math.min(sp * 3, 1));
+        ctx.save();
+        ctx.globalAlpha = Math.min(sp * 3, 1);
+        ctx.translate(w / 2 - 30, h / 2 - 140); ctx.scale(cS * 0.7, cS * 0.7);
+        ctx.fillStyle = C1; ctx.beginPath(); ctx.roundRect(-25, -30, 24, 50, 5); ctx.fill();
+        ctx.fillStyle = C2; ctx.beginPath(); ctx.roundRect(0, -40, 24, 70, 5); ctx.fill();
+        ctx.fillStyle = C3; ctx.beginPath(); ctx.roundRect(25, -20, 24, 40, 5); ctx.fill();
+        ctx.restore();
+
+        const tA2 = Math.max(0, Math.min((sp - 0.12) * 5, 1));
+        const tY2 = -10 + 10 * Math.max(0, Math.min((sp - 0.12) * 5, 1));
+        ctx.save(); ctx.globalAlpha = tA2;
+        ctx.font = 'bold 48px Tajawal, sans-serif';
+        const grad2 = ctx.createLinearGradient(w / 2 - 120, 0, w / 2 + 120, 0);
+        grad2.addColorStop(0, C1); grad2.addColorStop(0.5, C2); grad2.addColorStop(1, C3);
+        ctx.fillStyle = grad2; ctx.fillText('انطلق في رحلتك المهنية', w / 2, h / 2 - 55 + tY2);
+        ctx.restore();
+
+        const dA2 = Math.max(0, Math.min((sp - 0.25) * 5, 1));
+        ctx.save(); ctx.globalAlpha = dA2;
+        ctx.font = '500 17px Tajawal, sans-serif';
+        ctx.fillStyle = '#b0b8cc';
+        ctx.fillText('سجل مجاناً وابدأ ببناء مستقبلك المهني بالذكاء الاصطناعي', w / 2, h / 2 + 0);
+        ctx.restore();
+
+        // Button
+        const bA = Math.max(0, Math.min((sp - 0.4) * 5, 1));
+        const bY = 20 - 20 * Math.max(0, Math.min((sp - 0.4) * 5, 1));
+        ctx.save(); ctx.globalAlpha = bA;
+        const bGrad = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0);
+        bGrad.addColorStop(0, C1); bGrad.addColorStop(0.5, C2); bGrad.addColorStop(1, C3);
+        ctx.shadowColor = 'rgba(108,92,231,0.4)'; ctx.shadowBlur = 30;
+        ctx.fillStyle = bGrad;
+        ctx.beginPath(); ctx.roundRect(w / 2 - 80, h / 2 + 45 + bY, 160, 44, 12); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.font = 'bold 16px Tajawal, sans-serif';
+        ctx.fillStyle = '#fff'; ctx.fillText('ابدأ مجانًا 🚀', w / 2, h / 2 + 67 + bY);
+        ctx.restore();
+      } else {
+        // Feature scene
+        const vis = Math.min(sp * 3, 1);
+        const iconScale = 0.5 + 0.5 * easeBounce(Math.min(sp * 3, 1));
+        const iconRot = (1 - Math.min(sp * 3, 1)) * -15;
+        ctx.save();
+        ctx.translate(w / 2, h / 2 - 85);
+        ctx.scale(iconScale, iconScale);
+        ctx.rotate(iconRot * Math.PI / 180);
+        ctx.globalAlpha = vis;
+        drawIcon(ctx, scene.icon, 0, 0, 40);
+        ctx.restore();
+
+        const tA3 = Math.max(0, Math.min((sp - 0.15) * 4, 1));
+        const tY3 = 10 - 10 * Math.max(0, Math.min((sp - 0.15) * 5, 1));
+        ctx.save(); ctx.globalAlpha = tA3;
+        ctx.font = 'bold 42px Tajawal, sans-serif';
+        const g3 = ctx.createLinearGradient(w / 2 - 100, 0, w / 2 + 100, 0);
+        g3.addColorStop(0, C1); g3.addColorStop(0.5, C2); g3.addColorStop(1, C3);
+        ctx.fillStyle = g3; ctx.fillText(scene.title, w / 2, h / 2 + 15 + tY3);
+        ctx.restore();
+
+        const sA = Math.max(0, Math.min((sp - 0.3) * 5, 1));
+        ctx.save(); ctx.globalAlpha = sA;
+        ctx.font = '600 13px Tajawal, sans-serif';
+        ctx.fillStyle = C2; ctx.fillText(scene.tag, w / 2, h / 2 + 55);
+        ctx.restore();
+
+        const lA = Math.max(0, Math.min((sp - 0.4) * 5, 1));
+        const lW = 15 + 20 * Math.max(0, Math.min((sp - 0.4) * 5, 1));
+        ctx.save(); ctx.globalAlpha = lA;
+        const lg = ctx.createLinearGradient(w / 2 - lW, 0, w / 2 + lW, 0);
+        lg.addColorStop(0, C1); lg.addColorStop(1, C2);
+        ctx.fillStyle = lg;
+        ctx.beginPath(); ctx.roundRect(w / 2 - lW, h / 2 + 68, lW * 2, 3, 2); ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    const frame = () => {
+      const elapsed = (performance.now() - startTime) / 1000;
+      if (done) return;
+      const contentTime = elapsed * SPEED;
+      drawScene(Math.min(contentTime, CONTENT_DURATION));
+      const pct = Math.min(elapsed / RECORD_DURATION, 1);
+      setProgress(pct);
+      if (elapsed < RECORD_DURATION) {
+        animId = requestAnimationFrame(frame);
+      } else if (!done) {
+        done = true;
+        setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); }, 200);
+      }
     };
 
-    const animate = (ts) => {
-      if (!playing) { afRef.current = requestAnimationFrame(animate); return; }
-      const elapsed = (ts - startRef.current) / 1000;
-      const t = elapsed % DURATION;
-      setTime(t);
-
-      ctx.clearRect(0, 0, w, h);
-      drawBg(ts);
-      drawParticles();
-      drawConnections();
-      afRef.current = requestAnimationFrame(animate);
-    };
-
-    startRef.current = Date.now();
-    afRef.current = requestAnimationFrame(animate);
+    animId = requestAnimationFrame(frame);
     return () => {
-      cancelAnimationFrame(afRef.current);
-      window.removeEventListener('resize', resize);
+      done = true;
+      cancelAnimationFrame(animId);
+      try { if (recorder && recorder.state !== 'inactive') recorder.stop(); } catch {}
+      if (videoUrlRef.current) URL.revokeObjectURL(videoUrlRef.current);
     };
-  }, [playing]);
+  }, []);
 
-  // Speech
-  useEffect(() => {
-    if (!soundRef.current || !window.speechSynthesis) return;
-    const scene = SCENES.find(s => time >= s.start && time < s.end);
-    if (scene) {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(scene.title + '. ' + scene.tag);
-      u.lang = 'ar-SA'; u.rate = 0.85;
-      const voices = window.speechSynthesis.getVoices();
-      const ar = voices.find(v => v.lang.startsWith('ar'));
-      if (ar) u.voice = ar;
-      utterRef.current = u;
-      window.speechSynthesis.speak(u);
-    }
-  }, [Math.floor(time)]);
-
-  const toggleSound = () => {
-    soundRef.current = !soundRef.current;
-    if (!soundRef.current && window.speechSynthesis) window.speechSynthesis.cancel();
-    if (soundRef.current) {
-      if (window.speechSynthesis) window.speechSynthesis.getVoices();
-    }
-    // force re-render
-    setTime(s => s + 0.001);
-  };
-
-  const progress = (time % DURATION) / DURATION * 100;
-  const scene = SCENES.find(s => time >= s.start && time < s.end) || SCENES[0];
-  const sceneProgress = scene ? (time - scene.start) / (scene.end - scene.start) : 0;
-  const isLogo = scene?.icon === 'logo';
-  const isCTA = scene?.icon === 'cta';
+  const handleClose = () => navigate(localStorage.getItem('token') ? '/home' : '/');
 
   return (
     <div style={{
       position: 'fixed', inset: 0, background: '#0B0E14',
-      fontFamily: "'Tajawal',sans-serif", direction: 'rtl',
-      overflow: 'hidden', cursor: playing ? 'none' : 'default',
+      fontFamily: "'Tajawal',sans-serif", display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      direction: 'rtl', color: '#fff',
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');`}</style>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      {/* ── Canvas ── */}
-      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+      {error && (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>😞</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>عذراً</h1>
+          <p style={{ color: '#b0b8cc', marginBottom: 24 }}>{error}</p>
+          <button onClick={handleClose}
+            style={{ padding: '12px 32px', border: 'none', borderRadius: 12,
+              background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)',
+              color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            العودة للصفحة الرئيسية
+          </button>
+        </div>
+      )}
 
-      {/* ── Overlay content ── */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-
-        {/* Logo scene */}
-        {isLogo && (
-          <div style={{ textAlign: 'center' }}>
-            <svg viewBox="0 0 120 120" fill="none" style={{
-              width: 80 + 40 * Math.min(sceneProgress * 2, 1), height: 80 + 40 * Math.min(sceneProgress * 2, 1),
-              margin: '0 auto 25px', display: 'block',
-              opacity: Math.min(sceneProgress * 3, 1),
-              transform: `scale(${Math.min(sceneProgress * 2, 1)})`,
-              transition: 'none',
-            }}>
-              <defs><linearGradient id="lgp" x1="0" y1="0" x2="120" y2="120"><stop offset="0%" stopColor="#2EC4B6"/><stop offset="50%" stopColor="#6C5CE7"/><stop offset="100%" stopColor="#BF5AF2"/></linearGradient></defs>
-              <rect x="10" y="30" width="30" height="60" rx="6" fill="#2EC4B6" opacity="0.9"/>
-              <rect x="45" y="15" width="30" height="90" rx="6" fill="#6C5CE7" opacity="0.85"/>
-              <rect x="80" y="45" width="30" height="45" rx="6" fill="#BF5AF2" opacity="0.8"/>
+      {!error && state === 'generating' && (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: 20,
+            background: 'rgba(108,92,231,0.15)', border: '1px solid rgba(108,92,231,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px',
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" style={{ width: 36, height: 36, animation: 'sp 1s linear infinite' }}>
+              <defs><linearGradient id="sg"><stop offset="0%" stopColor="#2EC4B6"/><stop offset="100%" stopColor="#BF5AF2"/></linearGradient></defs>
+              <circle cx="12" cy="12" r="10" stroke="url(#sg)" strokeWidth="2" strokeDasharray="31.4 31.4" strokeLinecap="round" fill="none"/>
             </svg>
-            <h1 style={{
-              fontSize: 'clamp(36px,6vw,60px)', fontWeight: 900,
-              background: 'linear-gradient(135deg,#2EC4B6,#6C5CE7,#BF5AF2)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text', marginBottom: 12, letterSpacing: '-0.02em',
-              opacity: Math.max(0, Math.min((sceneProgress - 0.2) * 3, 1)),
-              transform: `translateY(${20 - 20 * Math.max(0, Math.min((sceneProgress - 0.2) * 5, 1))}px)`,
-            }}>Nexly</h1>
-            <p style={{
-              color: '#6b7494', fontSize: 15, fontWeight: 500, letterSpacing: 6,
-              textTransform: 'uppercase', marginBottom: 30,
-              opacity: Math.max(0, Math.min((sceneProgress - 0.4) * 3, 1)),
-            }}>AI · Career · Future</p>
-            <p style={{
-              color: '#8B95A5', fontSize: 18, fontWeight: 500,
-              opacity: Math.max(0, Math.min((sceneProgress - 0.55) * 3, 1)),
-            }}>منصتك الذكية لبناء المستقبل المهني</p>
           </div>
-        )}
-
-        {/* Feature scenes */}
-        {!isLogo && !isCTA && (
-          <div style={{ textAlign: 'center', maxWidth: 700 }}>
-            {/* Icon */}
+          <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>جاري إنشاء الفيديو...</h1>
+          <p style={{ color: '#8B95A5', fontSize: 15, marginBottom: 20 }}>يتم تجهيز الفيديو التعريفي خلال ثوانٍ</p>
+          <div style={{
+            width: 280, height: 6, borderRadius: 4,
+            background: 'rgba(255,255,255,0.08)', overflow: 'hidden', margin: '0 auto',
+          }}>
             <div style={{
-              width: 100, height: 100, borderRadius: 30,
-              background: `rgba(108,92,231,${0.12 + 0.08 * Math.sin(sceneProgress * Math.PI)})`,
-              border: '1px solid rgba(108,92,231,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 30px',
-              transform: `scale(${0.6 + 0.4 * Math.min(sceneProgress * 3, 1)}) rotate(${(1 - Math.min(sceneProgress * 3, 1)) * -10}deg)`,
-              opacity: Math.min(sceneProgress * 4, 1),
-              boxShadow: `0 0 ${30 + 20 * Math.sin(sceneProgress * Math.PI)}px rgba(108,92,231,0.15)`,
-            }}>
-              <svg viewBox="0 0 24 24" fill="none" style={{ width: 44, height: 44 }}>
-                <defs><linearGradient id={`sg${Math.floor(time)}`} x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stopColor="#2EC4B6"/><stop offset="100%" stopColor="#BF5AF2"/></linearGradient></defs>
-                {scene.icon.split(' M').map((seg, j) => {
-                  const d = (j === 0 ? '' : 'M') + seg;
-                  return <path key={j} d={d.trim()} stroke={`url(#sg${Math.floor(time)})`} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />;
-                })}
-              </svg>
-            </div>
-            {/* Title */}
-            <h1 style={{
-              fontSize: 'clamp(28px,4.5vw,48px)', fontWeight: 900,
-              background: 'linear-gradient(135deg,#2EC4B6,#6C5CE7,#BF5AF2)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text', marginBottom: 12, lineHeight: 1.3,
-              opacity: Math.max(0, Math.min((sceneProgress - 0.15) * 3, 1)),
-              transform: `translateY(${15 - 15 * Math.max(0, Math.min((sceneProgress - 0.15) * 5, 1))}px)`,
-            }}>{scene.title}</h1>
-            {/* Tag */}
-            <p style={{
-              color: '#6C5CE7', fontSize: 14, fontWeight: 700, letterSpacing: 3,
-              textTransform: 'uppercase', marginBottom: 8,
-              opacity: Math.max(0, Math.min((sceneProgress - 0.3) * 4, 1)),
-            }}>{scene.tag}</p>
-            {/* Decorative line */}
-            <div style={{
-              width: 40 + 40 * Math.max(0, Math.min((sceneProgress - 0.4) * 5, 1)),
-              height: 3, borderRadius: 2,
-              background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7)',
-              margin: '16px auto 0',
-              opacity: Math.max(0, Math.min((sceneProgress - 0.4) * 4, 1)),
+              width: `${progress * 100}%`, height: '100%',
+              background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)',
+              borderRadius: 4, transition: 'width 0.2s linear',
             }} />
-            {/* Floating particles around the icon */}
-            {sceneProgress > 0.2 && (
-              <div style={{ position: 'relative', marginTop: 20 }}>
-                {['●', '●', '●', '●'].map((p, i) => (
-                  <span key={i} style={{
-                    position: 'absolute', fontSize: 4, color: [C1, C2, C3, C2][i],
-                    top: -40 + Math.sin(time * 2 + i * 1.5) * 20,
-                    left: `${50 + Math.cos(time * 1.5 + i * 1.8) * 30}%`,
-                    opacity: 0.3 + 0.2 * Math.sin(time + i),
-                    transform: `scale(${1 + 0.3 * Math.sin(time * 0.5 + i)})`,
-                    transition: 'none',
-                  }}>{p}</span>
-                ))}
-              </div>
-            )}
           </div>
-        )}
+          <style>{`@keyframes sp { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
 
-        {/* CTA scene */}
-        {isCTA && (
-          <div style={{ textAlign: 'center' }}>
-            <svg viewBox="0 0 120 120" fill="none" style={{
-              width: 80, height: 80, margin: '0 auto 20px', display: 'block',
-              opacity: Math.min(sceneProgress * 3, 1),
+      {!error && state === 'ready' && videoUrlRef.current && (
+        <div style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <video
+            src={videoUrlRef.current}
+            autoPlay loop controls playsInline
+            style={{ width: '100%', height: '100%', maxWidth: 1280, maxHeight: 720, objectFit: 'contain' }}
+          />
+          <button onClick={handleClose}
+            style={{
+              position: 'fixed', top: 16, left: 16, zIndex: 10,
+              padding: '8px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+              color: '#fff', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 500,
             }}>
-              <defs><linearGradient id="lgc" x1="0" y1="0" x2="120" y2="120"><stop offset="0%" stopColor="#2EC4B6"/><stop offset="50%" stopColor="#6C5CE7"/><stop offset="100%" stopColor="#BF5AF2"/></linearGradient></defs>
-              <rect x="10" y="30" width="30" height="60" rx="6" fill="#2EC4B6" opacity="0.9"/>
-              <rect x="45" y="15" width="30" height="90" rx="6" fill="#6C5CE7" opacity="0.85"/>
-              <rect x="80" y="45" width="30" height="45" rx="6" fill="#BF5AF2" opacity="0.8"/>
-            </svg>
-            <h1 style={{
-              fontSize: 'clamp(32px,5vw,52px)', fontWeight: 900,
-              background: 'linear-gradient(135deg,#2EC4B6,#6C5CE7,#BF5AF2)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text', marginBottom: 16,
-              opacity: Math.max(0, Math.min((sceneProgress - 0.1) * 3, 1)),
-              transform: `translateY(${10 - 10 * Math.max(0, Math.min((sceneProgress - 0.1) * 5, 1))}px)`,
-            }}>انطلق في رحلتك المهنية</h1>
-            <p style={{
-              color: '#b0b8cc', fontSize: 18, fontWeight: 500, lineHeight: 1.7, maxWidth: 500, margin: '0 auto',
-              opacity: Math.max(0, Math.min((sceneProgress - 0.25) * 3, 1)),
-            }}>
-              سجل مجاناً وابدأ ببناء مستقبلك المهني بالذكاء الاصطناعي
-            </p>
-            <button onClick={() => navigate(localStorage.getItem('token') ? '/home' : '/login')}
-              style={{
-                marginTop: 30, padding: '14px 44px', borderRadius: 16, border: 'none',
-                background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)',
-                color: '#fff', fontSize: 18, fontWeight: 800, cursor: 'pointer',
-                fontFamily: 'inherit', transition: 'all 0.3s',
-                boxShadow: '0 8px 30px rgba(108,92,231,0.35)',
-                opacity: Math.max(0, Math.min((sceneProgress - 0.4) * 4, 1)),
-                transform: `translateY(${20 - 20 * Math.max(0, Math.min((sceneProgress - 0.4) * 5, 1))}px)`,
-              }}>
-              ابدأ مجاناً 🚀
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ─── Progress bar ─── */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 2, zIndex: 20, background: 'rgba(255,255,255,0.04)' }}>
-        <div style={{
-          height: '100%', width: `${progress}%`,
-          background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)',
-          transition: 'width 0.1s linear',
-        }} />
-      </div>
-
-      {/* ─── Controls ─── */}
-      <div style={{ position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-        {/* Sound */}
-        <button onClick={toggleSound} style={{
-          width: 40, height: 40, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.12)',
-          background: soundRef.current ? 'rgba(108,92,231,0.25)' : 'rgba(255,255,255,0.05)',
-          backdropFilter: 'blur(8px)', color: '#fff', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s',
-        }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            {soundRef.current && <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>}
-            {soundRef.current && <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>}
-            {!soundRef.current && <line x1="23" y1="9" x2="17" y2="15"/>}
-            {!soundRef.current && <line x1="17" y1="9" x2="23" y2="15"/>}
-          </svg>
-        </button>
-
-        {/* Play/Pause */}
-        <button onClick={() => setPlaying(p => !p)} style={{
-          width: 44, height: 44, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.12)',
-          background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)',
-          color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {playing ? (
-            <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}>
-              <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14, marginLeft: 2 }}>
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-          )}
-        </button>
-
-        {/* Skip to site */}
-        <button onClick={() => navigate(localStorage.getItem('token') ? '/home' : '/')} style={{
-          padding: '8px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
-          background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)',
-          color: '#b0b8cc', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 500,
-        }}>
-          تخطي ← افتح الموقع
-        </button>
-      </div>
-
-      {/* ─── Scene indicator ─── */}
-      <div style={{ position: 'fixed', bottom: 85, left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', gap: 6, alignItems: 'center' }}>
-        {SCENES.map((s, i) => {
-          const active = scene === s;
-          return (
-            <div key={i} style={{
-              width: active ? 28 : 7, height: 7, borderRadius: active ? 4 : '50%',
-              background: active ? 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' : 'rgba(255,255,255,0.15)',
-              transition: 'all 0.3s ease',
-            }} />
-          );
-        })}
-      </div>
+            ✕ إغلاق
+          </button>
+        </div>
+      )}
     </div>
   );
 }
