@@ -415,6 +415,7 @@ export default function Messages() {
         loadConversations().catch(() => {});
       });
     } else {
+      console.log('[sendMessage] Socket not connected, sending via REST with payload:', JSON.stringify(payload));
       sendViaRest(payload);
     }
   };
@@ -425,14 +426,15 @@ export default function Messages() {
       if (res.data?.id) setMessages(m => [...m, res.data]);
       loadConversations().catch(() => {});
     } catch (err) {
-      console.error('[sendViaRest] Error:', err?.response?.data || err?.message || err);
+      const serverMsg = err?.response?.data?.error || err?.message || 'Unknown error';
+      console.error('[sendViaRest] Error:', serverMsg, err);
       if (payload?.content) setInput(payload.content);
       if (payload?.image_url) setMsgImage(payload.image_url);
       if (payload?.voice_url) setPendingVoice(payload.voice_url);
       if (payload?.sticker) setShowStickers(true);
-      setSendError('Failed to send — tap to retry');
+      setSendError('Failed: ' + serverMsg);
       clearTimeout(sendErrorTimeoutRef.current);
-      sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 4000);
+      sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 6000);
     } finally { sendingLockRef.current = false; setSending(false); }
   };
 
