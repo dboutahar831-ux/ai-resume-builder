@@ -16,6 +16,8 @@ async function migrate() {
     console.log('  - reply_to_id column added');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE');
     console.log('  - deleted column added');
+    await client.query('ALTER TABLE messages ALTER COLUMN content DROP NOT NULL');
+    console.log('  - content NOT NULL constraint dropped (stickers send null content)');
     console.log('Migration complete!');
   } catch (err) {
     console.error('Migration failed:', err.message);

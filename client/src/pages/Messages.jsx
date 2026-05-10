@@ -415,7 +415,6 @@ export default function Messages() {
         loadConversations().catch(() => {});
       });
     } else {
-      console.log('[sendMessage] Socket not connected, sending via REST with payload:', JSON.stringify(payload));
       sendViaRest(payload);
     }
   };
@@ -427,7 +426,7 @@ export default function Messages() {
       loadConversations().catch(() => {});
     } catch (err) {
       const serverMsg = err?.response?.data?.error || err?.message || 'Unknown error';
-      console.error('[sendViaRest] Error:', serverMsg, err);
+      console.error('[sendViaRest] Error:', serverMsg);
       if (payload?.content) setInput(payload.content);
       if (payload?.image_url) setMsgImage(payload.image_url);
       if (payload?.voice_url) setPendingVoice(payload.voice_url);
