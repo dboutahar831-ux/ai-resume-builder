@@ -687,13 +687,12 @@ export default function Home() {
   const [resumeOpen, setResumeOpen] = useState(false);
   const [jobsOpen, setJobsOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
-  const [taskChecked, setTaskChecked] = useState([true, false, false, false]);
-  const [notifCount, setNotifCount] = useState(3);
-  const [friendRequests, setFriendRequests] = useState([
-    { n: 'Ahmad K.', mutual: 5, id: '1' },
-    { n: 'Yasmine R.', mutual: 12, id: '2' }
-  ]);
-  const [weatherOpen, setWeatherOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [resumeList, setResumeList] = useState([]);
+  const [jobList, setJobList] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [scheduledAt, setScheduledAt] = useState(null);
   const postFileRef = useRef();
@@ -718,8 +717,17 @@ export default function Home() {
     ]).then(([r, j, f, u]) => {
       setStats({ resumes: r.data.length, jobs: j.data.length, friends: f.data.length, unread: u.data.count });
       setFriends(f.data.slice(0, 7));
+      setResumeList(r.data);
+      setJobList(j.data);
+    }).catch(() => {});
+    api.get('/friends/requests').then(r => setFriendRequests(r.data)).catch(() => {});
+    api.get('/notifications').then(r => {
+      const data = Array.isArray(r.data) ? r.data : [];
+      setNotifications(data);
+      setNotifCount(data.filter(n => !n.read_at).length);
     }).catch(() => {});
     api.get('/friends/suggestions').then(r => setSuggestions(r.data)).catch(() => {});
+    api.get('/messages/conversations').then(r => setConversations(r.data)).catch(() => {});
     api.get('/posts/trending').then(r => { if (r.data.length > 0) setTrendingTopics(r.data); }).catch(() => {});
     api.get('/auth/profile').then(r => { if (r.data.cover_image) setCoverImage(r.data.cover_image); }).catch(() => {});
   }, []);
@@ -749,12 +757,12 @@ export default function Home() {
 
   useEffect(() => {
     const closeAll = (e) => {
-      const closers = ['notif','date','streak','tasks','msg','resume','jobs','friends','weather'];
+      const closers = ['notif','date','streak','tasks','msg','resume','jobs','friends'];
       closers.forEach(c => {
         const btn = e.target.closest(`.${c}-far-btn`);
         const dd = e.target.closest(`.${c}-far-dropdown`);
         if (!btn && !dd) {
-          const setter = { notif: setNotifOpen, date: setDateOpen, streak: setStreakOpen, tasks: setTasksOpen, msg: setMsgOpen, resume: setResumeOpen, jobs: setJobsOpen, friends: setFriendsOpen, weather: setWeatherOpen }[c];
+          const setter = { notif: setNotifOpen, date: setDateOpen, streak: setStreakOpen, tasks: setTasksOpen, msg: setMsgOpen, resume: setResumeOpen, jobs: setJobsOpen, friends: setFriendsOpen }[c];
           setter?.(false);
         }
       });
@@ -768,16 +776,19 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
-  const toggleTask = (i) => setTaskChecked(prev => prev.map((c, idx) => idx === i ? !c : c));
-
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    try { await api.put('/notifications/read-all'); } catch {}
     setNotifCount(0);
     setNotifOpen(false);
   };
 
-  const acceptFriendReq = async (name) => {
-    setFriendRequests(prev => prev.filter(f => f.n !== name));
-    addToast(`Friend request from ${name} accepted!`, 'success');
+  const acceptFriendReq = async (userId) => {
+    try {
+      await api.put(`/friends/accept/${userId}`);
+      setFriendRequests(prev => prev.filter(f => f.id !== userId));
+      setStats(prev => ({ ...prev, friends: prev.friends + 1 }));
+      addToast('Friend request accepted!', 'success');
+    } catch { addToast('Failed to accept request.', 'error'); }
   };
 
   const sendRequest = async (userId) => {
@@ -969,67 +980,33 @@ export default function Home() {
           <button onClick={() => setStreakOpen(o => !o)}
             className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-amber-200 transition-all cursor-pointer">
             <span className="text-xl">🔥</span>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">Day 12</span>
+            <span className="text-[8px] font-bold text-gray-400 mt-px">0</span>
           </button>
           {streakOpen && (
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-48 overflow-hidden streak-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="p-3">
-                <p className="text-[11px] font-bold text-gray-900 mb-2">🔥 Streak History</p>
-                <div className="flex items-center gap-1.5 mb-2">
-                  {Array.from({length:7},(_,i)=><div key={i} className={`w-5 h-5 rounded-md text-[8px] font-bold flex items-center justify-center ${i<5?'bg-amber-100 text-amber-700':'bg-gray-50 text-gray-300'}`}>{i<5?'🔥':i+1}</div>)}
-                </div>
-                <p className="text-[9px] text-gray-500">Best streak: <span className="font-bold text-amber-600">21 days</span></p>
-                <p className="text-[9px] text-gray-400 mt-0.5">Keep going! 🎯</p>
+              <div className="p-4 text-center">
+                <p className="text-[11px] font-bold text-gray-900 mb-2">🔥 Activity</p>
+                <p className="text-[9px] text-gray-400">Start posting to build your streak!</p>
               </div>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
           )}
         </div>
-
-        {/* Weather */}
-        <div className="relative weather-far-btn" style={{ animation: 'subtle-float 4s ease-in-out infinite', animationDelay: '0.8s' }}>
-          <button onClick={() => setWeatherOpen(o => !o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-sky-200 transition-all cursor-pointer">
-            <span className="text-xl">🌤️</span>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">24°C</span>
-          </button>
-          {weatherOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden weather-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="p-3 text-center" style={{background:'linear-gradient(135deg,#38BDF8,#818CF8)'}}>
-                <p className="text-white font-bold text-sm">☀️ 24°C</p>
-                <p className="text-white/80 text-[9px] mt-0.5">Sunny · Feels like 26°</p>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {[{d:'Mon',t:'🌤️',h:'26°',l:'18°'},{d:'Tue',t:'⛅',h:'23°',l:'16°'},{d:'Wed',t:'🌧️',h:'19°',l:'14°'}].map((w,i)=><div key={i} className="flex items-center gap-2 px-3 py-2">
-                  <span className="text-[10px] font-semibold text-gray-600 w-7">{w.d}</span>
-                  <span className="text-sm flex-1">{w.t}</span>
-                  <span className="text-[10px] text-gray-500 font-medium">{w.h}/{w.l}</span>
-                </div>)}
-              </div>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#BF5AF2)' }} />
 
         {/* Tasks */}
         <div className="relative tasks-far-btn" style={{ animation: 'subtle-float 4s ease-in-out infinite', animationDelay: '2s' }}>
           <button onClick={() => setTasksOpen(o => !o)}
             className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 36 36" className="w-7 h-7"><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E5E7EB" strokeWidth="3"/><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2EC4B6" strokeWidth="3" strokeDasharray={`${(taskChecked.filter(Boolean).length / taskChecked.length) * 100},100`} strokeLinecap="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">{taskChecked.filter(Boolean).length}/{taskChecked.length}</span>
+            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-emerald-500"><path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span className="text-[8px] font-bold text-gray-400 mt-px">Tasks</span>
           </button>
           {tasksOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-56 overflow-hidden tasks-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
+            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden tasks-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
               <div className="px-3 py-2.5 border-b border-gray-50"><p className="text-[11px] font-bold text-gray-900">Today's Tasks</p></div>
-              <div className="divide-y divide-gray-50">
-                {[{t:'Review resume drafts',d:'80%'},{t:'Update cover letter',d:'30%'},{t:'Apply to 5 jobs',d:'0%'},{t:'Network with 3 people',d:'0%'}].map((t,i)=><label key={i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
-                  <input type="checkbox" checked={taskChecked[i]} onChange={() => toggleTask(i)} className="w-3 h-3 rounded border-gray-300 text-indigo-600 accent-indigo-600" />
-                  <div className="flex-1 min-w-0"><p className={`text-[10px] ${taskChecked[i]?'text-gray-400 line-through':'text-gray-700'}`}>{t.t}</p><div className="h-1 rounded-full bg-gray-100 mt-1 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-teal-400 to-indigo-500" style={{width:taskChecked[i]?'100%':t.d}} /></div></div>
-                </label>)}
+              <div className="p-4 text-center">
+                <p className="text-[9px] text-gray-400">No tasks yet. Stay productive!</p>
               </div>
-              <Link to="/dashboard" onClick={() => setTasksOpen(false)} className="block w-full px-3 py-2 text-[10px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">View all tasks →</Link>
+              <Link to="/dashboard" onClick={() => setTasksOpen(false)} className="block w-full px-3 py-2 text-[10px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Go to Dashboard →</Link>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
           )}
@@ -1048,10 +1025,14 @@ export default function Home() {
           {notifOpen && (
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden notif-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
               <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Notifications</p>{notifCount > 0 && <span className="text-[8px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-semibold">{notifCount}</span>}</div>
-              <div className="divide-y divide-gray-50">
-                {[{text:'Sara liked your post',icon:'❤️',time:'2m'},{text:'Omar commented',icon:'💬',time:'15m'},{text:'Friend request from Lina',icon:'👋',time:'1h'}].map((n,i)=><div key={i} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer"><span className="text-sm">{n.icon}</span><div className="flex-1 min-w-0"><p className="text-[9px] text-gray-700 truncate">{n.text}</p><p className="text-[7px] text-gray-400">{n.time}</p></div></div>)}
-              </div>
-              <button onClick={markAllRead} className="w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">{notifCount > 0 ? 'Mark all read' : 'All clear ✓'}</button>
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No notifications yet</p></div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {notifications.slice(0, 5).map((n,i)=><div key={n.id||i} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer"><span className="text-sm">{n.icon||'🔔'}</span><div className="flex-1 min-w-0"><p className="text-[9px] text-gray-700 truncate">{n.content||n.message||n.text||'New notification'}</p><p className="text-[7px] text-gray-400">{timeAgo(n.created_at)}</p></div></div>)}
+                </div>
+              )}
+              {notifCount > 0 && <button onClick={markAllRead} className="w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Mark all read</button>}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
           )}
@@ -1069,15 +1050,19 @@ export default function Home() {
           <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full shadow-sm" />
           {msgOpen && (
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden msg-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Messages</p>              <span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{stats.unread} unread</span></div>
-              <div className="divide-y divide-gray-50">
-                {[{name:'Sara',msg:'Hey! Are you free?',time:'2m',dot:true},{name:'Omar',msg:'Thanks for the help 🙌',time:'1h',dot:true},{name:'Lina',msg:'Let me check that file',time:'3h',dot:false}].map((c,i)=><div key={i} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">{c.name[0]}</div>
-                  <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{c.name} <span className="font-normal text-gray-400">{c.msg}</span></p><p className="text-[7px] text-gray-400">{c.time}</p></div>
-                  {c.dot && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />}
-                </div>)}
-              </div>
-              <Link to="/messages" onClick={() => setMsgOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">View all messages →</Link>
+              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Messages</p>{stats.unread > 0 && <span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{stats.unread} unread</span>}</div>
+              {conversations.length === 0 ? (
+                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No recent messages</p></div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {conversations.slice(0, 5).map((c,i)=><div key={c.other_id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">{c.other_name?.[0]||'?'}</div>
+                    <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{c.other_name}</p><p className="text-[7px] text-gray-400 truncate">{c.has_image ? '📷 Photo' : c.has_voice ? '🎤 Voice' : c.last_message||'No messages yet'}</p></div>
+                    {Number(c.unread) > 0 && <span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{c.unread}</span>}
+                  </div>)}
+                </div>
+              )}
+              <Link to="/messages" onClick={() => setMsgOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Open Messages →</Link>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
           )}
@@ -1094,14 +1079,17 @@ export default function Home() {
           </button>
           {resumeOpen && (
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden resume-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50"><p className="text-[11px] font-bold text-gray-900">Your Resumes</p></div>
-              <div className="divide-y divide-gray-50">
-                {[{n:'Software Engineer',s:'92%',c:'2 days ago'},{n:'Full Stack Dev',s:'78%',c:'1 week ago'},{n:'Data Analyst',s:'45%',c:'Draft'}].map((r,i)=><div key={i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 text-[9px] font-bold flex-shrink-0">{r.n[0]}</div>
-                  <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{r.n}</p><p className="text-[7px] text-gray-400">{r.c}</p></div>
-                  <span className="text-[8px] font-bold text-teal-600">{r.s}</span>
-                </div>)}
-              </div>
+              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Your Resumes</p><span className="text-[8px] font-bold text-teal-600">{resumeList.length}</span></div>
+              {resumeList.length === 0 ? (
+                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No resumes yet</p></div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {resumeList.slice(0, 5).map((r,i)=><div key={r.id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 text-[9px] font-bold flex-shrink-0">{r.title?.[0]||'R'}</div>
+                    <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{r.title||r.name||'Resume'}</p></div>
+                  </div>)}
+                </div>
+              )}
               <Link to="/resumes" onClick={() => setResumeOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Manage resumes →</Link>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
@@ -1119,14 +1107,18 @@ export default function Home() {
           </button>
           {jobsOpen && (
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden jobs-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Job Tracker</p><span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{stats.jobs} saved</span></div>
-              <div className="divide-y divide-gray-50">
-                {[{c:'Google',r:'Applied',color:'text-amber-600',bg:'bg-amber-50'},{c:'Meta',r:'Interview',color:'text-emerald-600',bg:'bg-emerald-50'},{c:'Amazon',r:'Saved',color:'text-gray-400',bg:'bg-gray-50'}].map((j,i)=><div key={i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 text-[9px] font-bold flex-shrink-0">{j.c[0]}</div>
-                  <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800">{j.c}</p></div>
-                  <span className={`text-[8px] font-bold ${j.color} ${j.bg} px-1.5 py-0.5 rounded-full`}>{j.r}</span>
-                </div>)}
-              </div>
+              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Job Tracker</p><span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{jobList.length} saved</span></div>
+              {jobList.length === 0 ? (
+                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No saved jobs yet</p></div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {jobList.slice(0, 5).map((j,i)=><div key={j.id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 text-[9px] font-bold flex-shrink-0">{j.title?.[0]||j.company?.[0]||'J'}</div>
+                    <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{j.title||j.position||j.company||'Job'}</p></div>
+                    {j.status && <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">{j.status}</span>}
+                  </div>)}
+                </div>
+              )}
               <Link to="/jobs" onClick={() => setJobsOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">View all jobs →</Link>
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
@@ -1146,13 +1138,17 @@ export default function Home() {
           {friendsOpen && (
             <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden friends-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
               <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Friend Requests</p><span className="text-[8px] bg-emerald-50 text-emerald-500 px-1.5 py-0.5 rounded-full font-semibold">{friendRequests.length} new</span></div>
+              {friendRequests.length === 0 ? (
+                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No pending requests</p></div>
+              ) : (
               <div className="divide-y divide-gray-50">
-                {friendRequests.map((f,i)=><div key={i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">{f.n[0]}</div>
-                  <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800">{f.n}</p><p className="text-[7px] text-gray-400">{f.mutual} mutual friends</p></div>
-                  <button onClick={() => acceptFriendReq(f.n)} className="text-[9px] bg-indigo-50 text-indigo-600 font-semibold px-2 py-0.5 rounded-lg hover:bg-indigo-100 transition-colors">Accept</button>
+                {friendRequests.map((f,i)=><div key={f.id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">{f.name?.[0]||'?'}</div>
+                  <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800">{f.name}</p></div>
+                  <button onClick={() => acceptFriendReq(f.id)} className="text-[9px] bg-indigo-50 text-indigo-600 font-semibold px-2 py-0.5 rounded-lg hover:bg-indigo-100 transition-colors">Accept</button>
                 </div>)}
               </div>
+              )}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
             </div>
           )}
