@@ -37,3 +37,5 @@ Thumbs.db
 
 # Misc
 ads/
+
+.env*.local

@@ -218,8 +218,8 @@ router.post('/:userId', auth, async (req, res) => {
       reply_to: reply_preview,
     });
   } catch (err) {
-    console.error('[POST /messages/:userId] Error:', err.message);
-    res.status(500).json({ error: 'Failed to send message.' });
+    console.error('[POST /messages/:userId] Error:', err.message, err.stack);
+    res.status(500).json({ error: err.message });
   }
 });
 
