@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail, Info } from 'lucide-react';
 import Layout from '../components/Layout';
@@ -10,14 +10,14 @@ import EmptyState from '../components/EmptyState';
 import GroupsPanel, { GroupInfoModal } from '../components/GroupsPanel';
 import api from '../api/axios';
 
-function Avatar({ user, size = 'sm' }) {
+const Avatar = React.memo(function Avatar({ user, size = 'sm' }) {
   const sz = size === 'lg' ? 'w-10 h-10 text-sm' : 'w-8 h-8 text-xs';
   return user?.avatar
     ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm`} />
     : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold flex-shrink-0 shadow-sm`}>
         {user?.name?.[0] || '?'}
       </div>;
-}
+});
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -45,7 +45,7 @@ function formatLastSeen(lastSeenAt) {
   return `Active ${Math.floor(h / 24)}d ago`;
 }
 
-function StatusDot({ lastSeenAt, glowing = false }) {
+const StatusDot = React.memo(function StatusDot({ lastSeenAt, glowing = false }) {
   const online = isOnline(lastSeenAt);
   if (!online) return <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white bg-gray-300" />;
   return (
@@ -53,7 +53,7 @@ function StatusDot({ lastSeenAt, glowing = false }) {
       <span className="block w-2.5 h-2.5 rounded-full border-2 border-white bg-emerald-500 relative z-10" />
     </span>
   );
-}
+});
 
 function TypingDots() {
   return (
@@ -70,7 +70,7 @@ function TypingDots() {
   );
 }
 
-function VoicePlayer({ src }) {
+const VoicePlayer = React.memo(function VoicePlayer({ src }) {
   const audioRef = useRef();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -106,7 +106,7 @@ function VoicePlayer({ src }) {
       </div>
     </div>
   );
-}
+});
 
 export default function Messages() {
   const addToast = useToast();
@@ -144,8 +144,17 @@ export default function Messages() {
   const typingTimeoutRef = useRef(null);
   const prevMsgCountRef = useRef(0);
   const socketRef = useRef(null);
+  const sendErrorTimeoutRef = useRef(null);
 
   useEffect(() => { activeUserRef.current = activeUser; }, [activeUser]);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(sendErrorTimeoutRef.current);
+      clearInterval(recTimerRef.current);
+      mediaRecRef.current?.stop();
+    };
+  }, []);
 
   useEffect(() => {
     const socket = getSocket();
@@ -198,8 +207,8 @@ export default function Messages() {
         api.get('/messages/conversations'),
         api.get('/friends').catch(() => ({ data: [] })),
       ]);
-      setConversations(c.data);
-      setFriends(f.data);
+      setConversations(prev => JSON.stringify(prev) === JSON.stringify(c.data) ? prev : c.data);
+      setFriends(prev => JSON.stringify(prev) === JSON.stringify(f.data) ? prev : f.data);
       setActiveUser(prev => {
         if (!prev) return prev;
         const conv = c.data.find(x => x.other_id === prev.id);
@@ -371,7 +380,8 @@ export default function Messages() {
       if (payload?.image_url) setMsgImage(payload.image_url);
       if (payload?.voice_url) setPendingVoice(payload.voice_url);
       setSendError('Failed to send — tap to retry');
-      setTimeout(() => setSendError(''), 4000);
+      clearTimeout(sendErrorTimeoutRef.current);
+      sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 4000);
     } finally { setSending(false); }
   };
 
@@ -448,12 +458,28 @@ export default function Messages() {
     setPendingVoice(null);
   };
 
-  const convUserIds = conversations.map(c => c.other_id);
-  const friendsNotInConv = friends.filter(f => !convUserIds.includes(f.id));
-  const filteredConvs = conversations.filter(c => !query || c.other_name?.toLowerCase().includes(query.toLowerCase()));
-  const filteredFriends = friendsNotInConv.filter(f => !query || f.name?.toLowerCase().includes(query.toLowerCase()));
+  const convUserIds = useMemo(() => conversations.map(c => c.other_id), [conversations]);
+  const convUserIdsSet = useMemo(() => new Set(convUserIds), [convUserIds]);
+  const friendsNotInConv = useMemo(() => friends.filter(f => !convUserIdsSet.has(f.id)), [friends, convUserIdsSet]);
+  const filteredConvs = useMemo(() => conversations.filter(c => !query || c.other_name?.toLowerCase().includes(query.toLowerCase())), [conversations, query]);
+  const filteredFriends = useMemo(() => friendsNotInConv.filter(f => !query || f.name?.toLowerCase().includes(query.toLowerCase())), [friendsNotInConv, query]);
 
-  const lastMySentIdx = messages.reduce((last, m, i) => m.sender_id === myUser.id ? i : last, -1);
+  const lastMySentIdx = useMemo(() => messages.reduce((last, m, i) => m.sender_id === myUser.id ? i : last, -1), [messages, myUser.id]);
+
+  const handleReaction = useCallback((msgId, emoji, removed) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? {
+      ...m,
+      reactions: removed
+        ? (m.reactions || []).filter(r => r.user_id !== myUser.id)
+        : [...(m.reactions || []).filter(r => r.user_id !== myUser.id), { emoji, user_id: myUser.id }]
+    } : m));
+  }, [myUser.id]);
+
+  const handleTextareaKeyDown = useCallback((e) => {
+    if (activeGroup) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGroupMessage(); }
+    } else handleKeyDown(e);
+  }, [activeGroup, activeUser, sending, input, msgImage, pendingVoice]);
 
   const fmtRec = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -463,7 +489,7 @@ export default function Messages() {
     return c.last_message;
   };
 
-  const totalUnread = conversations.reduce((s, c) => s + (c.unread || 0), 0);
+  const totalUnread = useMemo(() => conversations.reduce((s, c) => s + (c.unread || 0), 0), [conversations]);
 
   return (
     <Layout>
@@ -518,7 +544,7 @@ export default function Messages() {
                 <div className="relative flex-shrink-0">
                   <Avatar user={{ id: c.other_id, name: c.other_name, avatar: c.other_avatar }} />
                   {c.unread > 0
-                    ? <span className="absolute -top-1 -right-1 w-4.5 h-4.5 text-white text-[10px] rounded-full flex items-center justify-center font-bold leading-none shadow-sm" style={{ background: 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' }}>
+                    ? <span className="absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] rounded-full flex items-center justify-center font-bold leading-none shadow-sm" style={{ background: 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' }}>
                         {c.unread > 9 ? '9+' : c.unread}
                       </span>
                     : <StatusDot lastSeenAt={c.other_last_seen_at} glowing={activeUser?.id === c.other_id} />}
@@ -716,14 +742,7 @@ export default function Messages() {
                           </span>
                         )}
                       </div>
-                      <MessageReactions message={msg} myId={myUser.id} onReacted={(msgId, emoji, removed) => {
-                        setMessages(prev => prev.map(m => m.id === msgId ? {
-                          ...m,
-                          reactions: removed
-                            ? (m.reactions || []).filter(r => r.user_id !== myUser.id)
-                            : [...(m.reactions || []).filter(r => r.user_id !== myUser.id), { emoji, user_id: myUser.id }]
-                        } : m));
-                      }} />
+                      <MessageReactions message={msg} myId={myUser.id} onReacted={handleReaction} />
 
                       {isLastMySent && (
                         <div className="flex items-center justify-end gap-1 mt-0.5 pr-0.5">
@@ -816,7 +835,7 @@ export default function Messages() {
                     ref={inputRef}
                     value={input}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => { if (activeGroup) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGroupMessage(); } } else handleKeyDown(e); }}
+                    onKeyDown={handleTextareaKeyDown}
                     placeholder={activeGroup ? `Message ${activeGroup.name}…` : pendingVoice ? 'Add a caption... (optional)' : activeUser ? `Message ${activeUser.name}…` : 'Type a message…'}
                     rows={1}
                     className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 bg-white text-gray-900 placeholder-gray-400 resize-none overflow-hidden leading-relaxed transition-shadow hover:shadow-sm"

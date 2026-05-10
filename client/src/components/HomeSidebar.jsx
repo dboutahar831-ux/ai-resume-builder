@@ -32,7 +32,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
   }, []);
 
   return (
-    <div className="hidden lg:flex flex-col gap-4 sticky top-6 self-start">
+    <>
       {/* Profile Card */}
       <div style={{ animation: 'slideDown 0.35s ease' }}>
         <ProfileCard
@@ -168,6 +168,6 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 }
