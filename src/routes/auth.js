@@ -122,7 +122,7 @@ router.post('/login', async (req, res) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, is_admin, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
+      'SELECT id, name, nickname, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, is_admin, COALESCE(show_online_status, TRUE) AS show_online_status, COALESCE(show_read_receipts, TRUE) AS show_read_receipts, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found.' });
@@ -134,17 +134,17 @@ router.get('/profile', auth, async (req, res) => {
 
 // PUT /api/auth/profile
 router.put('/profile', auth, async (req, res) => {
-  const { name, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, show_online_status, show_read_receipts } = req.body;
+  const { name, nickname, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status, show_online_status, show_read_receipts } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required.' });
   try {
     const result = await pool.query(
-      `UPDATE users SET name=$1, age=$2, phone=$3, location=$4, linkedin=$5, avatar=$6, bio=$7,
-        cover_image=$8, skills=$9, availability_status=$10, show_online_status=$11, show_read_receipts=$12
-       WHERE id=$13
-       RETURNING id, name, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status,
+      `UPDATE users SET name=$1, nickname=$2, age=$3, phone=$4, location=$5, linkedin=$6, avatar=$7, bio=$8,
+        cover_image=$9, skills=$10, availability_status=$11, show_online_status=$12, show_read_receipts=$13
+       WHERE id=$14
+       RETURNING id, name, nickname, email, age, phone, location, linkedin, avatar, bio, cover_image, skills, availability_status,
          COALESCE(show_online_status, TRUE) AS show_online_status,
          COALESCE(show_read_receipts, TRUE) AS show_read_receipts`,
-      [name, age || null, phone || null, location || null, linkedin || null, avatar || null, bio || null,
+      [name, nickname || '', age || null, phone || null, location || null, linkedin || null, avatar || null, bio || null,
        cover_image || null,
        skills ? JSON.stringify(skills) : '[]',
        ['open_to_work', 'not_looking', 'all'].includes(availability_status) ? availability_status : 'all',

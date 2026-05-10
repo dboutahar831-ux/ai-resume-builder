@@ -95,6 +95,7 @@ export default function ProfileCard({
   coverImage,
   avatar,
   name,
+  nickname,
   bio,
   email,
   location,
@@ -194,6 +195,7 @@ export default function ProfileCard({
         {/* Name + badges */}
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{name}</h1>
+          {nickname && <span className="text-sm text-gray-400 dark:text-gray-500 font-medium ml-1.5">@{nickname}</span>}
           <AvailabilityBadge status={availabilityStatus} />
           {!isOwn && isFriend && (
             <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-medium border border-emerald-200 dark:border-emerald-800">

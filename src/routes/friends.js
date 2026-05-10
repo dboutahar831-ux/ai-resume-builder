@@ -72,6 +72,26 @@ router.get('/', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Failed to load friends.' }); }
 });
 
+// GET /api/friends/user/:userId — public friends list for a specific user
+router.get('/user/:userId', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.avatar, u.location,
+        CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS last_seen_at
+       FROM friendships f
+       JOIN users u ON (
+         CASE WHEN f.requester_id=$2 THEN f.addressee_id ELSE f.requester_id END = u.id
+       )
+       WHERE (f.requester_id=$2 OR f.addressee_id=$2) AND f.status='accepted'
+         AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id=$1 AND blocked_id=u.id)
+         AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id=u.id AND blocked_id=$1)
+       LIMIT 50`,
+      [req.user.id, req.params.userId]
+    );
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Failed to load friends.' }); }
+});
+
 // GET /api/friends/requests — incoming pending requests
 router.get('/requests', auth, async (req, res) => {
   try {
@@ -91,7 +111,7 @@ router.get('/requests', auth, async (req, res) => {
 router.get('/profile/:userId', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.name, u.location, u.linkedin, u.avatar, u.bio, u.cover_image, u.created_at,
+      `SELECT u.id, u.name, u.nickname, u.location, u.linkedin, u.avatar, u.bio, u.cover_image, u.created_at,
         CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS last_seen_at,
         (SELECT status FROM friendships
          WHERE (requester_id=$1 AND addressee_id=$2)

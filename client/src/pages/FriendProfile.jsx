@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Briefcase, Sparkles, ExternalLink, X } from 'lucide-react';
+import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Briefcase, Sparkles, ExternalLink, X, Users, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProfileCard from '../components/ProfileCard';
 import api from '../api/axios';
@@ -62,13 +63,15 @@ export default function FriendProfile() {
   const [highlights, setHighlights] = useState([]);
   const [viewingHL, setViewingHL] = useState(null);
   const [latestExp, setLatestExp] = useState(null);
+  const [friendList, setFriendList] = useState([]);
 
   const load = async () => {
     try {
-      const [profileRes, hlRes, resumeRes] = await Promise.allSettled([
+      const [profileRes, hlRes, resumeRes, friendsRes] = await Promise.allSettled([
         api.get(`/friends/profile/${id}`),
         api.get(`/highlights/${id}`),
         api.get(`/resumes/user/${id}`),
+        api.get(`/friends/user/${id}`),
       ]);
 
       if (profileRes.status === 'fulfilled') {
@@ -85,12 +88,17 @@ export default function FriendProfile() {
       if (resumeRes.status === 'fulfilled') {
         const list = resumeRes.value.data;
         if (list.length > 0) {
+
           const latest = list.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0];
           if (latest?.experience?.length > 0) {
             const sorted = [...latest.experience].sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
             setLatestExp(sorted[0]);
           }
         }
+      }
+
+      if (friendsRes.status === 'fulfilled') {
+        setFriendList(friendsRes.value.data);
       }
     } catch {} finally { setLoading(false); }
   };
@@ -170,6 +178,7 @@ export default function FriendProfile() {
           coverImage={profile.cover_image}
           avatar={profile.avatar}
           name={profile.name}
+          nickname={profile.nickname}
           bio={profile.bio}
           location={profile.location}
           linkedin={profile.linkedin}
@@ -243,6 +252,33 @@ export default function FriendProfile() {
             )}
           </div>
         </div>
+
+        {/* ── Friends Grid ── */}
+        {friendList.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Users size={14} className="text-emerald-500" />
+                Friends <span className="text-gray-400 font-normal">· {friendList.length}</span>
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {friendList.slice(0, 9).map(f => (
+                <Link key={f.id} to={`/friends/${f.id}`}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm ring-2 ring-white dark:ring-gray-900">
+                    {f.avatar
+                      ? <img src={f.avatar} loading="lazy" alt={f.name} className="w-full h-full rounded-full object-cover" />
+                      : (f.name?.[0] || '?')
+                    }
+                  </div>
+                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate w-full text-center group-hover:text-indigo-600 transition-colors">{f.name}</p>
+                  <p className="text-[10px] text-gray-400 truncate w-full text-center">{f.location || 'Nexly'}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

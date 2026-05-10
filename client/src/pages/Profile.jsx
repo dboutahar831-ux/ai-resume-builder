@@ -385,7 +385,7 @@ export default function Profile() {
   const [user, setUser]       = useState(null);
   const [stats, setStats]     = useState({ resumes: 0, jobs: 0, friends: 0, messages: 0 });
   const [friends, setFriends] = useState([]);
-  const [form, setForm]       = useState({ name:'', age:'', phone:'', location:'', linkedin:'', avatar:'', bio:'', cover_image:'', skills:[], availability_status:'all' });
+  const [form, setForm]       = useState({ name:'', nickname:'', age:'', phone:'', location:'', linkedin:'', avatar:'', bio:'', cover_image:'', skills:[], availability_status:'all' });
   const [skillInput, setSkillInput] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving]   = useState(false);
@@ -428,7 +428,7 @@ export default function Profile() {
     if (profileRes.status === 'fulfilled') {
       const d = profileRes.value.data;
       setUser(d);
-      setForm({ name: d.name||'', age: d.age||'', phone: d.phone||'', location: d.location||'', linkedin: d.linkedin||'', avatar: d.avatar||'', bio: d.bio||'', cover_image: d.cover_image||'', skills: d.skills||[], availability_status: d.availability_status||'all' });
+      setForm({ name: d.name||'', nickname: d.nickname||'', age: d.age||'', phone: d.phone||'', location: d.location||'', linkedin: d.linkedin||'', avatar: d.avatar||'', bio: d.bio||'', cover_image: d.cover_image||'', skills: d.skills||[], availability_status: d.availability_status||'all' });
     }
     if (statsArr.status === 'fulfilled') {
       const [r, j, f, m] = statsArr.value;
@@ -734,6 +734,7 @@ export default function Profile() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{user.name}</h1>
+                    {user.nickname && <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">@{user.nickname}</span>}
                     <AvailabilityBadge status={user.availability_status} />
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
@@ -826,6 +827,10 @@ export default function Profile() {
                   <div className="grid grid-cols-2 gap-4">
                     <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.fullName}</label>
                       <input className={inp} value={form.name} placeholder="Full name" onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+                    <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Nickname</label>
+                      <input className={inp} value={form.nickname} placeholder="e.g. johnny" onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div><label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{t.age}</label>
                       <input className={inp} type="number" min="10" max="100" placeholder="Age" value={form.age} onChange={e => setForm(f => ({ ...f, age: e.target.value }))} /></div>
                   </div>
