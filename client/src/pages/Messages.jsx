@@ -424,7 +424,8 @@ export default function Messages() {
       const res = await api.post(`/messages/${activeUser.id}`, payload);
       if (res.data?.id) setMessages(m => [...m, res.data]);
       loadConversations().catch(() => {});
-    } catch {
+    } catch (err) {
+      console.error('[sendViaRest] Error:', err?.response?.data || err?.message || err);
       if (payload?.content) setInput(payload.content);
       if (payload?.image_url) setMsgImage(payload.image_url);
       if (payload?.voice_url) setPendingVoice(payload.voice_url);
@@ -844,7 +845,7 @@ export default function Messages() {
                           style={isMe ? { background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' } : {}}>
 
                           {msg.sticker && (
-                            <div className="text-6xl text-center py-1 select-none">{msg.sticker}</div>
+                            <div className="text-5xl text-center select-none leading-none">{msg.sticker}</div>
                           )}
 
                           {!msg.sticker && msg.image_url && (
@@ -976,11 +977,11 @@ export default function Messages() {
                         <span className="text-lg leading-none">🙂</span>
                       </button>
                       {showStickers && (
-                        <div ref={stickerPickerRef} className="absolute bottom-14 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-2 z-50 max-h-60 overflow-y-auto">
-                          <div className="grid grid-cols-5 gap-1">
+                        <div ref={stickerPickerRef} className="absolute bottom-14 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-2.5 z-50 max-h-56 overflow-y-auto">
+                          <div className="flex flex-wrap justify-center gap-1.5 w-48">
                             {['😀','😍','😂','🤣','❤️','🔥','👍','🎉','💀','😭','🥺','😎','🤔','🙏','💯','✨','🎶','⭐','💪','🧠','👀','😈','🤡','💩','🫡'].map(e => (
                               <button key={e} onClick={() => { sendMessage({ sticker: e }); }}
-                                className="w-10 h-10 flex items-center justify-center text-xl hover:bg-gray-100 rounded-lg"
+                                className="w-9 h-9 flex items-center justify-center text-lg hover:bg-gray-100 rounded-lg flex-shrink-0"
                                 title={e}>
                                 {e}
                               </button>
