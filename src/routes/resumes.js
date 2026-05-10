@@ -60,6 +60,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/resumes/user/:userId — public resumes for a specific user
+router.get('/user/:userId', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, personal_info, experience, education, skills, created_at, updated_at FROM resumes WHERE user_id = $1 ORDER BY created_at DESC',
+      [req.params.userId]
+    );
+    res.json(result.rows);
+  } catch {
+    res.status(500).json({ error: 'Failed to load resumes.' });
+  }
+});
+
 // GET /api/resumes/:id
 router.get('/:id', async (req, res) => {
   try {
