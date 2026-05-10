@@ -148,12 +148,15 @@ export default function Messages() {
   const prevMsgCountRef = useRef(0);
   const socketRef = useRef(null);
   const sendErrorTimeoutRef = useRef(null);
+  const sendingTimeoutRef = useRef(null);
+  const stickerPickerRef = useRef(null);
 
   useEffect(() => { activeUserRef.current = activeUser; }, [activeUser]);
 
   useEffect(() => {
     return () => {
       clearTimeout(sendErrorTimeoutRef.current);
+      clearTimeout(sendingTimeoutRef.current);
       clearInterval(recTimerRef.current);
       mediaRecRef.current?.stop();
     };
@@ -214,6 +217,18 @@ export default function Messages() {
       socket.off('conversation:cleared');
     };
   }, []);
+
+  // Close sticker picker on outside click
+  useEffect(() => {
+    if (!showStickers) return;
+    const handler = (e) => {
+      if (stickerPickerRef.current && !stickerPickerRef.current.contains(e.target)) {
+        setShowStickers(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showStickers]);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -335,6 +350,8 @@ export default function Messages() {
     const hasContent = input.trim() || msgImage || pendingVoice || sticker;
     if (!hasContent || !activeUser || sending) return;
     setSending(true);
+    clearTimeout(sendingTimeoutRef.current);
+    sendingTimeoutRef.current = setTimeout(() => setSending(false), 10000);
     const payload = {
       content: input.trim() || null,
       image_url: msgImage || null,
@@ -383,9 +400,10 @@ export default function Messages() {
         sticker: payload.sticker,
         reply_to_id: payload.reply_to_id,
       }, (res) => {
+        clearTimeout(sendingTimeoutRef.current);
         setSending(false);
         if (res?.ok) {
-          setMessages(prev => prev.map(m => m.id === tempId ? res.message : m));
+          setMessages(prev => prev.map(m => m.id === tempId ? { ...m, ...res.message, sticker: res.message.sticker ?? m.sticker } : m));
         } else {
           setMessages(prev => prev.filter(m => m.id !== tempId));
           sendViaRest(payload);
@@ -406,6 +424,7 @@ export default function Messages() {
       if (payload?.content) setInput(payload.content);
       if (payload?.image_url) setMsgImage(payload.image_url);
       if (payload?.voice_url) setPendingVoice(payload.voice_url);
+      if (payload?.sticker) setShowStickers(true);
       setSendError('Failed to send — tap to retry');
       clearTimeout(sendErrorTimeoutRef.current);
       sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 4000);
@@ -839,7 +858,7 @@ export default function Messages() {
                             <p className="whitespace-pre-wrap">{msg.content}</p>
                           )}
 
-                          {isMe && !msg.sticker && (
+                          {isMe && (
                             <span className="float-right ml-2 mt-1 opacity-70 flex-shrink-0">
                               {msg.read_at
                                 ? <CheckCheck size={13} className="text-teal-300" />
@@ -850,9 +869,9 @@ export default function Messages() {
                         </div>
                       </div>
 
-                      {!msg.sticker && <MessageReactions message={msg} myId={myUser.id} onReacted={handleReaction} />}
+                      <MessageReactions message={msg} myId={myUser.id} onReacted={handleReaction} />
 
-                      {isLastMySent && !msg.sticker && (
+                      {isLastMySent && (
                         <div className="flex items-center justify-end gap-1 mt-0.5 pr-0.5">
                           {msg.read_at
                             ? <><CheckCheck size={11} style={{ color: '#2EC4B6' }} /><span className="text-[10px] font-medium" style={{ color: '#2EC4B6' }}>Seen {timeAgo(msg.read_at)}</span></>
@@ -953,7 +972,7 @@ export default function Messages() {
                         <span className="text-lg leading-none">🙂</span>
                       </button>
                       {showStickers && (
-                        <div className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50">
+                        <div ref={stickerPickerRef} className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50">
                           <div className="grid grid-cols-5 gap-2">
                             {['😀','😍','😂','🤣','❤️','🔥','👍','🎉','💀','😭','🥺','😎','🤔','🙏','💯','✨','🎶','⭐','💪','🧠','👀','😈','🤡','💩','🫡'].map(e => (
                               <button key={e} onClick={() => { sendMessage({ sticker: e }); }}
@@ -993,7 +1012,7 @@ export default function Messages() {
                   />
 
                   <button onClick={activeGroup ? sendGroupMessage : sendMessage}
-                    disabled={(!input.trim() && !msgImage && !pendingVoice && !replyTo) || sending || groupSending}
+                    disabled={(!input.trim() && !msgImage && !pendingVoice && !replyTo && !showStickers) || sending || groupSending}
                     className="w-10 h-10 text-white rounded-xl flex items-center justify-center hover:opacity-90 hover:shadow-md transition-all disabled:opacity-40 flex-shrink-0 mb-0.5 shadow-sm"
                     style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     <Send size={16} />
