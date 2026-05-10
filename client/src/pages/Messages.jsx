@@ -150,6 +150,7 @@ export default function Messages() {
   const sendErrorTimeoutRef = useRef(null);
   const sendingTimeoutRef = useRef(null);
   const stickerPickerRef = useRef(null);
+  const sendingLockRef = useRef(false);
 
   useEffect(() => { activeUserRef.current = activeUser; }, [activeUser]);
 
@@ -159,6 +160,7 @@ export default function Messages() {
       clearTimeout(sendingTimeoutRef.current);
       clearInterval(recTimerRef.current);
       mediaRecRef.current?.stop();
+      sendingLockRef.current = false;
     };
   }, []);
 
@@ -348,10 +350,11 @@ export default function Messages() {
   const sendMessage = async (opts = {}) => {
     const sticker = opts.sticker || null;
     const hasContent = input.trim() || msgImage || pendingVoice || sticker;
-    if (!hasContent || !activeUser || sending) return;
+    if (!hasContent || !activeUser || sendingLockRef.current) return;
+    sendingLockRef.current = true;
     setSending(true);
     clearTimeout(sendingTimeoutRef.current);
-    sendingTimeoutRef.current = setTimeout(() => setSending(false), 10000);
+    sendingTimeoutRef.current = setTimeout(() => { sendingLockRef.current = false; setSending(false); }, 10000);
     const payload = {
       content: input.trim() || null,
       image_url: msgImage || null,
@@ -401,6 +404,7 @@ export default function Messages() {
         reply_to_id: payload.reply_to_id,
       }, (res) => {
         clearTimeout(sendingTimeoutRef.current);
+        sendingLockRef.current = false;
         setSending(false);
         if (res?.ok) {
           setMessages(prev => prev.map(m => m.id === tempId ? { ...m, ...res.message, sticker: res.message.sticker ?? m.sticker } : m));
@@ -428,7 +432,7 @@ export default function Messages() {
       setSendError('Failed to send — tap to retry');
       clearTimeout(sendErrorTimeoutRef.current);
       sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 4000);
-    } finally { setSending(false); }
+    } finally { sendingLockRef.current = false; setSending(false); }
   };
 
   const handleKeyDown = (e) => {
@@ -972,11 +976,11 @@ export default function Messages() {
                         <span className="text-lg leading-none">🙂</span>
                       </button>
                       {showStickers && (
-                        <div ref={stickerPickerRef} className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50">
-                          <div className="grid grid-cols-5 gap-2">
+                        <div ref={stickerPickerRef} className="absolute bottom-14 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-2 z-50 max-h-60 overflow-y-auto">
+                          <div className="grid grid-cols-5 gap-1">
                             {['😀','😍','😂','🤣','❤️','🔥','👍','🎉','💀','😭','🥺','😎','🤔','🙏','💯','✨','🎶','⭐','💪','🧠','👀','😈','🤡','💩','🫡'].map(e => (
                               <button key={e} onClick={() => { sendMessage({ sticker: e }); }}
-                                className="w-11 h-11 flex items-center justify-center text-2xl hover:bg-gray-100 rounded-xl transition-all active:scale-110"
+                                className="w-10 h-10 flex items-center justify-center text-xl hover:bg-gray-100 rounded-lg"
                                 title={e}>
                                 {e}
                               </button>
