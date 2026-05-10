@@ -52,7 +52,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
           </div>
         </ProfileCard>
         {/* Stat counters */}
-        <div className="grid grid-cols-4 gap-1.5 px-4 pb-4 -mt-2">
+        <div className="grid grid-cols-4 gap-1.5 px-4 pb-2 mt-3">
           {[
             { label: 'Resumes', value: stats.resumes, to: '/resumes',  icon: FileText,      color: 'text-indigo-500' },
             { label: 'Jobs',    value: stats.jobs,    to: '/jobs',     icon: Briefcase,     color: 'text-blue-500'   },
