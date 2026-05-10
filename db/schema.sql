@@ -261,6 +261,11 @@ CREATE TABLE IF NOT EXISTS group_members (
 -- Add group_id to messages table
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES group_chats(id) ON DELETE CASCADE;
 
+-- Add sticker, reply_to_id, deleted to messages (for stickers, reply, and soft-delete features)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sticker VARCHAR(10);
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES messages(id) ON DELETE SET NULL;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE INDEX IF NOT EXISTS idx_messages_group    ON messages(group_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id);

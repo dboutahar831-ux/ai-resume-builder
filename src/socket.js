@@ -26,20 +26,40 @@ function setupSocket(io) {
     socket.broadcast.emit('user:online', { userId });
 
     // Handle sending a message
-    socket.on('message:send', async ({ receiverId, content, image_url, voice_url }, callback) => {
+    socket.on('message:send', async ({ receiverId, content, image_url, voice_url, sticker, reply_to_id }, callback) => {
       try {
         const result = await pool.query(
-          `INSERT INTO messages (sender_id, receiver_id, content, image_url, voice_url)
-           VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-          [userId, receiverId, content || null, image_url || null, voice_url || null]
+          `INSERT INTO messages (sender_id, receiver_id, content, image_url, voice_url, sticker, reply_to_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+          [userId, receiverId, content || null, image_url || null, voice_url || null, sticker || null, reply_to_id || null]
         );
         const msg = result.rows[0];
+        let reply_preview = null;
+        if (msg.reply_to_id) {
+          const replyRes = await pool.query(
+            'SELECT id, sender_id, content, sticker, image_url FROM messages WHERE id=$1',
+            [msg.reply_to_id]
+          );
+          if (replyRes.rows[0]) {
+            const r = replyRes.rows[0];
+            const replySender = await pool.query('SELECT name FROM users WHERE id=$1', [r.sender_id]);
+            reply_preview = {
+              id: r.id,
+              sender_id: r.sender_id,
+              sender_name: replySender.rows[0]?.name || 'Unknown',
+              content: r.content,
+              sticker: r.sticker,
+              image_url: r.image_url ? '/api/messages/img/' + r.id : null,
+            };
+          }
+        }
         const enriched = {
           ...msg,
           image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
           voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
           sender_name: socket.user.name || 'Unknown',
           sender_avatar: socket.user.avatar || null,
+          reply_to: reply_preview,
         };
 
         // Send to receiver
@@ -49,6 +69,42 @@ function setupSocket(io) {
       } catch (err) {
         console.error('[Socket] message:send error:', err.message);
         callback?.({ ok: false, error: 'Failed to send message.' });
+      }
+    });
+
+    // Handle deleting a message (soft delete, only sender)
+    socket.on('message:delete', async ({ messageId }, callback) => {
+      try {
+        const msgRes = await pool.query('SELECT sender_id FROM messages WHERE id=$1', [messageId]);
+        if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
+        if (msgRes.rows[0].sender_id !== userId) return callback?.({ ok: false, error: 'Not your message.' });
+
+        await pool.query('UPDATE messages SET deleted=TRUE WHERE id=$1', [messageId]);
+
+        // Get the receiver to notify them
+        const msg = await pool.query('SELECT sender_id, receiver_id FROM messages WHERE id=$1', [messageId]);
+        const receiverId = msg.rows[0].sender_id === userId ? msg.rows[0].receiver_id : msg.rows[0].sender_id;
+        io.to(`user:${receiverId}`).emit('message:deleted', { messageId, userId });
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] message:delete error:', err.message);
+        callback?.({ ok: false, error: 'Failed to delete message.' });
+      }
+    });
+
+    // Handle clearing entire conversation
+    socket.on('conversation:clear', async ({ targetUserId }, callback) => {
+      try {
+        await pool.query(
+          `DELETE FROM messages
+           WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
+          [userId, targetUserId]
+        );
+        io.to(`user:${targetUserId}`).emit('conversation:cleared', { byUserId: userId });
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] conversation:clear error:', err.message);
+        callback?.({ ok: false, error: 'Failed to clear conversation.' });
       }
     });
 

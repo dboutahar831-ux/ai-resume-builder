@@ -13,13 +13,14 @@ router.get('/conversations', auth, async (req, res) => {
          m.content AS last_message,
          COALESCE(m.image_url != '' AND m.image_url IS NOT NULL, FALSE) AS has_image,
          COALESCE(m.voice_url != '' AND m.voice_url IS NOT NULL, FALSE) AS has_voice,
+         m.sticker IS NOT NULL AS has_sticker,
          m.created_at AS last_at,
          m.sender_id AS last_sender_id,
-         (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=other_id AND read=FALSE) AS unread
+         (SELECT COUNT(*) FROM messages WHERE receiver_id=$1 AND sender_id=other_id AND read=FALSE AND deleted=FALSE) AS unread
        FROM (
          SELECT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id,
-                id, content, image_url, voice_url, created_at, sender_id
-         FROM messages WHERE sender_id=$1 OR receiver_id=$1
+                id, content, image_url, voice_url, sticker, created_at, sender_id
+         FROM messages WHERE (sender_id=$1 OR receiver_id=$1) AND deleted=FALSE
        ) m
        JOIN users u ON u.id = m.other_id
        ORDER BY other_id, m.created_at DESC`,
@@ -35,7 +36,7 @@ router.get('/conversations', auth, async (req, res) => {
 router.get('/unread/count', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT COUNT(*) AS count FROM messages WHERE receiver_id=$1 AND read=FALSE`,
+      `SELECT COUNT(*) AS count FROM messages WHERE receiver_id=$1 AND read=FALSE AND deleted=FALSE`,
       [req.user.id]
     );
     res.json({ count: parseInt(result.rows[0].count) });
@@ -123,7 +124,7 @@ router.get('/:userId', auth, async (req, res) => {
                    THEN '/api/messages/img/' || m.id ELSE NULL END AS image_url,
               CASE WHEN m.voice_url IS NOT NULL AND m.voice_url <> ''
                    THEN '/api/messages/voice/' || m.id ELSE NULL END AS voice_url,
-              m.read, m.read_at, m.created_at,
+              m.sticker, m.reply_to_id, m.deleted, m.read, m.read_at, m.created_at,
               u.name AS sender_name, u.avatar AS sender_avatar,
               COALESCE(
                 (SELECT jsonb_agg(jsonb_build_object('emoji', mr.emoji, 'user_id', mr.user_id))
@@ -141,6 +142,27 @@ router.get('/:userId', auth, async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: 'Failed to load messages.' });
   }
+
+  // Attach reply_to previews
+  const replyIds = rows.filter(r => r.reply_to_id).map(r => r.reply_to_id);
+  let replyMap = {};
+  if (replyIds.length > 0) {
+    try {
+      const replyRes = await pool.query(
+        `SELECT m.id, m.sender_id, m.content, m.sticker,
+                CASE WHEN m.image_url IS NOT NULL AND m.image_url <> ''
+                     THEN '/api/messages/img/' || m.id ELSE NULL END AS image_url,
+                u.name AS sender_name
+         FROM messages m JOIN users u ON u.id = m.sender_id
+         WHERE m.id = ANY($1::int[])`,
+        [replyIds]
+      );
+      for (const r of replyRes.rows) {
+        replyMap[r.id] = { id: r.id, sender_id: r.sender_id, sender_name: r.sender_name, content: r.content, sticker: r.sticker, image_url: r.image_url };
+      }
+    } catch {}
+  }
+  rows = rows.map(r => ({ ...r, reply_to: r.reply_to_id ? (replyMap[r.reply_to_id] || null) : null }));
 
   res.json(rows);
 
@@ -168,26 +190,64 @@ router.get('/:userId', auth, async (req, res) => {
 
 // POST /api/messages/:userId — send message
 router.post('/:userId', auth, async (req, res) => {
-  const { content, image_url, voice_url } = req.body;
-  if (!content?.trim() && !image_url && !voice_url)
+  const { content, image_url, voice_url, sticker, reply_to_id } = req.body;
+  if (!content?.trim() && !image_url && !voice_url && !sticker)
     return res.status(400).json({ error: 'Message cannot be empty.' });
   try {
     const result = await pool.query(
-      `INSERT INTO messages (sender_id, receiver_id, content, image_url, voice_url)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [req.user.id, req.params.userId, content?.trim() || null, image_url || null, voice_url || null]
+      `INSERT INTO messages (sender_id, receiver_id, content, image_url, voice_url, sticker, reply_to_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.user.id, req.params.userId, content?.trim() || null, image_url || null, voice_url || null, sticker || null, reply_to_id || null]
     );
     const msg = result.rows[0];
     const sender = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [req.user.id]);
+    let reply_preview = null;
+    if (msg.reply_to_id) {
+      const replyRes = await pool.query(
+        'SELECT m.id, m.sender_id, m.content, m.sticker, CASE WHEN m.image_url IS NOT NULL AND m.image_url <> \'\' THEN \'/api/messages/img/\' || m.id ELSE NULL END AS image_url, u.name AS sender_name FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.id=$1',
+        [msg.reply_to_id]
+      );
+      if (replyRes.rows[0]) reply_preview = replyRes.rows[0];
+    }
     res.json({
       ...msg,
       image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
       voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
       sender_name: sender.rows[0]?.name || 'Unknown',
       sender_avatar: sender.rows[0]?.avatar || null,
+      reply_to: reply_preview,
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send message.' });
+  }
+});
+
+// DELETE /api/messages/conversation/:userId — delete all messages with a user
+router.delete('/conversation/:userId', auth, async (req, res) => {
+  try {
+    await pool.query(
+      `DELETE FROM messages
+       WHERE (sender_id=$1 AND receiver_id=$2) OR (sender_id=$2 AND receiver_id=$1)`,
+      [req.user.id, req.params.userId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear conversation.' });
+  }
+});
+
+// DELETE /api/messages/:msgId — soft delete a message (only sender)
+router.delete('/:msgId', auth, async (req, res) => {
+  try {
+    const msgRes = await pool.query('SELECT sender_id FROM messages WHERE id=$1', [req.params.msgId]);
+    if (!msgRes.rows[0]) return res.status(404).json({ error: 'Message not found.' });
+    if (msgRes.rows[0].sender_id !== req.user.id)
+      return res.status(403).json({ error: 'You can only delete your own messages.' });
+
+    await pool.query('UPDATE messages SET deleted=TRUE WHERE id=$1', [req.params.msgId]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete message.' });
   }
 });
 

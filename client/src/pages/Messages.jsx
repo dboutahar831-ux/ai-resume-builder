@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail, Info } from 'lucide-react';
+import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail, Info, Reply, Trash2, Trash } from 'lucide-react';
 import Layout from '../components/Layout';
 import { getSocket } from '../services/socket';
 import { useToast } from '../components/Toast';
@@ -129,6 +129,8 @@ export default function Messages() {
   const [pendingVoice, setPendingVoice] = useState(null);
   const [sendError, setSendError] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
   const [activeGroup, setActiveGroup] = useState(null);
   const [groupMessages, setGroupMessages] = useState([]);
   const [groupSending, setGroupSending] = useState(false);
@@ -194,10 +196,21 @@ export default function Messages() {
       }
     });
 
+    socket.on('message:deleted', ({ messageId }) => {
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted: true } : m));
+    });
+
+    socket.on('conversation:cleared', () => {
+      setMessages([]);
+      loadConversations();
+    });
+
     return () => {
       socket.off('message:new');
       socket.off('typing');
       socket.off('messages:seen');
+      socket.off('message:deleted');
+      socket.off('conversation:cleared');
     };
   }, []);
 
@@ -273,6 +286,7 @@ export default function Messages() {
     setInput('');
     setMsgImage('');
     setPendingVoice(null);
+    setReplyTo(null);
     const fromFriends = friends.find(f => f.id === userId);
     const fromConvs = conversations.find(c => c.other_id === userId);
     let user = fromFriends
@@ -315,21 +329,28 @@ export default function Messages() {
     finally { setGroupSending(false); }
   };
 
-  const sendMessage = async () => {
-    const hasContent = input.trim() || msgImage || pendingVoice;
+  const sendMessage = async (opts = {}) => {
+    const sticker = opts.sticker || null;
+    const hasContent = input.trim() || msgImage || pendingVoice || sticker;
     if (!hasContent || !activeUser || sending) return;
     setSending(true);
     const payload = {
       content: input.trim() || null,
       image_url: msgImage || null,
       voice_url: pendingVoice || null,
+      sticker,
+      reply_to_id: replyTo?.id || null,
     };
     const textSnapshot = input.trim();
     const imgSnapshot = msgImage;
     const voiceSnapshot = pendingVoice;
+    const stickerSnapshot = sticker;
+    const replySnapshot = replyTo;
     setInput('');
     setMsgImage('');
     setPendingVoice(null);
+    setReplyTo(null);
+    setShowStickers(false);
     if (inputRef.current) inputRef.current.style.height = 'auto';
 
     const socket = socketRef.current;
@@ -342,6 +363,9 @@ export default function Messages() {
         content: payload.content,
         image_url: imgSnapshot,
         voice_url: voiceSnapshot,
+        sticker: stickerSnapshot,
+        reply_to_id: replySnapshot?.id || null,
+        reply_to: replySnapshot ? { id: replySnapshot.id, sender_id: replySnapshot.sender_id, sender_name: replySnapshot.sender_name, content: replySnapshot.content, sticker: replySnapshot.sticker, image_url: replySnapshot.image_url } : null,
         read: false,
         read_at: null,
         created_at: new Date().toISOString(),
@@ -355,6 +379,8 @@ export default function Messages() {
         content: payload.content,
         image_url: payload.image_url,
         voice_url: payload.voice_url,
+        sticker: payload.sticker,
+        reply_to_id: payload.reply_to_id,
       }, (res) => {
         setSending(false);
         if (res?.ok) {
@@ -479,13 +505,14 @@ export default function Messages() {
     if (activeGroup) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGroupMessage(); }
     } else handleKeyDown(e);
-  }, [activeGroup, activeUser, sending, input, msgImage, pendingVoice]);
+  }, [activeGroup, activeUser, sending, input, msgImage, pendingVoice, replyTo]);
 
   const fmtRec = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const lastMsgPreview = (c) => {
     if (c.has_voice) return '🎙️ Voice message';
     if (c.has_image) return '📷 Photo';
+    if (c.has_sticker) return '🙂 Sticker';
     return c.last_message;
   };
 
@@ -636,6 +663,23 @@ export default function Messages() {
                   {isTyping ? '● typing...' : formatLastSeen(activeUser.last_seen_at)}
                 </p>
               </div>
+              {/* Clear conversation */}
+              <button onClick={() => {
+                if (window.confirm('Clear all messages in this conversation? This cannot be undone.')) {
+                  const socket = socketRef.current;
+                  if (socket?.connected) {
+                    socket.emit('conversation:clear', { targetUserId: activeUser.id }, (res) => {
+                      if (res?.ok) setMessages([]);
+                    });
+                  } else {
+                    api.delete(`/messages/conversation/${activeUser.id}`).then(() => setMessages([])).catch(() => {});
+                  }
+                }
+              }}
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                title="Clear conversation">
+                <Trash size={17} />
+              </button>
             </div>
           ) : (
             <div className="px-5 py-3.5 border-b border-gray-200 bg-white flex-shrink-0 shadow-sm">
@@ -686,6 +730,28 @@ export default function Messages() {
               const isMe = msg.sender_id === myUser.id;
               const isLastMySent = isMe && i === lastMySentIdx;
               const showTime = i === 0 || (new Date(msg.created_at) - new Date(msgs[i - 1]?.created_at)) > 300000;
+              const isDeleted = msg.deleted;
+
+              if (isDeleted) {
+                return (
+                  <div key={msg.id}>
+                    {showTime && (
+                      <div className="flex items-center gap-3 my-4">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <p className="text-[11px] text-gray-400 font-medium">
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                    )}
+                    <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`}>
+                      <div className="px-4 py-2 rounded-2xl text-xs italic text-gray-400 bg-gray-100 border border-gray-200 select-none">
+                        هذه الرسالة محذوفة
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div key={msg.id}>
@@ -711,40 +777,105 @@ export default function Messages() {
                           <span className="text-[11px] font-semibold text-gray-500">{msg.sender_name || 'Unknown'}</span>
                         </div>
                       )}
-                      <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative transition-shadow ${
-                        isMe
-                          ? 'text-white rounded-br-sm shadow-md'
-                          : 'bg-white text-gray-900 border border-gray-100 rounded-bl-sm shadow-sm hover:shadow-md'
-                      }`}
-                        style={isMe ? { background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' } : {}}>
 
-                        {msg.image_url && (
-                          <img src={msg.image_url} loading="lazy" alt="img"
-                            className="rounded-xl max-h-56 object-cover w-full mb-1" />
-                        )}
+                      {/* Reply quote */}
+                      {msg.reply_to && (
+                        <div className={`mb-1.5 px-3 py-2 rounded-xl text-xs border-l-4 ${
+                          isMe ? 'border-white/40 bg-white/10' : 'border-indigo-300 bg-indigo-50'
+                        }`}>
+                          <p className={`font-semibold ${isMe ? 'text-white/80' : 'text-indigo-600'}`}>
+                            {msg.reply_to.sender_name}
+                          </p>
+                          {msg.reply_to.sticker && (
+                            <span className="text-2xl">{msg.reply_to.sticker}</span>
+                          )}
+                          {msg.reply_to.image_url && (
+                            <span className="text-gray-500">📷 Photo</span>
+                          )}
+                          {msg.reply_to.content && (
+                            <p className={`truncate ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
+                              {msg.reply_to.content}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
-                        {msg.voice_url && (
-                          <div className="my-1">
-                            <VoicePlayer src={msg.voice_url} />
+                      <div className={`relative group/message ${isMe ? 'flex items-end gap-1.5' : ''}`}>
+                        {/* Delete button (own messages, on hover) */}
+                        {isMe && !activeGroup && (
+                          <div className="opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1">
+                            <button onClick={() => {
+                              if (window.confirm('Delete this message?')) {
+                                const socket = socketRef.current;
+                                if (socket?.connected) {
+                                  socket.emit('message:delete', { messageId: msg.id }, (res) => {
+                                    if (res?.ok) setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, deleted: true } : m));
+                                  });
+                                } else {
+                                  api.delete(`/messages/${msg.id}`).then(() => {
+                                    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, deleted: true } : m));
+                                  }).catch(() => {});
+                                }
+                              }
+                            }}
+                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete">
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         )}
 
-                        {msg.content && (
-                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        {/* Reply button (non-group, on hover) */}
+                        {!activeGroup && (
+                          <div className={`${isMe ? 'order-first' : 'order-last'} opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1`}>
+                            <button onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
+                              className={`p-1 rounded-lg transition-all ${isMe ? 'text-white/60 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                              title="Reply">
+                              <Reply size={14} />
+                            </button>
+                          </div>
                         )}
 
-                        {isMe && (
-                          <span className="float-right ml-2 mt-1 opacity-70 flex-shrink-0">
-                            {msg.read_at
-                              ? <CheckCheck size={13} className="text-teal-300" />
-                              : <Check size={13} className="text-white/60" />
-                            }
-                          </span>
-                        )}
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative transition-shadow ${
+                          isMe
+                            ? 'text-white rounded-br-sm shadow-md'
+                            : 'bg-white text-gray-900 border border-gray-100 rounded-bl-sm shadow-sm hover:shadow-md'
+                        }`}
+                          style={isMe ? { background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' } : {}}>
+
+                          {msg.sticker && (
+                            <div className="text-6xl text-center py-1 select-none">{msg.sticker}</div>
+                          )}
+
+                          {!msg.sticker && msg.image_url && (
+                            <img src={msg.image_url} loading="lazy" alt="img"
+                              className="rounded-xl max-h-56 object-cover w-full mb-1" />
+                          )}
+
+                          {!msg.sticker && msg.voice_url && (
+                            <div className="my-1">
+                              <VoicePlayer src={msg.voice_url} />
+                            </div>
+                          )}
+
+                          {msg.content && (
+                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                          )}
+
+                          {isMe && !msg.sticker && (
+                            <span className="float-right ml-2 mt-1 opacity-70 flex-shrink-0">
+                              {msg.read_at
+                                ? <CheckCheck size={13} className="text-teal-300" />
+                                : <Check size={13} className="text-white/60" />
+                              }
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <MessageReactions message={msg} myId={myUser.id} onReacted={handleReaction} />
 
-                      {isLastMySent && (
+                      {!msg.sticker && <MessageReactions message={msg} myId={myUser.id} onReacted={handleReaction} />}
+
+                      {isLastMySent && !msg.sticker && (
                         <div className="flex items-center justify-end gap-1 mt-0.5 pr-0.5">
                           {msg.read_at
                             ? <><CheckCheck size={11} style={{ color: '#2EC4B6' }} /><span className="text-[10px] font-medium" style={{ color: '#2EC4B6' }}>Seen {timeAgo(msg.read_at)}</span></>
@@ -807,6 +938,24 @@ export default function Messages() {
                 </div>
               )}
 
+              {/* Reply bar */}
+              {!activeGroup && replyTo && (
+                <div className="px-5 py-2.5 flex items-center gap-3 bg-indigo-50/70 border-b border-indigo-200">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-indigo-600">
+                      <Reply size={12} className="inline mr-1" />
+                      Replying to {replyTo.sender_name}
+                    </p>
+                    {replyTo.sticker && <span className="text-xl">{replyTo.sticker}</span>}
+                    {replyTo.image_url && <span className="text-xs text-gray-500">📷 Photo</span>}
+                    {replyTo.content && <p className="text-xs text-gray-500 truncate">{replyTo.content}</p>}
+                  </div>
+                  <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
               {!recording && (
                 <div className="px-5 py-3.5 flex gap-2 items-end">
                   <div className="relative">
@@ -817,6 +966,29 @@ export default function Messages() {
                     </button>
                     {showEmoji && <EmojiPicker onSelect={(emoji) => { setInput(prev => prev + emoji); inputRef.current?.focus(); }} onClose={() => setShowEmoji(false)} />}
                   </div>
+
+                  {/* Sticker button */}
+                  {!activeGroup && (
+                    <div className="relative">
+                      <button onClick={() => setShowStickers(!showStickers)}
+                        className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all flex-shrink-0 mb-0.5"
+                        title="Sticker">
+                        <span className="text-lg leading-none">🙂</span>
+                      </button>
+                      {showStickers && (
+                        <div className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 z-50">
+                          <div className="grid grid-cols-5 gap-1.5">
+                            {['😀','😍','😂','🤣','❤️','🔥','👍','🎉','💀','😭','🥺','😎','🤔','🙏','💯','✨','🎶','⭐','💪','🧠','👀','😈','🤡','💩','🫡'].map(e => (
+                              <button key={e} onClick={() => { sendMessage({ sticker: e }); }}
+                                className="w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 rounded-xl transition-all">
+                                {e}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <button onClick={() => fileRef.current?.click()}
                     className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all flex-shrink-0 mb-0.5"
                     title="Send image">
@@ -843,7 +1015,7 @@ export default function Messages() {
                   />
 
                   <button onClick={activeGroup ? sendGroupMessage : sendMessage}
-                    disabled={(!input.trim() && !msgImage && !pendingVoice) || sending || groupSending}
+                    disabled={(!input.trim() && !msgImage && !pendingVoice && !replyTo) || sending || groupSending}
                     className="w-10 h-10 text-white rounded-xl flex items-center justify-center hover:opacity-90 hover:shadow-md transition-all disabled:opacity-40 flex-shrink-0 mb-0.5 shadow-sm"
                     style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     <Send size={16} />
