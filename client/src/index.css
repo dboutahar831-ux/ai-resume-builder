@@ -216,10 +216,25 @@
 /* ── Surfaces ─────────────────────────────────────────────────── */
 /* bg-white = cards → dm-raised (#1A1A1A) for contrast against bg (#0A0A0A) */
 .dark .bg-white          { background-color: var(--dm-raised)  !important; }
-/* Semi-transparent white variants (floating buttons, modals) */
-.dark .bg-white\/80      { background-color: rgba(26,26,26,0.92) !important; }
-.dark .bg-white\/90      { background-color: rgba(26,26,26,0.96) !important; }
-.dark .bg-white\/70      { background-color: rgba(26,26,26,0.88) !important; }
+/* Semi-transparent white variants — make fully opaque + kill backdrop-blur */
+.dark .bg-white\/80 {
+  background-color: #161616 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.dark .bg-white\/90 {
+  background-color: #181818 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.dark .bg-white\/70 {
+  background-color: #141414 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* Floating button borders */
+.dark .border-gray-100\/50 { border-color: rgba(50,50,50,0.8) !important; }
+.dark .border-gray-100\/30 { border-color: rgba(40,40,40,0.6) !important; }
 .dark .bg-gray-50        { background-color: var(--dm-surface) !important; }
 .dark .bg-gray-50\/80    { background-color: rgba(17,17,17,0.92) !important; }
 .dark .bg-gray-100       { background-color: #212121           !important; }
