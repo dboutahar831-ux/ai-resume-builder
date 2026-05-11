@@ -820,28 +820,6 @@ export default function Messages() {
                         </div>
                       )}
 
-                      {/* Reply quote */}
-                      {msg.reply_to && (
-                        <div className={`mb-1.5 px-3 py-2 rounded-xl text-xs border-l-4 ${
-                          isMe ? 'border-white/40 bg-white/10' : 'border-indigo-300 bg-indigo-50'
-                        }`}>
-                          <p className={`font-semibold ${isMe ? 'text-white/80' : 'text-indigo-600'}`}>
-                            {msg.reply_to.sender_name}
-                          </p>
-                          {msg.reply_to.sticker && (
-                            <span className="text-2xl">{msg.reply_to.sticker}</span>
-                          )}
-                          {msg.reply_to.image_url && (
-                            <span className="text-gray-500">📷 Photo</span>
-                          )}
-                          {msg.reply_to.content && (
-                            <p className={`truncate ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
-                              {msg.reply_to.content}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
                       <div className={`relative group/message ${isMe ? 'flex items-end gap-1.5' : ''}`}>
                         {/* Edit + Delete buttons (own messages, on hover) */}
                         {isMe && !activeGroup && (
@@ -878,6 +856,24 @@ export default function Messages() {
                             : 'bg-white text-gray-900 border border-gray-100 rounded-bl-sm shadow-sm hover:shadow-md'
                         }`}
                           style={isMe ? { background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' } : {}}>
+
+                          {/* Reply quote — inside bubble so colors are visible against gradient/white */}
+                          {msg.reply_to && (
+                            <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-xs border-l-4 ${
+                              isMe ? 'border-white/50 bg-white/20' : 'border-indigo-300 bg-indigo-50'
+                            }`}>
+                              <p className={`font-semibold truncate ${isMe ? 'text-white/90' : 'text-indigo-600'}`}>
+                                {msg.reply_to.sender_name}
+                              </p>
+                              {msg.reply_to.sticker && <span className="text-xl">{msg.reply_to.sticker}</span>}
+                              {msg.reply_to.image_url && <span className={isMe ? 'text-white/70' : 'text-gray-500'}>📷 Photo</span>}
+                              {msg.reply_to.content && (
+                                <p className={`truncate ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
+                                  {msg.reply_to.content}
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                           {msg.sticker && (
                             <div className="text-5xl text-center select-none leading-none">{msg.sticker}</div>

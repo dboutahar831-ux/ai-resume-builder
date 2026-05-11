@@ -27,6 +27,13 @@ const adminRouter      = require('./routes/admin');
 
 const app = express();
 
+// Run DB migrations idempotently on every cold start
+pool.query(`
+  ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
+  ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+  ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_for_sender BOOLEAN NOT NULL DEFAULT FALSE
+`).catch(err => console.error('[Migration] messages columns:', err.message));
+
 // Trust proxy for rate limiter behind reverse proxies
 app.set('trust proxy', 1);
 
