@@ -47,10 +47,10 @@ function formatLastSeen(lastSeenAt) {
 
 const StatusDot = React.memo(function StatusDot({ lastSeenAt, glowing = false }) {
   const online = isOnline(lastSeenAt);
-  if (!online) return <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white bg-gray-300" />;
+  if (!online) return <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#111111] bg-gray-300" />;
   return (
     <span className={`absolute bottom-0 right-0 ${glowing ? 'status-pulse' : ''}`}>
-      <span className="block w-2.5 h-2.5 rounded-full border-2 border-white bg-emerald-500 relative z-10" />
+      <span className="block w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#111111] bg-emerald-500 relative z-10" />
     </span>
   );
 });
@@ -58,10 +58,10 @@ const StatusDot = React.memo(function StatusDot({ lastSeenAt, glowing = false })
 function TypingDots() {
   return (
     <div className="flex items-end justify-start mb-1">
-      <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+      <div className="bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
         <div className="flex gap-1 items-center h-4">
           {[0, 150, 300].map(d => (
-            <span key={d} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+            <span key={d} className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
               style={{ animationDelay: `${d}ms`, animationDuration: '1s' }} />
           ))}
         </div>
@@ -573,15 +573,16 @@ export default function Messages() {
 
   return (
     <Layout>
-      <div className="h-[calc(100vh-7rem)] -m-6 flex border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+      <div className="-m-3 sm:-m-6 flex overflow-hidden border-0 sm:border border-gray-200 dark:border-[#2A2A2A] rounded-none sm:rounded-2xl shadow-sm bg-white dark:bg-[#111111]"
+        style={{ height: 'calc(100svh - 4.5rem)', maxHeight: 'calc(100vh - 4.5rem)' }}>
 
-        {/* Conversation list sidebar — always visible */}
-        <div className="w-56 sm:w-64 lg:w-72 xl:w-80 border-r border-gray-200 bg-white flex-shrink-0 flex flex-col">
-          <div className="p-4 border-b border-gray-100">
+        {/* Conversation list — full screen on mobile, fixed width on desktop */}
+        <div className={`${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'} w-full lg:w-72 xl:w-80 border-r border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] flex-shrink-0 flex-col`}>
+          <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-[#2A2A2A]">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }} />
-                <h1 className="text-base font-bold text-gray-900">Messages</h1>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }} />
+                <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Messages</h1>
               </div>
               {totalUnread > 0 && (
                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-full text-white shadow-sm" style={{ background: 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' }}>
@@ -593,7 +594,7 @@ export default function Messages() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search conversations..."
-                className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-all placeholder-gray-400" />
+                className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-200 dark:border-[#2A2A2A] rounded-xl bg-gray-50 dark:bg-[#1A1A1A] dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 focus:border-indigo-300 transition-all placeholder-gray-400 dark:placeholder-gray-600" />
               {query && (
                 <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                   <X size={13} />
@@ -618,8 +619,8 @@ export default function Messages() {
               <button key={c.other_id} onClick={() => openConversation(c.other_id)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all text-left group
                   ${activeUser?.id === c.other_id
-                    ? 'bg-indigo-50 shadow-sm border-l-2 border-indigo-500'
-                    : 'hover:bg-gray-50 hover:border-l-2 hover:border-gray-200 border-l-2 border-transparent'
+                    ? 'bg-indigo-50 dark:bg-indigo-900/20 shadow-sm border-l-2 border-indigo-500'
+                    : 'hover:bg-gray-50 dark:hover:bg-[#1A1A1A] hover:border-l-2 hover:border-gray-200 dark:hover:border-[#333] border-l-2 border-transparent'
                   }`}>
                 <div className="relative flex-shrink-0">
                   <Avatar user={{ id: c.other_id, name: c.other_name, avatar: c.other_avatar }} />
@@ -631,13 +632,13 @@ export default function Messages() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <p className={`text-sm truncate flex items-center gap-1.5 ${c.unread > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
+                    <p className={`text-sm truncate flex items-center gap-1.5 ${c.unread > 0 ? 'font-bold text-gray-900 dark:text-gray-100' : 'font-semibold text-gray-800 dark:text-gray-200'}`}>
                       {c.other_name}
                       {c.unread > 0 && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />}
                     </p>
-                    <span className="text-[11px] text-gray-400 flex-shrink-0">{timeAgo(c.last_at)}</span>
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500 flex-shrink-0">{timeAgo(c.last_at)}</span>
                   </div>
-                  <p className={`text-xs truncate mt-0.5 ${c.unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                  <p className={`text-xs truncate mt-0.5 ${c.unread > 0 ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
                     {c.last_sender_id === myUser.id ? 'You: ' : ''}{lastMsgPreview(c)}
                   </p>
                 </div>
@@ -647,25 +648,25 @@ export default function Messages() {
             {filteredFriends.length > 0 && (
               <>
                 <div className="flex items-center gap-2 px-4 pt-5 pb-2">
-                  <div className="flex-1 h-px bg-gray-100" />
-                  <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Friends</p>
-                  <div className="flex-1 h-px bg-gray-100" />
+                  <div className="flex-1 h-px bg-gray-100 dark:bg-[#2A2A2A]" />
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-wider">Friends</p>
+                  <div className="flex-1 h-px bg-gray-100 dark:bg-[#2A2A2A]" />
                 </div>
                 {filteredFriends.map(f => (
                   <button key={f.id} onClick={() => openConversation(f.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all text-left group
                       ${activeUser?.id === f.id
-                        ? 'bg-indigo-50 shadow-sm border-l-2 border-indigo-500'
-                        : 'hover:bg-gray-50 hover:border-l-2 hover:border-gray-200 border-l-2 border-transparent'
+                        ? 'bg-indigo-50 dark:bg-indigo-900/20 shadow-sm border-l-2 border-indigo-500'
+                        : 'hover:bg-gray-50 dark:hover:bg-[#1A1A1A] hover:border-l-2 hover:border-gray-200 dark:hover:border-[#333] border-l-2 border-transparent'
                       }`}>
                     <div className="relative flex-shrink-0">
                       <Avatar user={f} />
                       <StatusDot lastSeenAt={f.last_seen_at} glowing={activeUser?.id === f.id} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800">{f.name}</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{f.name}</p>
                       {formatLastSeen(f.last_seen_at) && (
-                        <p className={`text-xs mt-0.5 ${isOnline(f.last_seen_at) ? 'text-emerald-600 font-medium' : 'text-gray-400'}`}>
+                        <p className={`text-xs mt-0.5 ${isOnline(f.last_seen_at) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
                           {formatLastSeen(f.last_seen_at)}
                         </p>
                       )}
@@ -677,18 +678,22 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* Chat area — always visible */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat area — full screen on mobile, flex-1 on desktop */}
+        <div className={`${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0`}>
 
           {/* Chat header */}
           {activeGroup ? (
-            <div className="px-5 py-3.5 border-b border-gray-200 flex items-center gap-3 bg-white flex-shrink-0 shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#BF5AF2] flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
+            <div className="px-3 sm:px-5 py-3 border-b border-gray-200 dark:border-[#2A2A2A] flex items-center gap-2 sm:gap-3 bg-white dark:bg-[#111111] flex-shrink-0 shadow-sm">
+              <button onClick={() => setMobileView('list')}
+                className="lg:hidden p-2 -ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#222] rounded-xl transition-all flex-shrink-0">
+                <ArrowLeft size={20} />
+              </button>
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#BF5AF2] flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
                 {activeGroup.name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 text-sm truncate">{activeGroup.name}</p>
-                <p className="text-xs text-gray-500">{activeGroup.member_count || 0} members</p>
+                <p className="font-bold text-gray-900 dark:text-gray-100 text-sm truncate">{activeGroup.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{activeGroup.member_count || 0} members</p>
               </div>
               <button onClick={() => setShowGroupInfo(true)}
                 className="p-1.5 text-gray-400 hover:text-[#6C5CE7] hover:bg-[#6C5CE7]/10 rounded-xl transition-all">
@@ -696,44 +701,47 @@ export default function Messages() {
               </button>
             </div>
           ) : activeUser ? (
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-3 bg-white flex-shrink-0 shadow-sm">
+            <div className="px-3 sm:px-5 py-3 border-b border-gray-100 dark:border-[#2A2A2A] flex items-center gap-2 sm:gap-3 bg-white dark:bg-[#111111] flex-shrink-0 shadow-sm">
+              <button onClick={() => setMobileView('list')}
+                className="lg:hidden p-2 -ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#222] rounded-xl transition-all flex-shrink-0">
+                <ArrowLeft size={20} />
+              </button>
               <Link to={`/friends/${activeUser.id}`} className="relative flex-shrink-0">
                 <Avatar user={activeUser} size="lg" />
                 <StatusDot lastSeenAt={activeUser.last_seen_at} glowing />
               </Link>
               <div className="flex-1 min-w-0">
                 <Link to={`/friends/${activeUser.id}`}
-                  className="font-bold text-gray-900 text-sm hover:text-indigo-600 transition-colors block truncate">
+                  className="font-bold text-gray-900 dark:text-gray-100 text-sm hover:text-indigo-600 transition-colors block truncate">
                   {activeUser.name}
                 </Link>
                 <p className={`text-xs font-medium ${isTyping ? 'text-emerald-500' : isOnline(activeUser.last_seen_at) ? 'text-emerald-500' : 'text-gray-400'}`}>
                   {isTyping ? '● typing...' : formatLastSeen(activeUser.last_seen_at)}
                 </p>
               </div>
-              {/* Clear conversation */}
               <button onClick={() => setConfirmDelete({ type: 'conversation', userId: activeUser.id })}
-                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
                 title="Clear conversation">
                 <Trash size={17} />
               </button>
             </div>
           ) : (
-            <div className="px-5 py-3.5 border-b border-gray-200 bg-white flex-shrink-0 shadow-sm">
+            <div className="px-5 py-3.5 border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] flex-shrink-0 shadow-sm">
               <p className="text-sm font-semibold text-gray-400">Select a conversation</p>
             </div>
           )}
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto bg-gray-50/80">
+          <div className="flex-1 overflow-y-auto bg-gray-50/80 dark:bg-[#0A0A0A]">
 
             {/* Empty states — centered in full height */}
             {!activeUser && !activeGroup && (
               <div className="h-full flex flex-col items-center justify-center text-center px-6">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-center mb-5 shadow-sm backdrop-blur-sm">
+                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800/40 flex items-center justify-center mb-5 shadow-sm">
                   <Mail size={40} className="text-indigo-400" />
                 </div>
-                <p className="text-gray-900 font-bold text-lg">Your Messages</p>
-                <p className="text-sm text-gray-400 mt-1.5 max-w-xs leading-relaxed">
+                <p className="text-gray-900 dark:text-gray-100 font-bold text-lg">Your Messages</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1.5 max-w-xs leading-relaxed">
                   Select a conversation to start chatting, or find a friend to connect with
                 </p>
                 <Link to="/friends"
@@ -745,20 +753,20 @@ export default function Messages() {
             )}
             {activeGroup && groupMessages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center px-6">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-center mb-5 shadow-sm">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800/40 flex items-center justify-center mb-5 shadow-sm">
                   <UsersRound size={32} className="text-indigo-400" />
                 </div>
-                <p className="text-gray-900 font-bold text-base">No messages yet</p>
-                <p className="text-sm text-gray-400 mt-1">Start the conversation in this group!</p>
+                <p className="text-gray-900 dark:text-gray-100 font-bold text-base">No messages yet</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Start the conversation in this group!</p>
               </div>
             )}
             {activeUser && messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center px-6">
                 <Avatar user={activeUser} size="lg" />
-                <p className="text-gray-900 font-bold mt-4 text-base">{activeUser.name}</p>
-                <div className="mt-2 px-5 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <p className="text-gray-900 dark:text-gray-100 font-bold mt-4 text-base">{activeUser.name}</p>
+                <div className="mt-2 px-5 py-3 bg-white dark:bg-[#1A1A1A] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] shadow-sm">
                   <MessageSquare size={20} className="text-indigo-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">No messages yet — say hello!</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No messages yet — say hello!</p>
                 </div>
               </div>
             )}
@@ -777,15 +785,15 @@ export default function Messages() {
                   <div key={msg.id}>
                     {showTime && (
                       <div className="flex items-center gap-3 my-4">
-                        <div className="flex-1 h-px bg-gray-200" />
-                        <p className="text-[11px] text-gray-400 font-medium">
+                        <div className="flex-1 h-px bg-gray-200 dark:bg-[#2A2A2A]" />
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
                           {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
-                        <div className="flex-1 h-px bg-gray-200" />
+                        <div className="flex-1 h-px bg-gray-200 dark:bg-[#2A2A2A]" />
                       </div>
                     )}
                     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`}>
-                      <div className="px-4 py-2 rounded-2xl text-xs italic text-gray-400 bg-gray-100 border border-gray-200 select-none">
+                      <div className="px-4 py-2 rounded-2xl text-xs italic text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] select-none">
                         This message was deleted
                       </div>
                     </div>
@@ -814,7 +822,7 @@ export default function Messages() {
                                 {msg.sender_name?.[0] || '?'}
                               </div>
                           }
-                          <span className="text-[11px] font-semibold text-gray-500">{msg.sender_name || 'Unknown'}</span>
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">{msg.sender_name || 'Unknown'}</span>
                         </div>
                       )}
 
@@ -824,13 +832,13 @@ export default function Messages() {
                           <div className="opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1">
                             {isMe && !msg.sticker && !msg.image_url && !msg.voice_url && (
                               <button onClick={() => { setEditingMsgId(msg.id); setEditContent(msg.content || ''); setTimeout(() => editInputRef.current?.focus(), 50); }}
-                                className="p-1 text-gray-400 hover:text-indigo-400 hover:bg-indigo-50 rounded-lg transition-all"
+                                className="p-1 text-gray-400 hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
                                 title="Edit">
                                 <Edit3 size={14} />
                               </button>
                             )}
                             <button onClick={() => setConfirmDelete({ type: isMe ? 'message' : 'received', id: msg.id })}
-                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                               title="Delete">
                               <Trash2 size={14} />
                             </button>
@@ -841,7 +849,7 @@ export default function Messages() {
                         {!activeGroup && (
                           <div className={`${isMe ? 'order-first' : 'order-last'} opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1`}>
                             <button onClick={() => { setReplyTo(msg); inputRef.current?.focus(); }}
-                              className={`p-1 rounded-lg transition-all ${isMe ? 'text-white/60 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50'}`}
+                              className={`p-1 rounded-lg transition-all ${isMe ? 'text-white/60 hover:text-white hover:bg-white/20' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'}`}
                               title="Reply">
                               <Reply size={14} />
                             </button>
@@ -851,14 +859,14 @@ export default function Messages() {
                         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative transition-shadow ${
                           isMe
                             ? 'text-white rounded-br-sm shadow-md'
-                            : 'bg-white text-gray-900 border border-gray-100 rounded-bl-sm shadow-sm hover:shadow-md'
+                            : 'bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-gray-100 border border-gray-100 dark:border-[#2A2A2A] rounded-bl-sm shadow-sm hover:shadow-md'
                         }`}
                           style={isMe ? { background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' } : {}}>
 
                           {/* Compact reply quote */}
                           {msg.reply_to && (
                             <div className={`mb-1.5 px-2 py-1 rounded-md border-l-2 overflow-hidden ${
-                              isMe ? 'border-white/60 bg-black/15' : 'border-indigo-400 bg-indigo-50'
+                              isMe ? 'border-white/60 bg-black/15' : 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
                             }`}>
                               <p className={`text-[10px] font-semibold leading-tight truncate ${isMe ? 'text-white/85' : 'text-indigo-600'}`}>
                                 {msg.reply_to.sender_name}
@@ -912,7 +920,7 @@ export default function Messages() {
                             ) : (
                               <p className="whitespace-pre-wrap">
                                 {msg.content}
-                                {msg.edited && <span className={`ml-1.5 text-[10px] italic ${isMe ? 'text-white/50' : 'text-gray-400'}`}>edited</span>}
+                                {msg.edited && <span className={`ml-1.5 text-[10px] italic ${isMe ? 'text-white/50' : 'text-gray-400 dark:text-gray-500'}`}>edited</span>}
                               </p>
                             )
                           )}
@@ -934,7 +942,7 @@ export default function Messages() {
                         <div className="flex items-center justify-end gap-1 mt-0.5 pr-0.5">
                           {msg.read_at
                             ? <><CheckCheck size={11} style={{ color: '#2EC4B6' }} /><span className="text-[10px] font-medium" style={{ color: '#2EC4B6' }}>Seen {timeAgo(msg.read_at)}</span></>
-                            : <><Check size={11} className="text-gray-400" /><span className="text-[10px] text-gray-400">Sent {timeAgo(msg.created_at)}</span></>
+                            : <><Check size={11} className="text-gray-400 dark:text-gray-500" /><span className="text-[10px] text-gray-400 dark:text-gray-500">Sent {timeAgo(msg.created_at)}</span></>
                           }
                         </div>
                       )}
@@ -951,19 +959,19 @@ export default function Messages() {
 
           {/* Error toast */}
           {sendError && (
-            <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 text-xs text-red-600 font-medium text-center animate-slide-up shadow-sm">
+            <div className="px-4 py-2.5 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/40 text-xs text-red-600 dark:text-red-400 font-medium text-center animate-slide-up shadow-sm">
               {sendError}
             </div>
           )}
 
           {/* Input area */}
           {(activeUser || activeGroup) && (
-            <div className="border-t border-gray-200 bg-white flex-shrink-0 shadow-sm">
+            <div className="border-t border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] flex-shrink-0 shadow-sm">
 
               {msgImage && (
                 <div className="px-5 pt-3 flex items-start gap-2">
                   <div className="relative inline-block">
-                    <img src={msgImage} loading="lazy" alt="preview" className="h-20 rounded-xl object-cover border border-gray-200 shadow-sm" />
+                    <img src={msgImage} loading="lazy" alt="preview" className="h-20 rounded-xl object-cover border border-gray-200 dark:border-[#2A2A2A] shadow-sm" />
                     <button onClick={() => setMsgImage('')}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center hover:bg-gray-900 shadow-sm transition-all">
                       <X size={10} />
@@ -973,10 +981,10 @@ export default function Messages() {
               )}
 
               {!activeGroup && recording && (
-                <div className="px-5 py-2.5 flex items-center gap-3 bg-red-50/50">
+                <div className="px-5 py-2.5 flex items-center gap-3 bg-red-50/50 dark:bg-red-900/10">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
                   <span className="text-sm font-semibold text-red-500">{fmtRec(recSeconds)}</span>
-                  <span className="text-xs text-gray-400 flex-1">Recording…</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 flex-1">Recording…</span>
                   <button onClick={cancelVoice} className="text-gray-400 hover:text-red-500 transition-colors"><X size={16} /></button>
                   <button onClick={stopRecording}
                     className="flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-xl transition-all shadow-sm"
@@ -987,7 +995,7 @@ export default function Messages() {
               )}
 
               {!activeGroup && pendingVoice && !recording && (
-                <div className="px-5 py-2.5 flex items-center gap-3 bg-indigo-50/50 border-b border-indigo-100">
+                <div className="px-5 py-2.5 flex items-center gap-3 bg-indigo-50/50 dark:bg-indigo-900/10 border-b border-indigo-100 dark:border-indigo-900/30">
                   <span className="text-xs text-indigo-600 font-semibold flex-shrink-0">🎙️ Voice</span>
                   <audio controls src={pendingVoice} className="flex-1 h-8" style={{ maxWidth: '200px' }} />
                   <button onClick={cancelVoice} className="text-gray-400 hover:text-red-500 transition-colors"><X size={16} /></button>
@@ -996,13 +1004,13 @@ export default function Messages() {
 
               {/* Reply bar */}
               {!activeGroup && replyTo && (
-                <div className="px-4 py-2 flex items-center gap-2 bg-indigo-50/70 border-b border-indigo-100 border-l-2 border-l-indigo-400">
+                <div className="px-4 py-2 flex items-center gap-2 bg-indigo-50/70 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-900/40 border-l-2 border-l-indigo-400">
                   <Reply size={11} className="text-indigo-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-semibold text-indigo-600 leading-tight truncate">
                       {replyTo.sender_name}
                     </p>
-                    <p className="text-[11px] text-gray-500 truncate leading-tight">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate leading-tight">
                       {replyTo.sticker || (replyTo.image_url ? '📷 Photo' : (replyTo.content || ''))}
                     </p>
                   </div>
@@ -1016,7 +1024,7 @@ export default function Messages() {
                 <div className="px-5 py-3.5 flex gap-2 items-end">
                   <div className="relative">
                     <button onClick={() => { setShowEmoji(!showEmoji); setShowStickers(false); }}
-                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all flex-shrink-0 mb-0.5"
+                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all flex-shrink-0 mb-0.5"
                       title="Emoji">
                       <Smile size={18} />
                     </button>
@@ -1027,16 +1035,16 @@ export default function Messages() {
                   {!activeGroup && (
                     <div className="relative">
                       <button onClick={() => { setShowStickers(!showStickers); setShowEmoji(false); }}
-                        className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all flex-shrink-0 mb-0.5"
+                        className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all flex-shrink-0 mb-0.5"
                         title="Sticker">
                         <span className="text-lg leading-none">🙂</span>
                       </button>
                       {showStickers && (
-                        <div ref={stickerPickerRef} className="absolute bottom-14 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-2.5 z-50 max-h-56 overflow-y-auto">
+                        <div ref={stickerPickerRef} className="absolute bottom-14 right-0 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl shadow-xl p-2.5 z-50 max-h-56 overflow-y-auto">
                           <div className="flex flex-wrap justify-center gap-1.5 w-48">
                             {['😀','😍','😂','🤣','❤️','🔥','👍','🎉','💀','😭','🥺','😎','🤔','🙏','💯','✨','🎶','⭐','💪','🧠','👀','😈','🤡','💩','🫡'].map(e => (
                               <button key={e} onClick={() => { sendMessage({ sticker: e }); }}
-                                className="w-9 h-9 flex items-center justify-center text-lg hover:bg-gray-100 rounded-lg flex-shrink-0"
+                                className="w-9 h-9 flex items-center justify-center text-lg hover:bg-gray-100 dark:hover:bg-[#2A2A2A] rounded-lg flex-shrink-0"
                                 title={e}>
                                 {e}
                               </button>
@@ -1054,7 +1062,7 @@ export default function Messages() {
 
                   {!activeGroup && !pendingVoice && (
                     <button onClick={startRecording}
-                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all flex-shrink-0 mb-0.5"
+                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all flex-shrink-0 mb-0.5"
                       title="Record voice message">
                       <Mic size={18} />
                     </button>
@@ -1067,7 +1075,7 @@ export default function Messages() {
                     onKeyDown={handleTextareaKeyDown}
                     placeholder={activeGroup ? `Message ${activeGroup.name}…` : pendingVoice ? 'Add a caption... (optional)' : activeUser ? `Message ${activeUser.name}…` : 'Type a message…'}
                     rows={1}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 bg-white text-gray-900 placeholder-gray-400 resize-none overflow-hidden leading-relaxed transition-shadow hover:shadow-sm"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 focus:border-indigo-300 bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 resize-none overflow-hidden leading-relaxed transition-shadow hover:shadow-sm"
                     style={{ minHeight: '42px', maxHeight: '120px' }}
                   />
 
@@ -1100,12 +1108,12 @@ export default function Messages() {
       {confirmDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
           onClick={() => setConfirmDelete(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl p-6 mx-4 max-w-sm w-full"
+          <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl shadow-2xl p-6 mx-4 max-w-sm w-full border border-transparent dark:border-[#2A2A2A]"
             onClick={e => e.stopPropagation()}>
-            <p className="text-base font-bold text-gray-900 mb-2">
+            <p className="text-base font-bold text-gray-900 dark:text-gray-100 mb-2">
               {confirmDelete.type === 'conversation' ? 'Clear conversation?' : 'Delete message?'}
             </p>
-            <p className="text-sm text-gray-500 mb-5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
               {confirmDelete.type === 'conversation'
                 ? 'All messages in this conversation will be deleted. This cannot be undone.'
                 : confirmDelete.type === 'received'
@@ -1114,7 +1122,7 @@ export default function Messages() {
             </p>
             <div className="flex justify-end gap-2 flex-wrap">
               <button onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
+                className="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222] rounded-xl transition-all">
                 Cancel
               </button>
 
@@ -1154,7 +1162,7 @@ export default function Messages() {
                     }
                     setConfirmDelete(null);
                   }}
-                    className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                    className="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#222] hover:bg-gray-200 dark:hover:bg-[#2A2A2A] rounded-xl transition-all">
                     Delete for me
                   </button>
                   <button onClick={() => {
