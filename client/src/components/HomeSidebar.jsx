@@ -12,13 +12,13 @@ function Avatar({ user, size = 'sm', showDot = false, lastSeen = null }) {
   return (
     <div className="relative flex-shrink-0">
       {user?.avatar
-        ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-white dark:ring-gray-900`} />
+        ? <img src={user.avatar} loading="lazy" alt={user.name} className={`${sz} rounded-full object-cover ring-2 ring-white dark:ring-[#111111]`} />
         : <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold`}>
             {user?.name?.[0] || '?'}
           </div>
       }
       {showDot && (
-        <span className={`absolute bottom-0 right-0 ${dotSz} rounded-full border-white dark:border-gray-900 ${online ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+        <span className={`absolute bottom-0 right-0 ${dotSz} rounded-full border-white dark:border-[#111111] ${online ? 'bg-emerald-500' : 'bg-gray-400'}`} />
       )}
     </div>
   );
@@ -34,7 +34,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
   return (
     <>
       {/* Profile Card */}
-      <div style={{ animation: 'slideDown 0.35s ease' }}>
+      <div>
         <ProfileCard
           profile={myUser}
           coverImage={coverImage}
@@ -45,7 +45,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
         >
           <div className="pb-1">
             <Link to="/profile"
-              className="px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-sm"
+              className="px-4 py-2 text-white rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 hover:-translate-y-0.5 shadow-sm"
               style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
               Edit Profile
             </Link>
@@ -54,10 +54,10 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
         {/* Stat counters */}
         <div className="grid grid-cols-4 gap-1.5 px-4 pb-2 mt-3">
           {[
-            { label: 'Resumes', value: stats.resumes, to: '/resumes',  icon: FileText,      color: 'text-indigo-500' },
-            { label: 'Jobs',    value: stats.jobs,    to: '/jobs',     icon: Briefcase,     color: 'text-blue-500'   },
-            { label: 'Friends', value: stats.friends, to: '/friends',  icon: Users,         color: 'text-emerald-500'},
-            { label: 'Unread',  value: stats.unread,  to: '/messages', icon: Bell,          color: 'text-amber-500' },
+            { label: 'Resumes', value: stats.resumes, to: '/resumes',  icon: FileText,  color: 'text-indigo-500' },
+            { label: 'Jobs',    value: stats.jobs,    to: '/jobs',     icon: Briefcase, color: 'text-blue-500'   },
+            { label: 'Friends', value: stats.friends, to: '/friends',  icon: Users,     color: 'text-emerald-500'},
+            { label: 'Unread',  value: stats.unread,  to: '/messages', icon: Bell,      color: 'text-amber-500'  },
           ].map(s => (
             <Link key={s.label} to={s.to}
               className="flex flex-col items-center py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
@@ -71,8 +71,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
 
       {/* Friends online */}
       {friends.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4"
-          style={{ animation: 'slideDown 0.45s ease' }}>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Connections</p>
             <Link to="/friends" className="text-xs text-indigo-600 hover:underline font-medium">See all</Link>
@@ -80,7 +79,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
           <div className="space-y-1">
             {friends.map(f => (
               <Link key={f.id} to={`/friends/${f.id}`}
-                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group">
+                className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-[#1e1e2e] transition-colors group">
                 <Avatar user={f} size="sm" showDot lastSeen={f.last_seen_at} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{f.name}</p>
@@ -100,8 +99,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
 
       {/* People you may know */}
       {suggestions.filter(u => !addedIds.has(u.id)).length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4"
-          style={{ animation: 'slideDown 0.5s ease' }}>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">People you may know</p>
           <div className="space-y-3">
             {suggestions.filter(u => !addedIds.has(u.id)).map(user => (
@@ -117,7 +115,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{user.location || 'Nexly member'}</p>
                 </div>
                 <button onClick={() => sendRequest(user.id)}
-                  className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded-lg transition-colors flex-shrink-0">
+                  className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-[#1e1e2e] px-2 py-1 rounded-lg transition-colors flex-shrink-0">
                   <UserPlus size={11} />Add
                 </button>
               </div>
@@ -128,7 +126,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
 
       {/* Trending Hashtags */}
       {trending.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4" style={{ animation: 'slideDown 0.5s ease' }}>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-1.5">
             <Hash size={14} className="text-[#6C5CE7]" /> Trending
           </p>
@@ -136,7 +134,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
             {trending.map(t => (
               <Link key={t.tag} to={`/home?tag=${t.tag}`}
                 className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
-                <span className="text-sm font-medium text-[#6C5CE7] group-hover:text-[#BF5AF2] dark:group-hover:text-[#BF5AF2] transition-colors">#{t.tag}</span>
+                <span className="text-sm font-medium text-[#6C5CE7] group-hover:text-[#BF5AF2] transition-colors">#{t.tag}</span>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">{t.post_count} posts</span>
               </Link>
             ))}
@@ -145,14 +143,13 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
       )}
 
       {/* Quick Access */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4"
-        style={{ animation: 'slideDown 0.55s ease' }}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Quick Access</p>
         <div className="space-y-0.5">
           {[
-            { to: '/resumes',       icon: FileText,      label: 'Resume Builder',  sub: 'Build your resume',    color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
-            { to: '/cover-letters', icon: FileSignature, label: 'Cover Letters',   sub: 'Craft cover letters',  color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/30' },
-            { to: '/jobs',          icon: Briefcase,     label: 'Job Tracker',     sub: 'Track applications',   color: 'text-blue-500',   bg: 'bg-blue-50 dark:bg-blue-900/30'   },
+            { to: '/resumes',       icon: FileText,      label: 'Resume Builder', sub: 'Build your resume',   color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-[#1a1a28]' },
+            { to: '/cover-letters', icon: FileSignature, label: 'Cover Letters',  sub: 'Craft cover letters', color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-[#18102a]' },
+            { to: '/jobs',          icon: Briefcase,     label: 'Job Tracker',    sub: 'Track applications',  color: 'text-blue-500',   bg: 'bg-blue-50 dark:bg-[#111828]'   },
           ].map(item => (
             <Link key={item.to} to={item.to}
               className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
