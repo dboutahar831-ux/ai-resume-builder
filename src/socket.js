@@ -75,15 +75,13 @@ function setupSocket(io) {
     // Handle deleting a message (soft delete, only sender)
     socket.on('message:delete', async ({ messageId }, callback) => {
       try {
-        const msgRes = await pool.query('SELECT sender_id FROM messages WHERE id=$1', [messageId]);
+        const msgRes = await pool.query('SELECT sender_id, receiver_id FROM messages WHERE id=$1', [messageId]);
         if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
         if (msgRes.rows[0].sender_id !== userId) return callback?.({ ok: false, error: 'Not your message.' });
 
         await pool.query('UPDATE messages SET deleted=TRUE WHERE id=$1', [messageId]);
 
-        // Get the receiver to notify them
-        const msg = await pool.query('SELECT sender_id, receiver_id FROM messages WHERE id=$1', [messageId]);
-        const receiverId = msg.rows[0].sender_id === userId ? msg.rows[0].receiver_id : msg.rows[0].sender_id;
+        const receiverId = msgRes.rows[0].sender_id === userId ? msgRes.rows[0].receiver_id : msgRes.rows[0].sender_id;
         io.to(`user:${receiverId}`).emit('message:deleted', { messageId, userId });
         callback?.({ ok: true });
       } catch (err) {

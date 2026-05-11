@@ -4,12 +4,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const auth = require('../middleware/auth');
-const { sendVerificationCode } = require('../utils/mailer');
-
-function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -43,56 +37,6 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ user, token });
   } catch {
     res.status(500).json({ error: 'Registration failed. Please try again.' });
-  }
-});
-
-// POST /api/auth/verify
-router.post('/verify', async (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code) return res.status(400).json({ error: 'email and code are required.' });
-
-  try {
-    const result = await pool.query(
-      'SELECT * FROM verification_codes WHERE email = $1 ORDER BY created_at DESC LIMIT 1',
-      [email]
-    );
-    const entry = result.rows[0];
-    if (!entry) return res.status(400).json({ error: 'No pending verification for this email.' });
-    if (new Date() > new Date(entry.expires_at)) {
-      await pool.query('DELETE FROM verification_codes WHERE email = $1', [email]);
-      return res.status(400).json({ error: 'Code expired. Please register again.' });
-    }
-    if (entry.code !== String(code)) return res.status(400).json({ error: 'Incorrect code. Please try again.' });
-
-    await pool.query('DELETE FROM verification_codes WHERE email = $1', [email]);
-    const update = await pool.query(
-      'UPDATE users SET verified=TRUE WHERE email=$1 RETURNING id, name, email, age, phone, location, linkedin, avatar, is_admin, created_at',
-      [email]
-    );
-    const user = update.rows[0];
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({ user, token });
-  } catch {
-    res.status(500).json({ error: 'Verification failed. Please try again.' });
-  }
-});
-
-// POST /api/auth/resend-code
-router.post('/resend-code', async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'email is required.' });
-  try {
-    const user = await pool.query('SELECT id FROM users WHERE email=$1 AND verified=FALSE', [email]);
-    if (!user.rows.length) return res.status(400).json({ error: 'No unverified account with this email.' });
-
-    await pool.query('DELETE FROM verification_codes WHERE email = $1', [email]);
-    const code = generateCode();
-    const expires = new Date(Date.now() + 15 * 60 * 1000);
-    await pool.query('INSERT INTO verification_codes (email, code, expires_at) VALUES ($1,$2,$3)', [email, code, expires]);
-    try { await sendVerificationCode(email, code); } catch (e) { console.error('Email error:', e.message); }
-    res.json({ message: 'Code resent.' });
-  } catch {
-    res.status(500).json({ error: 'Failed to resend code.' });
   }
 });
 

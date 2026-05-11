@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/resumes/user/:userId — public resumes for a specific user
-router.get('/user/:userId', auth, async (req, res) => {
+router.get('/user/:userId', async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, personal_info, experience, education, skills, created_at, updated_at FROM resumes WHERE user_id = $1 ORDER BY created_at DESC',
