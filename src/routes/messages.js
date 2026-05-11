@@ -124,7 +124,7 @@ router.get('/:userId', auth, async (req, res) => {
                    THEN '/api/messages/img/' || m.id ELSE NULL END AS image_url,
               CASE WHEN m.voice_url IS NOT NULL AND m.voice_url <> ''
                    THEN '/api/messages/voice/' || m.id ELSE NULL END AS voice_url,
-              m.sticker, m.reply_to_id, m.deleted, m.read, m.read_at, m.created_at,
+              m.sticker, m.reply_to_id, m.deleted, m.deleted_for_sender, m.edited, m.edited_at, m.read, m.read_at, m.created_at,
               u.name AS sender_name, u.avatar AS sender_avatar,
               COALESCE(
                 (SELECT jsonb_agg(jsonb_build_object('emoji', mr.emoji, 'user_id', mr.user_id))
@@ -133,8 +133,8 @@ router.get('/:userId', auth, async (req, res) => {
               ) AS reactions
        FROM messages m
        JOIN users u ON u.id = m.sender_id
-       WHERE (m.sender_id=$1 AND m.receiver_id=$2)
-          OR (m.sender_id=$2 AND m.receiver_id=$1)
+       WHERE ((m.sender_id=$1 AND m.receiver_id=$2 AND m.deleted_for_sender IS NOT TRUE)
+          OR (m.sender_id=$2 AND m.receiver_id=$1))
        ORDER BY m.created_at ASC LIMIT 100`,
       [req.user.id, req.params.userId]
     );
@@ -249,6 +249,39 @@ router.delete('/:msgId', auth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete message.' });
+  }
+});
+
+// PUT /api/messages/:msgId — edit message content (sender only, text only)
+router.put('/:msgId', auth, async (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ error: 'Content cannot be empty.' });
+  try {
+    const msgRes = await pool.query('SELECT sender_id, receiver_id FROM messages WHERE id=$1', [req.params.msgId]);
+    if (!msgRes.rows[0]) return res.status(404).json({ error: 'Message not found.' });
+    if (msgRes.rows[0].sender_id !== req.user.id)
+      return res.status(403).json({ error: 'You can only edit your own messages.' });
+    await pool.query(
+      'UPDATE messages SET content=$1, edited=TRUE, edited_at=NOW() WHERE id=$2',
+      [content.trim(), req.params.msgId]
+    );
+    res.json({ ok: true, content: content.trim() });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to edit message.' });
+  }
+});
+
+// POST /api/messages/:msgId/hide — delete for sender only (receiver still sees it)
+router.post('/:msgId/hide', auth, async (req, res) => {
+  try {
+    const msgRes = await pool.query('SELECT sender_id FROM messages WHERE id=$1', [req.params.msgId]);
+    if (!msgRes.rows[0]) return res.status(404).json({ error: 'Message not found.' });
+    if (msgRes.rows[0].sender_id !== req.user.id)
+      return res.status(403).json({ error: 'You can only hide your own messages.' });
+    await pool.query('UPDATE messages SET deleted_for_sender=TRUE WHERE id=$1', [req.params.msgId]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to hide message.' });
   }
 });
 

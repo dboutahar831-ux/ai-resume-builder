@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Users, X, Info, Edit3, Trash2, LogOut, Crown, Shield, User, Dot } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Users, X, Info, Edit3, Trash2, LogOut, Crown, User, Search, UserPlus } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from './Toast';
 
@@ -39,6 +39,10 @@ function GroupInfoModal({ group, onClose, onUpdated, onDeleted, onLeft }) {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [addSearch, setAddSearch] = useState('');
+  const [availableFriends, setAvailableFriends] = useState([]);
+  const [addingId, setAddingId] = useState(null);
   const myId = JSON.parse(localStorage.getItem('user') || '{}').id;
 
   useEffect(() => {
@@ -53,6 +57,28 @@ function GroupInfoModal({ group, onClose, onUpdated, onDeleted, onLeft }) {
       setEditName(res.data.name);
       setEditDesc(res.data.description || '');
     } catch {} finally { setLoading(false); }
+  };
+
+  const loadAvailableFriends = async () => {
+    try {
+      const [friendsRes, membersRes] = await Promise.all([
+        api.get('/groups/available-friends'),
+        api.get(`/groups/${group.id}/members`),
+      ]);
+      const memberIds = new Set(membersRes.data.map(m => m.user_id));
+      setAvailableFriends(friendsRes.data.filter(f => !memberIds.has(f.id)));
+    } catch {}
+  };
+
+  const handleAddMember = async (userId) => {
+    setAddingId(userId);
+    try {
+      await api.post(`/groups/${group.id}/members`, { user_id: userId });
+      addToast('Member added!', 'success');
+      setAvailableFriends(prev => prev.filter(f => f.id !== userId));
+      loadDetails();
+    } catch (err) { addToast(err.response?.data?.error || 'Failed to add.', 'error'); }
+    finally { setAddingId(null); }
   };
 
   const isAdmin = details?.my_role === 'admin';
@@ -173,6 +199,10 @@ function GroupInfoModal({ group, onClose, onUpdated, onDeleted, onLeft }) {
                       className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-all">
                       <Edit3 size={13} /> Edit group
                     </button>
+                    <button onClick={() => { setShowAddMember(v => !v); if (!showAddMember) loadAvailableFriends(); }}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all">
+                      <UserPlus size={13} /> Add member
+                    </button>
                     <button onClick={handleDelete}
                       className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all">
                       <Trash2 size={13} /> Delete group
@@ -184,6 +214,37 @@ function GroupInfoModal({ group, onClose, onUpdated, onDeleted, onLeft }) {
                   <LogOut size={13} /> Leave group
                 </button>
               </div>
+
+              {/* Add member panel */}
+              {isAdmin && showAddMember && (
+                <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                  <div className="relative mb-2">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input value={addSearch} onChange={e => setAddSearch(e.target.value)}
+                      placeholder="Search friends…"
+                      className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#6C5CE7]/30 placeholder-gray-400" />
+                  </div>
+                  {availableFriends.length === 0 ? (
+                    <p className="text-[11px] text-gray-400 text-center py-3">All friends are already members</p>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-1">
+                      {availableFriends
+                        .filter(f => !addSearch || f.name.toLowerCase().includes(addSearch.toLowerCase()))
+                        .map(f => (
+                          <div key={f.id} className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-white transition-all">
+                            <AvatarCircle user={f} />
+                            <span className="flex-1 text-sm font-medium text-gray-800 truncate">{f.name}</span>
+                            <button onClick={() => handleAddMember(f.id)} disabled={addingId === f.id}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-white rounded-lg transition-all disabled:opacity-50"
+                              style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7)' }}>
+                              {addingId === f.id ? '…' : <><UserPlus size={11} /> Add</>}
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Members */}
               <div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail, Info, Reply, Trash2, Trash } from 'lucide-react';
+import { Send, MessageSquare, Search, ArrowLeft, X, Image, Mic, Check, CheckCheck, Play, Pause, Smile, UsersRound, Mail, Info, Reply, Trash2, Trash, Edit3 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { getSocket } from '../services/socket';
 import { useToast } from '../components/Toast';
@@ -137,6 +137,10 @@ export default function Messages() {
   const [groupSending, setGroupSending] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
 
+  const [editingMsgId, setEditingMsgId] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const editInputRef = useRef(null);
+
   const bottomRef = useRef();
   const inputRef = useRef();
   const activeUserRef = useRef(null);
@@ -206,6 +210,10 @@ export default function Messages() {
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted: true } : m));
     });
 
+    socket.on('message:edited', ({ messageId, content }) => {
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content, edited: true } : m));
+    });
+
     socket.on('conversation:cleared', () => {
       setMessages([]);
       loadConversations();
@@ -216,6 +224,7 @@ export default function Messages() {
       socket.off('typing');
       socket.off('messages:seen');
       socket.off('message:deleted');
+      socket.off('message:edited');
       socket.off('conversation:cleared');
     };
   }, []);
@@ -436,6 +445,24 @@ export default function Messages() {
       sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 6000);
     } finally { sendingLockRef.current = false; setSending(false); }
   };
+
+  const submitEdit = useCallback(async (msgId, content) => {
+    if (!content?.trim()) return;
+    const trimmed = content.trim();
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit('message:edit', { messageId: msgId, content: trimmed }, (res) => {
+        if (res?.ok) setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: trimmed, edited: true } : m));
+      });
+    } else {
+      try {
+        await api.put(`/messages/${msgId}`, { content: trimmed });
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: trimmed, edited: true } : m));
+      } catch {}
+    }
+    setEditingMsgId(null);
+    setEditContent('');
+  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -816,9 +843,16 @@ export default function Messages() {
                       )}
 
                       <div className={`relative group/message ${isMe ? 'flex items-end gap-1.5' : ''}`}>
-                        {/* Delete button (own messages, on hover) */}
+                        {/* Edit + Delete buttons (own messages, on hover) */}
                         {isMe && !activeGroup && (
                           <div className="opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1">
+                            {!msg.sticker && !msg.image_url && !msg.voice_url && (
+                              <button onClick={() => { setEditingMsgId(msg.id); setEditContent(msg.content || ''); setTimeout(() => editInputRef.current?.focus(), 50); }}
+                                className="p-1 text-gray-400 hover:text-indigo-400 hover:bg-indigo-50 rounded-lg transition-all"
+                                title="Edit">
+                                <Edit3 size={14} />
+                              </button>
+                            )}
                             <button onClick={() => setConfirmDelete({ type: 'message', id: msg.id })}
                               className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                               title="Delete">
@@ -861,7 +895,32 @@ export default function Messages() {
                           )}
 
                           {msg.content && (
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                            editingMsgId === msg.id ? (
+                              <div className="flex flex-col gap-2 min-w-[180px]">
+                                <textarea
+                                  ref={editInputRef}
+                                  value={editContent}
+                                  onChange={e => setEditContent(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitEdit(msg.id, editContent); }
+                                    if (e.key === 'Escape') { setEditingMsgId(null); setEditContent(''); }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm text-white bg-white/20 border border-white/40 rounded-xl resize-none focus:outline-none focus:border-white/60 placeholder-white/50"
+                                  rows={2}
+                                />
+                                <div className="flex gap-2 justify-end">
+                                  <button onClick={() => { setEditingMsgId(null); setEditContent(''); }}
+                                    className="px-2.5 py-1 text-[11px] text-white/60 hover:text-white transition-colors">Cancel</button>
+                                  <button onClick={() => submitEdit(msg.id, editContent)}
+                                    className="px-3 py-1 text-[11px] font-semibold bg-white/25 hover:bg-white/35 text-white rounded-lg transition-all">Save</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="whitespace-pre-wrap">
+                                {msg.content}
+                                {msg.edited && <span className={`ml-1.5 text-[10px] italic ${isMe ? 'text-white/50' : 'text-gray-400'}`}>edited</span>}
+                              </p>
+                            )
                           )}
 
                           {isMe && (
@@ -1056,11 +1115,29 @@ export default function Messages() {
                 ? 'This message will be deleted for everyone.'
                 : 'All messages in this conversation will be deleted. This cannot be undone.'}
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 flex-wrap">
               <button onClick={() => setConfirmDelete(null)}
                 className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
                 Cancel
               </button>
+              {confirmDelete.type === 'message' && (
+                <button onClick={() => {
+                  const socket = socketRef.current;
+                  if (socket?.connected) {
+                    socket.emit('message:hide', { messageId: confirmDelete.id }, (res) => {
+                      if (res?.ok) setMessages(prev => prev.filter(m => m.id !== confirmDelete.id));
+                    });
+                  } else {
+                    api.post(`/messages/${confirmDelete.id}/hide`).then(() => {
+                      setMessages(prev => prev.filter(m => m.id !== confirmDelete.id));
+                    }).catch(() => {});
+                  }
+                  setConfirmDelete(null);
+                }}
+                  className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                  Delete for me
+                </button>
+              )}
               <button onClick={() => {
                 const socket = socketRef.current;
                 if (confirmDelete.type === 'message') {
@@ -1085,7 +1162,7 @@ export default function Messages() {
                 setConfirmDelete(null);
               }}
                 className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all shadow-sm">
-                {confirmDelete.type === 'message' ? 'Delete' : 'Clear'}
+                {confirmDelete.type === 'message' ? 'Delete for everyone' : 'Clear'}
               </button>
             </div>
           </div>

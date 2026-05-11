@@ -90,6 +90,43 @@ function setupSocket(io) {
       }
     });
 
+    // Handle editing a message (only sender, text only)
+    socket.on('message:edit', async ({ messageId, content }, callback) => {
+      try {
+        if (!content?.trim()) return callback?.({ ok: false, error: 'Content cannot be empty.' });
+        const msgRes = await pool.query(
+          'SELECT sender_id, receiver_id FROM messages WHERE id=$1',
+          [messageId]
+        );
+        if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
+        if (msgRes.rows[0].sender_id !== userId) return callback?.({ ok: false, error: 'Not your message.' });
+
+        await pool.query(
+          'UPDATE messages SET content=$1, edited=TRUE, edited_at=NOW() WHERE id=$2',
+          [content.trim(), messageId]
+        );
+        io.to(`user:${msgRes.rows[0].receiver_id}`).emit('message:edited', { messageId, content: content.trim() });
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] message:edit error:', err.message);
+        callback?.({ ok: false, error: 'Failed to edit message.' });
+      }
+    });
+
+    // Handle hide-for-me (delete only from sender's view)
+    socket.on('message:hide', async ({ messageId }, callback) => {
+      try {
+        const msgRes = await pool.query('SELECT sender_id FROM messages WHERE id=$1', [messageId]);
+        if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
+        if (msgRes.rows[0].sender_id !== userId) return callback?.({ ok: false, error: 'Not your message.' });
+        await pool.query('UPDATE messages SET deleted_for_sender=TRUE WHERE id=$1', [messageId]);
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] message:hide error:', err.message);
+        callback?.({ ok: false, error: 'Failed to hide message.' });
+      }
+    });
+
     // Handle clearing entire conversation
     socket.on('conversation:clear', async ({ targetUserId }, callback) => {
       try {
