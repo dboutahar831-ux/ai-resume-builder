@@ -3,7 +3,7 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare,
   Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight,
-  Heart, Repeat2, CornerDownRight, LogOut,
+  Heart, Repeat2, CornerDownRight, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -25,14 +25,35 @@ function NexlyIcon({ className = 'w-8 h-8' }) {
   );
 }
 
+function DarkToggle({ dark, setDark }) {
+  return (
+    <button
+      onClick={() => setDark(d => !d)}
+      aria-label="Toggle dark mode"
+      className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+        dark ? 'bg-indigo-600' : 'bg-gray-200'
+      }`}
+    >
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm ${
+        dark ? 'translate-x-6 bg-white' : 'translate-x-0 bg-white'
+      }`}>
+        {dark
+          ? <Moon size={11} className="text-indigo-600" />
+          : <Sun size={11} className="text-amber-500" />
+        }
+      </span>
+    </button>
+  );
+}
+
 const NOTIF_META = {
-  msg:      { bg: 'bg-indigo-50',  Icon: MessageSquare,   color: 'text-indigo-600'  },
-  friend:   { bg: 'bg-emerald-50', Icon: UserPlus,        color: 'text-emerald-600' },
-  comment:  { bg: 'bg-blue-50',    Icon: MessageSquare,   color: 'text-blue-600'    },
-  reaction: { bg: 'bg-rose-50',    Icon: Heart,           color: 'text-rose-500'    },
-  repost:   { bg: 'bg-purple-50',  Icon: Repeat2,         color: 'text-purple-600'  },
-  reply:    { bg: 'bg-indigo-50',  Icon: CornerDownRight, color: 'text-indigo-600'  },
-  mention:  { bg: 'bg-violet-50',  Icon: UserPlus,        color: 'text-violet-600'  },
+  msg:      { bg: 'bg-indigo-50 dark:bg-indigo-900/40',  Icon: MessageSquare,   color: 'text-indigo-600 dark:text-indigo-400'  },
+  friend:   { bg: 'bg-emerald-50 dark:bg-emerald-900/40', Icon: UserPlus,        color: 'text-emerald-600 dark:text-emerald-400' },
+  comment:  { bg: 'bg-blue-50 dark:bg-blue-900/40',    Icon: MessageSquare,   color: 'text-blue-600 dark:text-blue-400'    },
+  reaction: { bg: 'bg-rose-50 dark:bg-rose-900/40',    Icon: Heart,           color: 'text-rose-500 dark:text-rose-400'    },
+  repost:   { bg: 'bg-purple-50 dark:bg-purple-900/40',  Icon: Repeat2,         color: 'text-purple-600 dark:text-purple-400'  },
+  reply:    { bg: 'bg-indigo-50 dark:bg-indigo-900/40',  Icon: CornerDownRight, color: 'text-indigo-600 dark:text-indigo-400'  },
+  mention:  { bg: 'bg-violet-50 dark:bg-violet-900/40',  Icon: UserPlus,        color: 'text-violet-600 dark:text-violet-400'  },
 };
 
 function timeAgo(dateStr) {
@@ -64,43 +85,43 @@ function NotificationBell({ items, count, onMarkRead, onClose }) {
   return (
     <div ref={ref} className="relative">
       <button onClick={handleOpen}
-        className="relative p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all">
+        className="relative p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-600 dark:hover:text-gray-300 transition-all">
         <Bell size={17} />
         {count > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold leading-none shadow-sm">
+          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold leading-none shadow-sm animate-[badge-bounce_0.4s_ease]">
             {count > 9 ? '9+' : count}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden"
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#141920] border border-gray-100 dark:border-[#252D3D] rounded-2xl shadow-xl dark:shadow-2xl z-50 overflow-hidden"
           style={{ animation: 'fadeInDown 0.15s ease' }}>
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <p className="text-sm font-bold text-gray-900">Notifications</p>
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-[#252D3D] flex items-center justify-between">
+            <p className="text-sm font-bold text-gray-900 dark:text-[#E8ECF8]">Notifications</p>
             {count > 0 && (
-              <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-semibold">{count} new</span>
+              <span className="text-xs bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 px-2 py-0.5 rounded-full font-semibold">{count} new</span>
             )}
           </div>
           {items.length === 0 ? (
             <div className="px-4 py-10 text-center">
-              <Bell size={24} className="text-gray-200 mx-auto mb-2" />
-              <p className="text-xs text-gray-400">No new notifications</p>
+              <Bell size={24} className="text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+              <p className="text-xs text-gray-400 dark:text-[#525C72]">No new notifications</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 max-h-80 overflow-y-auto">
+            <div className="divide-y divide-gray-50 dark:divide-[#1A2030] max-h-80 overflow-y-auto">
               {items.map((item, i) => {
                 const meta = NOTIF_META[item.icon] || NOTIF_META.msg;
                 const { Icon } = meta;
                 return (
                   <Link key={i} to={item.link} onClick={() => { setOpen(false); onClose?.(); }}
-                    className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${!item.read ? 'bg-indigo-50/40' : ''}`}>
+                    className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${!item.read ? 'bg-indigo-50/40 dark:bg-indigo-900/10' : ''}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${meta.bg}`}>
                       <Icon size={13} className={meta.color} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-700 leading-relaxed">{item.text}</p>
-                      {item.time && <p className="text-[10px] text-gray-400 mt-0.5">{item.time}</p>}
+                      <p className="text-xs text-gray-700 dark:text-[#8892A8] leading-relaxed">{item.text}</p>
+                      {item.time && <p className="text-[10px] text-gray-400 dark:text-[#525C72] mt-0.5">{item.time}</p>}
                     </div>
                     {!item.read && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 mt-1.5" />}
                   </Link>
@@ -108,9 +129,9 @@ function NotificationBell({ items, count, onMarkRead, onClose }) {
               })}
             </div>
           )}
-          <div className="px-4 py-2.5 border-t border-gray-50">
+          <div className="px-4 py-2.5 border-t border-gray-50 dark:border-[#252D3D]">
             <button onClick={() => { onMarkRead?.(); setOpen(false); }}
-              className="text-xs text-indigo-600 font-semibold hover:underline w-full text-center">
+              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline w-full text-center">
               Mark all as read
             </button>
           </div>
@@ -125,7 +146,7 @@ export default function Layout({ children }) {
   const [notifItems, setNotifItems] = useState([]);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
   const [pendingReqs, setPendingReqs] = useState(0);
-  const { t } = useApp();
+  const { t, dark, setDark } = useApp();
   const navigate = useNavigate();
   const user = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); }
@@ -202,24 +223,24 @@ export default function Layout({ children }) {
   const activeStyle = { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' };
 
   return (
-    <div className="flex h-screen bg-gray-50/80">
+    <div className="flex h-screen bg-gray-50/80 dark:bg-[#0B0E14]">
       {/* Overlay */}
       {open && (
         <div className="fixed inset-0 bg-black/40 z-20 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white dark:bg-[#141920] border-r border-gray-100 dark:border-[#252D3D] flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
 
         {/* Logo section */}
-        <div className="px-5 py-5 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-5 py-5 border-b border-gray-100 dark:border-[#252D3D] flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <NexlyIcon className="w-8 h-8" />
-            <span className="font-bold text-gray-900 tracking-tight text-base">Nexly</span>
+            <span className="font-bold text-gray-900 dark:text-[#E8ECF8] tracking-tight text-base">Nexly</span>
           </Link>
           <div className="flex items-center gap-1">
             <NotificationBell items={notifItems} count={notifCount} onMarkRead={markAllRead} onClose={() => setOpen(false)} />
-            <button onClick={() => setOpen(false)} className="lg:hidden p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
+            <button onClick={() => setOpen(false)} className="lg:hidden p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-all">
               <X size={17} />
             </button>
           </div>
@@ -227,7 +248,7 @@ export default function Layout({ children }) {
 
         {/* Main navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pb-3">Main</p>
+          <p className="text-[10px] font-bold text-gray-400 dark:text-[#525C72] uppercase tracking-widest px-3 pb-3">Main</p>
           {links.map(({ to, icon: Icon, label, badge }) => (
             <NavLink key={to} to={to} onClick={() => setOpen(false)}
               style={({ isActive }) => isActive ? activeStyle : {}}
@@ -235,7 +256,7 @@ export default function Layout({ children }) {
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
                     ? 'text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    : 'text-gray-600 dark:text-[#8892A8] hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-[#E8ECF8]'
                 }`
               }>
               {({ isActive }) => (
@@ -246,7 +267,7 @@ export default function Layout({ children }) {
                     ? <span className={`w-5 h-5 text-[10px] rounded-full flex items-center justify-center font-bold leading-none flex-shrink-0 shadow-sm ${isActive ? 'bg-white/25 text-white' : 'bg-red-500 text-white'}`}>
                         {badge > 9 ? '9+' : badge}
                       </span>
-                    : <ChevronRight size={13} className={`flex-shrink-0 ${isActive ? 'text-white/50' : 'text-gray-300'}`} />
+                    : <ChevronRight size={13} className={`flex-shrink-0 ${isActive ? 'text-white/50' : 'text-gray-300 dark:text-[#525C72]'}`} />
                   }
                 </>
               )}
@@ -255,8 +276,8 @@ export default function Layout({ children }) {
         </nav>
 
         {/* Account section */}
-        <div className="px-3 py-4 border-t border-gray-100 space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 pb-2">Account</p>
+        <div className="px-3 py-4 border-t border-gray-100 dark:border-[#252D3D] space-y-1">
+          <p className="text-[10px] font-bold text-gray-400 dark:text-[#525C72] uppercase tracking-widest px-3 pb-2">Account</p>
           {bottomLinks.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} onClick={() => setOpen(false)}
               style={({ isActive }) => isActive ? activeStyle : {}}
@@ -264,7 +285,7 @@ export default function Layout({ children }) {
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
                     ? 'text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    : 'text-gray-600 dark:text-[#8892A8] hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-[#E8ECF8]'
                 }`
               }>
               {({ isActive }) => (
@@ -276,25 +297,39 @@ export default function Layout({ children }) {
             </NavLink>
           ))}
 
+          {/* Dark mode toggle row */}
+          <div className="flex items-center justify-between px-3 py-2.5">
+            <div className="flex items-center gap-3">
+              {dark
+                ? <Moon size={17} className="text-indigo-400" />
+                : <Sun size={17} className="text-amber-500" />
+              }
+              <span className="text-sm font-medium text-gray-600 dark:text-[#8892A8]">
+                {dark ? 'Dark mode' : 'Light mode'}
+              </span>
+            </div>
+            <DarkToggle dark={dark} setDark={setDark} />
+          </div>
+
           {/* Logout */}
           <button onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all mt-1">
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all mt-1">
             <LogOut size={17} />
             <span>{t.logout || 'Logout'}</span>
           </button>
 
           {/* User card */}
-          <div className="flex items-center gap-3 px-3 py-3 mt-3 rounded-xl bg-gray-50 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3 px-3 py-3 mt-3 rounded-xl bg-gray-50 dark:bg-[#1A2030] border border-gray-100 dark:border-[#252D3D] shadow-sm">
             {user.avatar ? (
-              <img src={user.avatar} loading="lazy" alt="avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm" />
+              <img src={user.avatar} loading="lazy" alt="avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-white dark:ring-[#252D3D] shadow-sm" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 select-none shadow-sm">
                 {user.name?.[0]?.toUpperCase()}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-              <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-[#E8ECF8] truncate">{user.name}</p>
+              <p className="text-xs text-gray-400 dark:text-[#525C72] truncate">{user.email}</p>
             </div>
           </div>
         </div>
@@ -303,15 +338,20 @@ export default function Layout({ children }) {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Mobile header */}
-        <header className="lg:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
-          <button onClick={() => setOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-600 transition-all">
+        <header className="lg:hidden bg-white dark:bg-[#141920] border-b border-gray-100 dark:border-[#252D3D] px-4 py-3 flex items-center gap-3 shadow-sm">
+          <button onClick={() => setOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400 transition-all">
             <Menu size={19} />
           </button>
           <Link to="/home" className="flex items-center gap-2 flex-1">
             <NexlyIcon className="w-6 h-6" />
-            <span className="font-bold text-gray-900 text-sm">Nexly</span>
+            <span className="font-bold text-gray-900 dark:text-[#E8ECF8] text-sm">Nexly</span>
           </Link>
-          <NotificationBell items={notifItems} count={notifCount} onMarkRead={markAllRead} />
+          <div className="flex items-center gap-2">
+            <button onClick={() => setDark(d => !d)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 text-gray-400 dark:text-gray-500 transition-all">
+              {dark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} />}
+            </button>
+            <NotificationBell items={notifItems} count={notifCount} onMarkRead={markAllRead} />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-6 pb-20 lg:pb-6">
@@ -320,7 +360,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Mobile bottom navigation */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 shadow-lg">
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-[#141920] border-t border-gray-100 dark:border-[#252D3D] flex items-center justify-around px-2 py-2 shadow-lg">
         {[
           { to: '/home',     icon: Home,         label: 'Home'    },
           { to: '/friends',  icon: Users,         label: 'Friends', badge: pendingReqs },
@@ -330,7 +370,7 @@ export default function Layout({ children }) {
         ].map(({ to, icon: Icon, label, badge }) => (
           <NavLink key={to} to={to} onClick={() => setOpen(false)}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative ${isActive ? '' : 'text-gray-400'}`
+              `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all relative ${isActive ? '' : 'text-gray-400 dark:text-[#525C72]'}`
             }>
             {({ isActive }) => (
               <>
