@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Globe, Sun, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck, ShieldOff, UserX, ShieldAlert } from 'lucide-react';
+import { Globe, Sun, Moon, Check, Lock, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff, Trash2, TriangleAlert, Radio, LogOut, CheckCheck, ShieldOff, UserX, ShieldAlert } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../components/Toast';
@@ -134,100 +134,130 @@ export default function Settings() {
         )}
 
         {/* Language */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-1">
             <Globe size={16} className="text-gray-400" />
-            <h3 className="font-semibold text-gray-900">{t.language}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.language}</h3>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Choose the language for the interface.</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Choose the language for the interface.</p>
           <div className="grid grid-cols-3 gap-3">
             {languages.map(l => (
               <button key={l.code} onClick={() => setLang(l.code)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
                   lang === l.code
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}>
                 <span className="text-xl">{l.flag}</span>
                 <span>{l.label}</span>
-                {lang === l.code && <Check size={13} className="ml-auto text-indigo-600" />}
+                {lang === l.code && <Check size={13} className="ml-auto text-indigo-600 dark:text-indigo-400" />}
               </button>
             ))}
           </div>
         </div>
 
         {/* Online Status Privacy */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-1">
             <Radio size={16} className="text-gray-400" />
-            <h3 className="font-semibold text-gray-900">Online Status</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Online Status</h3>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Control who can see when you're active.</p>
-          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Control who can see when you're active.</p>
+          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50">
             <div>
-              <p className="text-sm font-medium text-gray-800">Show active status</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {showOnline ? 'Friends can see when you\'re online' : 'Your online status is hidden from everyone'}
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Show active status</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {showOnline ? "Friends can see when you're online" : 'Your online status is hidden from everyone'}
               </p>
             </div>
             <button
               onClick={() => toggleOnlineStatus(!showOnline)}
               disabled={savingOnline}
-              className={`relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50
-                ${showOnline ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
-                ${showOnline ? 'translate-x-5' : 'translate-x-0'}`} />
+              className={`relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50 ${showOnline ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${showOnline ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
         </div>
 
         {/* Read Receipts */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-1">
             <CheckCheck size={16} className="text-gray-400" />
-            <h3 className="font-semibold text-gray-900">Read Receipts</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Read Receipts</h3>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Control whether others can see when you've read their messages.</p>
-          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Control whether others can see when you've read their messages.</p>
+          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50">
             <div>
-              <p className="text-sm font-medium text-gray-800">Show read receipts</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {showReadReceipts ? 'Others can see when you\'ve read their messages' : 'Read receipts are hidden — others won\'t see "Seen"'}
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Show read receipts</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {showReadReceipts ? "Others can see when you've read their messages" : 'Read receipts are hidden — others won\'t see "Seen"'}
               </p>
             </div>
             <button
               onClick={() => toggleReadReceipts(!showReadReceipts)}
               disabled={savingReceipts}
-              className={`relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50
-                ${showReadReceipts ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
-                ${showReadReceipts ? 'translate-x-5' : 'translate-x-0'}`} />
+              className={`relative w-11 h-6 rounded-full transition-all duration-200 flex-shrink-0 disabled:opacity-50 ${showReadReceipts ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${showReadReceipts ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
         </div>
 
-        {/* Theme */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        {/* Appearance — Dark / Light */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-1">
-            <Sun size={16} className="text-gray-400" />
-            <h3 className="font-semibold text-gray-900">{t.theme}</h3>
+            {dark ? <Moon size={16} className="text-indigo-400" /> : <Sun size={16} className="text-amber-400" />}
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.theme || 'Appearance'}</h3>
           </div>
-          <p className="text-xs text-gray-400">Light mode — always on.</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-5">Choose your preferred display mode.</p>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Light */}
+            <button onClick={() => setDark(false)}
+              className={`relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 transition-all ${
+                !dark
+                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}>
+              {!dark && <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center"><Check size={11} className="text-white" /></span>}
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${!dark ? 'bg-amber-100' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                <Sun size={22} className={!dark ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'} />
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-bold ${!dark ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>Light</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Clean & bright</p>
+              </div>
+            </button>
+            {/* Dark */}
+            <button onClick={() => setDark(true)}
+              className={`relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 transition-all ${
+                dark
+                  ? 'border-indigo-500 bg-indigo-900/20'
+                  : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+              }`}>
+              {dark && <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center"><Check size={11} className="text-white" /></span>}
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${dark ? 'bg-indigo-900/50' : 'bg-gray-200'}`}>
+                <Moon size={22} className={dark ? 'text-indigo-400' : 'text-gray-400'} />
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-bold ${dark ? 'text-indigo-400' : 'text-gray-500'}`}>Dark</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Easy on the eyes</p>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Password */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Lock size={16} className="text-gray-400" />
               <div>
-                <h3 className="font-semibold text-gray-900">{t.changePassword}</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Update your account password.</p>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.changePassword}</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Update your account password.</p>
               </div>
             </div>
             <button onClick={() => { setShowPw(s => !s); setPwError(''); }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                showPw ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'text-white border-transparent hover:opacity-90'
+                showPw ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800' : 'text-white border-transparent hover:opacity-90'
               }`}
               style={!showPw ? { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' } : {}}>
               {showPw ? <><ChevronUp size={14} />Cancel</> : <><ChevronDown size={14} />{t.changePassword}</>}
@@ -235,40 +265,40 @@ export default function Settings() {
           </div>
 
           {showPw && (
-            <div className="mt-5 pt-5 border-t border-gray-100 space-y-4">
+            <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700/50 space-y-4">
               {pwError && (
-                <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2.5 rounded-xl text-sm border border-red-100">
+                <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-2.5 rounded-xl text-sm border border-red-100 dark:border-red-800/50">
                   <AlertCircle size={14} />{pwError}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.currentPassword}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t.currentPassword}</label>
                 <div className="relative">
                   <input className={inp} type={showCurrent ? 'text' : 'password'}
                     placeholder="Enter your current password"
                     value={pwForm.current_password}
                     onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))} />
                   <button type="button" onClick={() => setShowCurrent(s => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                     {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.newPassword}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t.newPassword}</label>
                 <div className="relative">
                   <input className={inp} type={showNew ? 'text' : 'password'}
                     placeholder="Enter your new password (min. 6 chars)"
                     value={pwForm.new_password}
                     onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))} />
                   <button type="button" onClick={() => setShowNew(s => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                     {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Confirm New Password</label>
                 <input className={inp + ' pr-3'} type="password"
                   placeholder="Re-enter your new password"
                   value={pwForm.confirm_password}
@@ -341,59 +371,61 @@ export default function Settings() {
             <div className="flex items-center gap-2">
               <LogOut size={16} className="text-gray-400" />
               <div>
-                <h3 className="font-semibold text-gray-900">{t.logout}</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Sign out of your account.</p>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.logout}</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Sign out of your account.</p>
               </div>
             </div>
             <button onClick={logout}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:border-red-100 dark:hover:border-red-800/50 transition-all">
               <LogOut size={14} />{t.logout}
             </button>
           </div>
         </div>
 
         {/* Delete Account */}
-        <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-red-100 dark:border-red-900/40 shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Trash2 size={16} className="text-red-400" />
               <div>
-                <h3 className="font-semibold text-gray-900">Delete Account</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Permanently delete your account and all data.</p>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">Delete Account</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Permanently delete your account and all data.</p>
               </div>
             </div>
             <button onClick={() => { setShowDelete(s => !s); setDeleteError(''); setDeletePassword(''); setDeleteConfirm(''); }}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                showDelete ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
+                showDelete
+                  ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/30'
               }`}>
               {showDelete ? <><ChevronUp size={14} />Cancel</> : <><Trash2 size={14} />Delete Account</>}
             </button>
           </div>
 
           {showDelete && (
-            <div className="mt-5 pt-5 border-t border-red-100 space-y-4">
-              <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+            <div className="mt-5 pt-5 border-t border-red-100 dark:border-red-900/40 space-y-4">
+              <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 rounded-xl px-4 py-3">
                 <TriangleAlert size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-red-700 leading-relaxed">
+                <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">
                   This action is <strong>irreversible</strong>. All your resumes, job applications, messages, and connections will be permanently deleted.
                 </p>
               </div>
 
               {deleteError && (
-                <div className="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2.5 rounded-xl text-sm border border-red-100">
+                <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-2.5 rounded-xl text-sm border border-red-100 dark:border-red-800/50">
                   <AlertCircle size={14} />{deleteError}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Your password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Your password</label>
                 <input type="password" className={inp.replace('focus:ring-indigo-500', 'focus:ring-red-500') + ' pr-3'}
                   placeholder="Enter your password to confirm"
                   value={deletePassword} onChange={e => setDeletePassword(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Type <strong className="text-red-600">DELETE</strong> to confirm
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Type <strong className="text-red-600 dark:text-red-400">DELETE</strong> to confirm
                 </label>
                 <input type="text" className={inp.replace('focus:ring-indigo-500', 'focus:ring-red-500') + ' pr-3'}
                   placeholder="DELETE"
@@ -401,7 +433,7 @@ export default function Settings() {
               </div>
 
               <button onClick={handleDeleteAccount} disabled={deleting}
-                className="flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 transition-all disabled:opacity-60">
+                className="flex items-center gap-2 bg-red-600 dark:bg-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-700 dark:hover:bg-red-600 transition-all disabled:opacity-60">
                 {deleting
                   ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Deleting...</>
                   : <><Trash2 size={14} />Permanently Delete Account</>
