@@ -934,13 +934,13 @@ export default function Home() {
       {/* Far-right floating decorative panel */}
       <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-center">
         <div className="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl bg-white/40 backdrop-blur-sm border border-gray-100/30 shadow-lg">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/0 via-white/20 to-white/0 pointer-events-none" />
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/0 via-white/20 to-white/0 pointer-events-none dark:hidden" />
 
         {/* Live Clock */}
         <div className="relative group">
           <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-indigo-400/30 via-purple-400/30 to-teal-400/30 opacity-0 group-hover:opacity-100 blur-sm transition-all duration-500" />
-          <div className="relative bg-white rounded-xl border border-gray-200 px-3 py-2 shadow-sm group-hover:shadow-md transition-all cursor-default min-w-[60px] text-center">
-            <div className="text-[18px] font-bold tracking-wider text-gray-900 leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          <div className="relative bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] px-3 py-2 shadow-sm group-hover:shadow-md transition-all cursor-default min-w-[60px] text-center">
+            <div className="text-[18px] font-bold tracking-wider text-gray-900 dark:text-gray-100 leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
               {currentTime.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}
             </div>
             <div className="text-[7px] font-semibold text-indigo-500 uppercase tracking-widest leading-tight mt-0.5">
@@ -958,9 +958,9 @@ export default function Home() {
             <span className="text-[6px] font-semibold text-gray-400 mt-0.5">{new Date().toLocaleDateString('en',{weekday:'short'})}</span>
           </button>
           {dateOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden date-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
+            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-100 dark:border-[#2A2A2A] shadow-xl z-50 w-52 overflow-hidden date-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
               <div className="p-3 text-center">
-                <p className="text-[11px] font-bold text-gray-900">{new Date().toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'})}</p>
+                <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'})}</p>
                 <div className="grid grid-cols-7 gap-0.5 mt-3 text-[9px]">
                   {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => <span key={d} className="font-bold text-gray-400 py-1">{d}</span>)}
                   {Array.from({length:35},(_,i)=>{const d=i-2;return<span key={i} className={`py-1 rounded-md ${d<1||d>30?'text-gray-200':'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition-colors'} ${d===new Date().getDate()?'bg-indigo-100 text-indigo-700 font-bold':''}`}>{d>0&&d<31?d:''}</span>})}
