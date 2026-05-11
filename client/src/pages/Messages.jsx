@@ -855,21 +855,21 @@ export default function Messages() {
                         }`}
                           style={isMe ? { background: 'linear-gradient(135deg,#6C5CE7,#BF5AF2)' } : {}}>
 
-                          {/* Reply quote — inside bubble so colors are visible against gradient/white */}
+                          {/* Compact reply quote */}
                           {msg.reply_to && (
-                            <div className={`mb-2 px-2.5 py-1.5 rounded-lg text-xs border-l-4 ${
-                              isMe ? 'border-white/50 bg-white/20' : 'border-indigo-300 bg-indigo-50'
+                            <div className={`mb-1.5 px-2 py-1 rounded-md border-l-2 overflow-hidden ${
+                              isMe ? 'border-white/60 bg-black/15' : 'border-indigo-400 bg-indigo-50'
                             }`}>
-                              <p className={`font-semibold truncate ${isMe ? 'text-white/90' : 'text-indigo-600'}`}>
+                              <p className={`text-[10px] font-semibold leading-tight truncate ${isMe ? 'text-white/85' : 'text-indigo-600'}`}>
                                 {msg.reply_to.sender_name}
                               </p>
-                              {msg.reply_to.sticker && <span className="text-xl">{msg.reply_to.sticker}</span>}
-                              {msg.reply_to.image_url && <span className={isMe ? 'text-white/70' : 'text-gray-500'}>📷 Photo</span>}
-                              {msg.reply_to.content && (
-                                <p className={`truncate ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
-                                  {msg.reply_to.content}
-                                </p>
-                              )}
+                              <p className={`text-[10px] leading-tight truncate ${isMe ? 'text-white/55' : 'text-gray-500'}`}>
+                                {msg.reply_to.sticker
+                                  ? msg.reply_to.sticker
+                                  : msg.reply_to.image_url
+                                    ? '📷 Photo'
+                                    : msg.reply_to.content || ''}
+                              </p>
                             </div>
                           )}
 
@@ -996,18 +996,18 @@ export default function Messages() {
 
               {/* Reply bar */}
               {!activeGroup && replyTo && (
-                <div className="px-5 py-2.5 flex items-center gap-3 bg-indigo-50/70 border-b border-indigo-200">
+                <div className="px-4 py-2 flex items-center gap-2 bg-indigo-50/70 border-b border-indigo-100 border-l-2 border-l-indigo-400">
+                  <Reply size={11} className="text-indigo-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-indigo-600">
-                      <Reply size={12} className="inline mr-1" />
-                      Replying to {replyTo.sender_name}
+                    <p className="text-[11px] font-semibold text-indigo-600 leading-tight truncate">
+                      {replyTo.sender_name}
                     </p>
-                    {replyTo.sticker && <span className="text-xl">{replyTo.sticker}</span>}
-                    {replyTo.image_url && <span className="text-xs text-gray-500">📷 Photo</span>}
-                    {replyTo.content && <p className="text-xs text-gray-500 truncate">{replyTo.content}</p>}
+                    <p className="text-[11px] text-gray-500 truncate leading-tight">
+                      {replyTo.sticker || (replyTo.image_url ? '📷 Photo' : (replyTo.content || ''))}
+                    </p>
                   </div>
                   <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
-                    <X size={16} />
+                    <X size={14} />
                   </button>
                 </div>
               )}
