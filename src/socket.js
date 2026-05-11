@@ -127,6 +127,20 @@ function setupSocket(io) {
       }
     });
 
+    // Hide received message (delete from receiver's view only)
+    socket.on('message:hide-received', async ({ messageId }, callback) => {
+      try {
+        const msgRes = await pool.query('SELECT receiver_id FROM messages WHERE id=$1', [messageId]);
+        if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
+        if (msgRes.rows[0].receiver_id !== userId) return callback?.({ ok: false, error: 'Not your received message.' });
+        await pool.query('UPDATE messages SET deleted_for_receiver=TRUE WHERE id=$1', [messageId]);
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] message:hide-received error:', err.message);
+        callback?.({ ok: false, error: 'Failed to hide message.' });
+      }
+    });
+
     // Handle clearing entire conversation
     socket.on('conversation:clear', async ({ targetUserId }, callback) => {
       try {

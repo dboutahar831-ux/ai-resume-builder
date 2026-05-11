@@ -134,7 +134,7 @@ router.get('/:userId', auth, async (req, res) => {
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE ((m.sender_id=$1 AND m.receiver_id=$2 AND m.deleted_for_sender IS NOT TRUE)
-          OR (m.sender_id=$2 AND m.receiver_id=$1))
+          OR (m.sender_id=$2 AND m.receiver_id=$1 AND m.deleted_for_receiver IS NOT TRUE))
        ORDER BY m.created_at ASC LIMIT 100`,
       [req.user.id, req.params.userId]
     );
@@ -279,6 +279,20 @@ router.post('/:msgId/hide', auth, async (req, res) => {
     if (msgRes.rows[0].sender_id !== req.user.id)
       return res.status(403).json({ error: 'You can only hide your own messages.' });
     await pool.query('UPDATE messages SET deleted_for_sender=TRUE WHERE id=$1', [req.params.msgId]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to hide message.' });
+  }
+});
+
+// POST /api/messages/:msgId/hide-received — delete received message from receiver's view only
+router.post('/:msgId/hide-received', auth, async (req, res) => {
+  try {
+    const msgRes = await pool.query('SELECT receiver_id FROM messages WHERE id=$1', [req.params.msgId]);
+    if (!msgRes.rows[0]) return res.status(404).json({ error: 'Message not found.' });
+    if (msgRes.rows[0].receiver_id !== req.user.id)
+      return res.status(403).json({ error: 'You can only hide messages sent to you.' });
+    await pool.query('UPDATE messages SET deleted_for_receiver=TRUE WHERE id=$1', [req.params.msgId]);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to hide message.' });

@@ -730,9 +730,9 @@ export default function Messages() {
           )}
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-1.5 bg-gray-50/80">
+          <div className="flex-1 overflow-y-auto bg-gray-50/80 flex flex-col">
             {!activeUser && !activeGroup && (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
                 <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-center mb-5 shadow-sm backdrop-blur-sm">
                   <Mail size={40} className="text-indigo-400" />
                 </div>
@@ -748,7 +748,7 @@ export default function Messages() {
               </div>
             )}
             {activeGroup && groupMessages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
                 <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-center mb-5 shadow-sm">
                   <UsersRound size={32} className="text-indigo-400" />
                 </div>
@@ -757,7 +757,7 @@ export default function Messages() {
               </div>
             )}
             {activeUser && messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
                 <Avatar user={activeUser} size="lg" />
                 <p className="text-gray-900 font-bold mt-4 text-base">{activeUser.name}</p>
                 <div className="mt-2 px-5 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -767,6 +767,10 @@ export default function Messages() {
               </div>
             )}
 
+            {/* Spacer pushes messages to the bottom when few messages exist */}
+            <div className="flex-1 min-h-0" />
+
+            <div className="px-5 pb-5 pt-2 space-y-1.5">
             {(activeGroup ? groupMessages : messages).map((msg, i) => {
               const msgs = activeGroup ? groupMessages : messages;
               const isMe = msg.sender_id === myUser.id;
@@ -821,17 +825,17 @@ export default function Messages() {
                       )}
 
                       <div className={`relative group/message ${isMe ? 'flex items-end gap-1.5' : ''}`}>
-                        {/* Edit + Delete buttons (own messages, on hover) */}
-                        {isMe && !activeGroup && (
+                        {/* Action buttons (own messages: edit + delete; received: delete for me) */}
+                        {!activeGroup && (
                           <div className="opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1">
-                            {!msg.sticker && !msg.image_url && !msg.voice_url && (
+                            {isMe && !msg.sticker && !msg.image_url && !msg.voice_url && (
                               <button onClick={() => { setEditingMsgId(msg.id); setEditContent(msg.content || ''); setTimeout(() => editInputRef.current?.focus(), 50); }}
                                 className="p-1 text-gray-400 hover:text-indigo-400 hover:bg-indigo-50 rounded-lg transition-all"
                                 title="Edit">
                                 <Edit3 size={14} />
                               </button>
                             )}
-                            <button onClick={() => setConfirmDelete({ type: 'message', id: msg.id })}
+                            <button onClick={() => setConfirmDelete({ type: isMe ? 'message' : 'received', id: msg.id })}
                               className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                               title="Delete">
                               <Trash2 size={14} />
@@ -948,6 +952,7 @@ export default function Messages() {
 
             {isTyping && activeUser && <TypingDots />}
             <div ref={bottomRef} />
+            </div>
           </div>
 
           {/* Error toast */}
@@ -1104,49 +1109,83 @@ export default function Messages() {
           <div className="bg-white rounded-2xl shadow-2xl p-6 mx-4 max-w-sm w-full"
             onClick={e => e.stopPropagation()}>
             <p className="text-base font-bold text-gray-900 mb-2">
-              {confirmDelete.type === 'message' ? 'Are you sure?' : 'Clear conversation?'}
+              {confirmDelete.type === 'conversation' ? 'Clear conversation?' : 'Delete message?'}
             </p>
             <p className="text-sm text-gray-500 mb-5">
-              {confirmDelete.type === 'message'
-                ? 'This message will be deleted for everyone.'
-                : 'All messages in this conversation will be deleted. This cannot be undone.'}
+              {confirmDelete.type === 'conversation'
+                ? 'All messages in this conversation will be deleted. This cannot be undone.'
+                : confirmDelete.type === 'received'
+                  ? 'This message will be removed from your view only.'
+                  : 'Choose how to delete this message.'}
             </p>
             <div className="flex justify-end gap-2 flex-wrap">
               <button onClick={() => setConfirmDelete(null)}
                 className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
                 Cancel
               </button>
-              {confirmDelete.type === 'message' && (
+
+              {/* Received message: only "delete for me" */}
+              {confirmDelete.type === 'received' && (
                 <button onClick={() => {
                   const socket = socketRef.current;
                   if (socket?.connected) {
-                    socket.emit('message:hide', { messageId: confirmDelete.id }, (res) => {
+                    socket.emit('message:hide-received', { messageId: confirmDelete.id }, (res) => {
                       if (res?.ok) setMessages(prev => prev.filter(m => m.id !== confirmDelete.id));
                     });
                   } else {
-                    api.post(`/messages/${confirmDelete.id}/hide`).then(() => {
+                    api.post(`/messages/${confirmDelete.id}/hide-received`).then(() => {
                       setMessages(prev => prev.filter(m => m.id !== confirmDelete.id));
                     }).catch(() => {});
                   }
                   setConfirmDelete(null);
                 }}
-                  className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                  className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all shadow-sm">
                   Delete for me
                 </button>
               )}
-              <button onClick={() => {
-                const socket = socketRef.current;
-                if (confirmDelete.type === 'message') {
-                  if (socket?.connected) {
-                    socket.emit('message:delete', { messageId: confirmDelete.id }, (res) => {
-                      if (res?.ok) setMessages(prev => prev.map(m => m.id === confirmDelete.id ? { ...m, deleted: true } : m));
-                    });
-                  } else {
-                    api.delete(`/messages/${confirmDelete.id}`).then(() => {
-                      setMessages(prev => prev.map(m => m.id === confirmDelete.id ? { ...m, deleted: true } : m));
-                    }).catch(() => {});
-                  }
-                } else {
+
+              {/* Own message: delete for me OR delete for everyone */}
+              {confirmDelete.type === 'message' && (
+                <>
+                  <button onClick={() => {
+                    const socket = socketRef.current;
+                    if (socket?.connected) {
+                      socket.emit('message:hide', { messageId: confirmDelete.id }, (res) => {
+                        if (res?.ok) setMessages(prev => prev.filter(m => m.id !== confirmDelete.id));
+                      });
+                    } else {
+                      api.post(`/messages/${confirmDelete.id}/hide`).then(() => {
+                        setMessages(prev => prev.filter(m => m.id !== confirmDelete.id));
+                      }).catch(() => {});
+                    }
+                    setConfirmDelete(null);
+                  }}
+                    className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all">
+                    Delete for me
+                  </button>
+                  <button onClick={() => {
+                    const socket = socketRef.current;
+                    if (socket?.connected) {
+                      socket.emit('message:delete', { messageId: confirmDelete.id }, (res) => {
+                        if (res?.ok) setMessages(prev => prev.map(m => m.id === confirmDelete.id ? { ...m, deleted: true } : m));
+                      });
+                    } else {
+                      api.delete(`/messages/${confirmDelete.id}`).then(() => {
+                        setMessages(prev => prev.map(m => m.id === confirmDelete.id ? { ...m, deleted: true } : m));
+                      }).catch(() => {});
+                    }
+                    setConfirmDelete(null);
+                  }}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all shadow-sm">
+                    Delete for everyone
+                  </button>
+                </>
+              )}
+
+              {/* Conversation clear */}
+              {confirmDelete.type === 'conversation' && (
+                <button onClick={() => {
+                  const socket = socketRef.current;
                   if (socket?.connected) {
                     socket.emit('conversation:clear', { targetUserId: confirmDelete.userId }, (res) => {
                       if (res?.ok) setMessages([]);
@@ -1154,12 +1193,12 @@ export default function Messages() {
                   } else {
                     api.delete(`/messages/conversation/${confirmDelete.userId}`).then(() => setMessages([])).catch(() => {});
                   }
-                }
-                setConfirmDelete(null);
-              }}
-                className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all shadow-sm">
-                {confirmDelete.type === 'message' ? 'Delete for everyone' : 'Clear'}
-              </button>
+                  setConfirmDelete(null);
+                }}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all shadow-sm">
+                  Clear all
+                </button>
+              )}
             </div>
           </div>
         </div>
