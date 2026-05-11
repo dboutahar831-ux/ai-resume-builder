@@ -575,8 +575,8 @@ export default function Messages() {
     <Layout>
       <div className="h-[calc(100vh-7rem)] -m-6 flex border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
 
-        {/* Conversation list sidebar */}
-        <div className={`w-full lg:w-72 xl:w-80 border-r border-gray-200 bg-white flex-shrink-0 flex flex-col ${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
+        {/* Conversation list sidebar — always visible */}
+        <div className="w-56 sm:w-64 lg:w-72 xl:w-80 border-r border-gray-200 bg-white flex-shrink-0 flex flex-col">
           <div className="p-4 border-b border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -677,15 +677,12 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* Chat area */}
-        <div className={`flex-1 flex flex-col ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+        {/* Chat area — always visible */}
+        <div className="flex-1 flex flex-col min-w-0">
 
           {/* Chat header */}
           {activeGroup ? (
             <div className="px-5 py-3.5 border-b border-gray-200 flex items-center gap-3 bg-white flex-shrink-0 shadow-sm">
-              <button onClick={() => { setMobileView('list'); setActiveGroup(null); setGroupMessages([]); }} className="lg:hidden p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
-                <ArrowLeft size={18} />
-              </button>
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6C5CE7] to-[#BF5AF2] flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm">
                 {activeGroup.name[0]}
               </div>
@@ -700,9 +697,6 @@ export default function Messages() {
             </div>
           ) : activeUser ? (
             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-3 bg-white flex-shrink-0 shadow-sm">
-              <button onClick={() => setMobileView('list')} className="lg:hidden p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
-                <ArrowLeft size={18} />
-              </button>
               <Link to={`/friends/${activeUser.id}`} className="relative flex-shrink-0">
                 <Avatar user={activeUser} size="lg" />
                 <StatusDot lastSeenAt={activeUser.last_seen_at} glowing />
@@ -730,9 +724,11 @@ export default function Messages() {
           )}
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto bg-gray-50/80 flex flex-col">
+          <div className="flex-1 overflow-y-auto bg-gray-50/80">
+
+            {/* Empty states — centered in full height */}
             {!activeUser && !activeGroup && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+              <div className="h-full flex flex-col items-center justify-center text-center px-6">
                 <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-center mb-5 shadow-sm backdrop-blur-sm">
                   <Mail size={40} className="text-indigo-400" />
                 </div>
@@ -748,7 +744,7 @@ export default function Messages() {
               </div>
             )}
             {activeGroup && groupMessages.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+              <div className="h-full flex flex-col items-center justify-center text-center px-6">
                 <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 flex items-center justify-center mb-5 shadow-sm">
                   <UsersRound size={32} className="text-indigo-400" />
                 </div>
@@ -757,7 +753,7 @@ export default function Messages() {
               </div>
             )}
             {activeUser && messages.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+              <div className="h-full flex flex-col items-center justify-center text-center px-6">
                 <Avatar user={activeUser} size="lg" />
                 <p className="text-gray-900 font-bold mt-4 text-base">{activeUser.name}</p>
                 <div className="mt-2 px-5 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -767,10 +763,8 @@ export default function Messages() {
               </div>
             )}
 
-            {/* Spacer pushes messages to the bottom when few messages exist */}
-            <div className="flex-1 min-h-0" />
-
-            <div className="px-5 pb-5 pt-2 space-y-1.5">
+            {/* Messages — sticky to bottom via min-h-full + justify-end */}
+            <div className="min-h-full flex flex-col justify-end px-5 pb-5 pt-2 gap-1.5">
             {(activeGroup ? groupMessages : messages).map((msg, i) => {
               const msgs = activeGroup ? groupMessages : messages;
               const isMe = msg.sender_id === myUser.id;
@@ -952,8 +946,8 @@ export default function Messages() {
 
             {isTyping && activeUser && <TypingDots />}
             <div ref={bottomRef} />
-            </div>
-          </div>
+            </div>{/* end min-h-full messages wrapper */}
+          </div>{/* end messages area */}
 
           {/* Error toast */}
           {sendError && (
