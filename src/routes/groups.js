@@ -56,6 +56,23 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET /api/groups/available-friends — friends to add to group
+router.get('/available-friends', async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT u.id, u.name, u.avatar
+       FROM friendships f
+       JOIN users u ON u.id = CASE WHEN f.requester_id=$1 THEN f.addressee_id ELSE f.requester_id END
+       WHERE (f.requester_id=$1 OR f.addressee_id=$1) AND f.status='accepted'
+       ORDER BY u.name ASC`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch {
+    res.status(500).json({ error: 'Failed to load friends.' });
+  }
+});
+
 // GET /api/groups/:id — group details with members
 router.get('/:id', async (req, res) => {
   try {
@@ -312,23 +329,6 @@ router.post('/:id/messages', async (req, res) => {
     });
   } catch {
     res.status(500).json({ error: 'Failed to send message.' });
-  }
-});
-
-// GET /api/groups/available-friends — friends to add to group
-router.get('/available-friends', async (req, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT u.id, u.name, u.avatar
-       FROM friendships f
-       JOIN users u ON u.id = CASE WHEN f.requester_id=$1 THEN f.addressee_id ELSE f.requester_id END
-       WHERE (f.requester_id=$1 OR f.addressee_id=$1) AND f.status='accepted'
-       ORDER BY u.name ASC`,
-      [req.user.id]
-    );
-    res.json(r.rows);
-  } catch {
-    res.status(500).json({ error: 'Failed to load friends.' });
   }
 });
 
