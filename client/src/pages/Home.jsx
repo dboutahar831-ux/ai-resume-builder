@@ -540,65 +540,88 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
               <div className="flex justify-center py-3">
                 <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : comments.map(c => (
-              <CommentItem
-                key={c.id}
-                comment={c}
-                postId={post.id}
-                myId={myId}
-                onDelete={handleDeleteComment}
-                onReact={handleCommentReact}
-                onReply={handleReply}
-                allComments={comments}
-              />
-            ))}
+            ) : (() => {
+              const topLevel = comments.filter(c => !c.parent_id);
+              const repliesByParent = comments.reduce((acc, c) => {
+                if (c.parent_id) { if (!acc[c.parent_id]) acc[c.parent_id] = []; acc[c.parent_id].push(c); }
+                return acc;
+              }, {});
+              return topLevel.map(c => (
+                <div key={c.id}>
+                  <CommentItem
+                    comment={c}
+                    postId={post.id}
+                    myId={myId}
+                    onDelete={handleDeleteComment}
+                    onReact={handleCommentReact}
+                    onReply={handleReply}
+                    allComments={comments}
+                  />
+                  {repliesByParent[c.id]?.map(reply => (
+                    <CommentItem
+                      key={reply.id}
+                      comment={reply}
+                      postId={post.id}
+                      myId={myId}
+                      onDelete={handleDeleteComment}
+                      onReact={handleCommentReact}
+                      onReply={handleReply}
+                      allComments={comments}
+                    />
+                  ))}
+                </div>
+              ));
+            })()}
 
             {/* Comment input */}
             <div className="flex gap-2 items-end pt-1">
               <Avatar user={JSON.parse(localStorage.getItem('user') || '{}')} size="sm" />
-              <div className="flex-1 bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-                {replyingTo && (
-                  <div className="flex items-center gap-2 px-3 pt-2">
-                    <span className="text-xs text-indigo-500 font-semibold flex items-center gap-1">
-                      <CornerDownRight size={11} />Replying to {replyingTo.user_name}
-                    </span>
-                    <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-gray-600 ml-auto">
-                      <X size={11} />
+              <div className="flex-1 relative">
+                {/* MentionSuggestions must be OUTSIDE overflow-hidden container */}
+                <MentionSuggestions
+                  suggestions={commentMention.suggestions}
+                  show={commentMention.showSuggestions}
+                  onSelect={u => commentMention.pickMention(u, commentText, setCommentText)}
+                />
+                <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                  {replyingTo && (
+                    <div className="flex items-center gap-2 px-3 pt-2">
+                      <span className="text-xs text-indigo-500 font-semibold flex items-center gap-1">
+                        <CornerDownRight size={11} />Replying to {replyingTo.user_name}
+                      </span>
+                      <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-gray-600 ml-auto">
+                        <X size={11} />
+                      </button>
+                    </div>
+                  )}
+                  {commentImage && (
+                    <div className="relative p-2 pb-0">
+                      <img src={commentImage} loading="lazy" alt="preview" className="h-24 rounded-xl object-cover" />
+                      <button onClick={() => setCommentImage('')}
+                        className="absolute top-3 right-3 w-5 h-5 bg-gray-700/80 text-white rounded-full flex items-center justify-center hover:bg-gray-800">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 px-1">
+                    <input
+                      ref={el => { commentInputRef.current = el; commentMention.inputRef.current = el; }}
+                      value={commentText}
+                      onChange={e => { setCommentText(e.target.value); commentMention.onType(e.target.value, e.target.selectionStart); }}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendComment())}
+                      placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Write a comment... (@ to mention)'}
+                      className="flex-1 px-2 py-2 text-sm bg-transparent outline-none"
+                    />
+                    <button onClick={() => commentFileRef.current?.click()}
+                      className="p-1.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-lg hover:bg-indigo-50">
+                      <Image size={14} />
+                    </button>
+                    <button onClick={sendComment}
+                      disabled={(!commentText.trim() && !commentImage) || sending}
+                      className="p-1.5 text-indigo-500 hover:text-indigo-700 transition-colors rounded-lg hover:bg-indigo-50 disabled:opacity-30">
+                      <Send size={14} />
                     </button>
                   </div>
-                )}
-                {commentImage && (
-                  <div className="relative p-2 pb-0">
-                    <img src={commentImage} loading="lazy" alt="preview" className="h-24 rounded-xl object-cover" />
-                    <button onClick={() => setCommentImage('')}
-                      className="absolute top-3 right-3 w-5 h-5 bg-gray-700/80 text-white rounded-full flex items-center justify-center hover:bg-gray-800">
-                      <X size={10} />
-                    </button>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 px-1 relative" style={{ overflow: 'visible' }}>
-                  <MentionSuggestions
-                    suggestions={commentMention.suggestions}
-                    show={commentMention.showSuggestions}
-                    onSelect={u => commentMention.pickMention(u, commentText, setCommentText)}
-                  />
-                  <input
-                    ref={el => { commentInputRef.current = el; commentMention.inputRef.current = el; }}
-                    value={commentText}
-                    onChange={e => { setCommentText(e.target.value); commentMention.onType(e.target.value, e.target.selectionStart); }}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendComment())}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Write a comment... (@ to mention)'}
-                    className="flex-1 px-2 py-2 text-sm bg-transparent outline-none"
-                  />
-                  <button onClick={() => commentFileRef.current?.click()}
-                    className="p-1.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-lg hover:bg-indigo-50">
-                    <Image size={14} />
-                  </button>
-                  <button onClick={sendComment}
-                    disabled={(!commentText.trim() && !commentImage) || sending}
-                    className="p-1.5 text-indigo-500 hover:text-indigo-700 transition-colors rounded-lg hover:bg-indigo-50 disabled:opacity-30">
-                    <Send size={14} />
-                  </button>
                 </div>
               </div>
             </div>
