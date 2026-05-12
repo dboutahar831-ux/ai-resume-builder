@@ -120,14 +120,11 @@ function ReactionSummary({ summary, count }) {
   const sorted = (summary || []).sort((a, b) => b.count - a.count).slice(0, 3);
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex -space-x-1">
+      <div className="flex items-center gap-0.5">
         {sorted.map(s => {
           const r = REACTIONS.find(x => x.type === s.type);
           return r ? (
-            <span key={s.type}
-              className={`w-5 h-5 rounded-full ${r.bg} border border-white flex items-center justify-center text-xs leading-none shadow-sm`}>
-              {r.emoji}
-            </span>
+            <span key={s.type} className="text-sm leading-none">{r.emoji}</span>
           ) : null;
         })}
       </div>
@@ -163,7 +160,7 @@ function CommentReactionPicker({ myReaction, onReact }) {
       <button
         onClick={() => onReact(myReaction === 'like' ? null : 'like')}
         className={`text-xs font-semibold transition-colors ${myR ? myR.color : 'text-gray-400 hover:text-gray-600'}`}>
-        {myR ? `${myR.emoji} ${myR.label}` : '👍 Like'}
+        {myR ? `${myR.emoji} ${myR.label}` : 'React'}
       </button>
     </div>
   );
