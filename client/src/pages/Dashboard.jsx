@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Briefcase, TrendingUp, Plus, ChevronRight, CheckCircle2, Circle, Target, Lightbulb, ArrowUpRight, BarChart3, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Layout from '../components/Layout';
+import { useApp } from '../context/AppContext';
 import api from '../api/axios';
 
 const statusColors = {
@@ -31,11 +32,21 @@ function getGreeting() {
 }
 
 export default function Dashboard() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { dark } = useApp();
+  const user = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  }, []);
   const [resumes, setResumes] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const tip = tips[new Date().getDay() % tips.length];
+  const tooltipStyle = useMemo(() => ({
+    borderRadius: '12px',
+    border: `1px solid ${dark ? '#2A2A2A' : '#e2e8f0'}`,
+    backgroundColor: dark ? '#1A1A1A' : '#fff',
+    color: dark ? '#EBEBEB' : '#111',
+    fontSize: '12px',
+  }), [dark]);
 
   useEffect(() => {
     Promise.all([api.get('/resumes'), api.get('/jobs')])
@@ -247,7 +258,7 @@ export default function Dashboard() {
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8B95A5' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#8B95A5' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                    contentStyle={tooltipStyle}
                     cursor={{ fill: 'rgba(99,102,241,0.05)' }}
                   />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={36}>
@@ -274,9 +285,7 @@ export default function Dashboard() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                    />
+                    <Tooltip contentStyle={tooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1.5">

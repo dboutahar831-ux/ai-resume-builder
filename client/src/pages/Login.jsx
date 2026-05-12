@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, Zap, Users, Briefcase, Sparkles, CheckCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Zap, Users, Briefcase, Sparkles, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 
 function NexlyIcon({ className = 'w-8 h-8' }) {
@@ -73,10 +73,10 @@ export default function Login() {
     }
   };
 
-  const inp = 'w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white';
+  const inp = 'w-full pl-10 pr-10 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600';
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50 dark:bg-[#0A0A0A]">
 
       {/* Left panel */}
       <div
@@ -124,10 +124,10 @@ export default function Login() {
             <span className="font-bold text-gray-900 text-lg">Nexly</span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+          <div className="bg-white dark:bg-[#111111] rounded-2xl border border-gray-200 dark:border-[#2A2A2A] shadow-sm p-8">
             <div className="mb-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Sign in to your account</h1>
-              <p className="text-sm text-gray-500">Welcome back — enter your credentials to continue.</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Sign in to your account</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back — enter your credentials to continue.</p>
             </div>
 
             {error && (
@@ -138,7 +138,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
                 <div className="relative">
                   <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="email" placeholder="you@email.com" value={email}
@@ -146,11 +146,15 @@ export default function Login() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="password" placeholder="••••••••" value={password}
+                  <input type={showPw ? 'text' : 'password'} placeholder="••••••••" value={password}
                     onChange={e => setPassword(e.target.value)} required className={inp} />
+                  <button type="button" onClick={() => setShowPw(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                    {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
               </div>
               <button type="submit" disabled={loading}
@@ -194,9 +198,9 @@ export default function Login() {
               <Link to="/forgot-password" className="text-sm text-indigo-500 hover:text-indigo-400 transition-colors">Forgot password?</Link>
             </div>
 
-            <p className="text-sm text-center mt-4 text-gray-500">
+            <p className="text-sm text-center mt-4 text-gray-500 dark:text-gray-400">
               Don't have an account?{' '}
-              <Link to="/register" className="font-semibold text-indigo-600 hover:underline">Create one free</Link>
+              <Link to="/register" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Create one free</Link>
             </p>
           </div>
         </div>

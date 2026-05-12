@@ -99,9 +99,11 @@ export default function Friends() {
   const [tab, setTab] = useState('friends'); // friends | requests | search
 
   const load = useCallback(async () => {
-    const [f, r] = await Promise.all([api.get('/friends'), api.get('/friends/requests')]);
-    setFriends(f.data);
-    setRequests(r.data);
+    try {
+      const [f, r] = await Promise.all([api.get('/friends'), api.get('/friends/requests')]);
+      setFriends(f.data);
+      setRequests(r.data);
+    } catch {}
   }, []);
 
   useEffect(() => {

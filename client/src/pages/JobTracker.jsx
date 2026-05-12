@@ -42,6 +42,7 @@ export default function JobTracker() {
   const [editId, setEditId] = useState(null);
   const [filter, setFilter] = useState('all');
   const [showTips, setShowTips] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   // Advanced search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,10 +75,10 @@ export default function JobTracker() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this application?')) return;
     try {
       await api.delete(`/jobs/${id}`);
       setJobs(prev => prev.filter(j => j.id !== id));
+      setConfirmDeleteId(null);
     } catch { addToast('Failed to delete. Please try again.', 'error'); }
   };
 
@@ -309,10 +310,23 @@ export default function JobTracker() {
                         className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all">
                         <Pencil size={16} />
                       </button>
-                      <button onClick={() => handleDelete(j.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
-                        <Trash2 size={16} />
-                      </button>
+                      {confirmDeleteId === j.id ? (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleDelete(j.id)}
+                            className="px-2.5 py-1 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-all">
+                            Delete
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            className="px-2.5 py-1 text-gray-500 dark:text-gray-400 text-xs font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDeleteId(j.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

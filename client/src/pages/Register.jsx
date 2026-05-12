@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Phone, MapPin, Calendar, AlertCircle, ChevronDown, ChevronUp, Zap, CheckCircle, Users, Briefcase, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, Calendar, AlertCircle, ChevronDown, ChevronUp, Zap, CheckCircle, Users, Briefcase, Sparkles, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 
 function NexlyIcon({ className = 'w-8 h-8' }) {
@@ -31,6 +31,7 @@ export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', age: '', phone: '', location: '' });
   const [showExtra, setShowExtra] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -52,10 +53,10 @@ export default function Register() {
     }
   };
 
-  const inp = 'w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white';
+  const inp = 'w-full pl-10 pr-10 py-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600';
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50 dark:bg-[#0A0A0A]">
 
       {/* Left panel */}
       <div
@@ -103,10 +104,10 @@ export default function Register() {
             <span className="font-bold text-gray-900 text-lg">Nexly</span>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+          <div className="bg-white dark:bg-[#111111] rounded-2xl border border-gray-200 dark:border-[#2A2A2A] shadow-sm p-8">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your account</h1>
-              <p className="text-sm text-gray-500">Free forever. No credit card required.</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Create your account</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Free forever. No credit card required.</p>
             </div>
 
             {error && (
@@ -117,7 +118,7 @@ export default function Register() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Full Name</label>
                 <div className="relative">
                   <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="text" placeholder="John Doe" value={form.name}
@@ -125,7 +126,7 @@ export default function Register() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
                 <div className="relative">
                   <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="email" placeholder="you@email.com" value={form.email}
@@ -133,11 +134,15 @@ export default function Register() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="password" placeholder="Min. 6 characters" value={form.password}
+                  <input type={showPw ? 'text' : 'password'} placeholder="Min. 6 characters" value={form.password}
                     onChange={e => set('password', e.target.value)} required className={inp} />
+                  <button type="button" onClick={() => setShowPw(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                    {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
               </div>
 
@@ -150,7 +155,7 @@ export default function Register() {
               {showExtra && (
                 <div className="space-y-3 pt-1">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Age</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Age</label>
                     <div className="relative">
                       <Calendar size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input type="number" min="10" max="100" placeholder="25" value={form.age}
@@ -158,7 +163,7 @@ export default function Register() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Phone</label>
                     <div className="relative">
                       <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input type="tel" placeholder="+1 234 567 890" value={form.phone}
@@ -166,7 +171,7 @@ export default function Register() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Location</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Location</label>
                     <div className="relative">
                       <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input type="text" placeholder="New York, USA" value={form.location}
@@ -187,9 +192,9 @@ export default function Register() {
               </button>
             </form>
 
-            <p className="text-sm text-center mt-6 text-gray-500">
+            <p className="text-sm text-center mt-6 text-gray-500 dark:text-gray-400">
               Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-indigo-600 hover:underline">Sign in</Link>
+              <Link to="/login" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Sign in</Link>
             </p>
           </div>
         </div>
