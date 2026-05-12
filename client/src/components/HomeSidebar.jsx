@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Bell, MessageSquare, UserPlus, Hash } from 'lucide-react';
+import { Users, Bell, MessageSquare, Hash } from 'lucide-react';
 import ProfileCard from './ProfileCard';
 import api from '../api/axios';
 
@@ -24,7 +24,7 @@ function Avatar({ user, size = 'sm', showDot = false, lastSeen = null }) {
   );
 }
 
-export default function HomeSidebar({ myUser, coverImage, stats, friends, suggestions, addedIds, sendRequest }) {
+export default function HomeSidebar({ myUser, coverImage, stats, friends }) {
   const [trending, setTrending] = useState([]);
 
   useEffect(() => {
@@ -95,32 +95,6 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
         </div>
       )}
 
-      {/* People you may know */}
-      {suggestions.filter(u => !addedIds.has(u.id)).length > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">People you may know</p>
-          <div className="space-y-3">
-            {suggestions.filter(u => !addedIds.has(u.id)).map(user => (
-              <div key={user.id} className="flex items-center gap-2.5">
-                <Link to={`/friends/${user.id}`} className="flex-shrink-0">
-                  <Avatar user={user} size="sm" />
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <Link to={`/friends/${user.id}`}
-                    className="text-xs font-semibold text-gray-800 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors block truncate">
-                    {user.name}
-                  </Link>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{user.location || 'Nexly member'}</p>
-                </div>
-                <button onClick={() => sendRequest(user.id)}
-                  className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-[#1e1e2e] px-2 py-1 rounded-lg transition-colors flex-shrink-0">
-                  <UserPlus size={11} />Add
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Trending Hashtags */}
       {trending.length > 0 && (
