@@ -576,9 +576,10 @@ function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepos
                     </button>
                   </div>
                 )}
-                <div className="flex items-center gap-1 px-1 relative">
+                <div className="flex items-center gap-1 px-1 relative" style={{ overflow: 'visible' }}>
                   <MentionSuggestions
                     suggestions={commentMention.suggestions}
+                    show={commentMention.showSuggestions}
                     onSelect={u => commentMention.pickMention(u, commentText, setCommentText)}
                   />
                   <input
@@ -679,12 +680,6 @@ export default function Home() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [trendingTopics, setTrendingTopics] = useState(FALLBACK_TOPICS);
   const [scheduleModal, setScheduleModal] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [dateOpen, setDateOpen] = useState(false);
-  const [streakOpen, setStreakOpen] = useState(false);
-  const [tasksOpen, setTasksOpen] = useState(false);
-  const [msgOpen, setMsgOpen] = useState(false);
-  const [friendsOpen, setFriendsOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
@@ -749,15 +744,6 @@ export default function Home() {
 
   useEffect(() => {
     const closeAll = (e) => {
-      const closers = ['notif','date','streak','tasks','msg','friends'];
-      closers.forEach(c => {
-        const btn = e.target.closest(`.${c}-far-btn`);
-        const dd = e.target.closest(`.${c}-far-dropdown`);
-        if (!btn && !dd) {
-          const setter = { notif: setNotifOpen, date: setDateOpen, streak: setStreakOpen, tasks: setTasksOpen, msg: setMsgOpen, friends: setFriendsOpen }[c];
-          setter?.(false);
-        }
-      });
     };
     document.addEventListener('mousedown', closeAll);
     return () => document.removeEventListener('mousedown', closeAll);
@@ -923,8 +909,8 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Far-right floating decorative panel */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-center">
+      {/* Far-right floating panel removed */}
+      {false && <div className="hidden">
         <div className="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl bg-white/40 backdrop-blur-sm border border-gray-100/30 shadow-lg">
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/0 via-white/20 to-white/0 pointer-events-none dark:hidden" />
 
@@ -1089,10 +1075,8 @@ export default function Home() {
 
 
 
-        {/* Bottom accent */}
-        <div className="w-[2px] h-8 rounded-full" style={{ background: 'linear-gradient(180deg,#6C5CE7,transparent)' }} />
         </div>
-      </div>
+      </div>}
 
 
 
@@ -1212,6 +1196,7 @@ export default function Home() {
                 <div className="flex-1 relative">
                   <MentionSuggestions
                     suggestions={postMention.suggestions}
+                    show={postMention.showSuggestions}
                     onSelect={u => postMention.pickMention(u, postText, setPostText)}
                   />
                   <textarea

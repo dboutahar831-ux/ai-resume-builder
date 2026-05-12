@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Briefcase, Sparkles, ExternalLink, X, Users, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Sparkles, X, Users, ThumbsUp, MessageSquare, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProfileCard from '../components/ProfileCard';
@@ -62,15 +62,15 @@ export default function FriendProfile() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [highlights, setHighlights] = useState([]);
   const [viewingHL, setViewingHL] = useState(null);
-  const [latestExp, setLatestExp] = useState(null);
+  const [posts, setPosts] = useState([]);
   const [friendList, setFriendList] = useState([]);
 
   const load = async () => {
     try {
-      const [profileRes, hlRes, resumeRes, friendsRes] = await Promise.allSettled([
+      const [profileRes, hlRes, postsRes, friendsRes] = await Promise.allSettled([
         api.get(`/friends/profile/${id}`),
         api.get(`/highlights/${id}`),
-        api.get(`/resumes/user/${id}`),
+        api.get(`/posts/user/${id}`),
         api.get(`/friends/user/${id}`),
       ]);
 
@@ -85,16 +85,8 @@ export default function FriendProfile() {
         setHighlights(hlRes.value.data);
       }
 
-      if (resumeRes.status === 'fulfilled') {
-        const list = resumeRes.value.data;
-        if (list.length > 0) {
-
-          const latest = list.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0];
-          if (latest?.experience?.length > 0) {
-            const sorted = [...latest.experience].sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
-            setLatestExp(sorted[0]);
-          }
-        }
+      if (postsRes.status === 'fulfilled') {
+        setPosts(postsRes.value.data || []);
       }
 
       if (friendsRes.status === 'fulfilled') {
@@ -199,28 +191,6 @@ export default function FriendProfile() {
           actionLoading={actionLoading}
         />
 
-        {/* ── Latest Experience ── */}
-        {latestExp && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-sky-50 dark:bg-sky-900/30 rounded-xl flex items-center justify-center">
-                <Briefcase size={13} className="text-sky-500" />
-              </div>
-              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Latest Experience</p>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-              <div className="w-9 h-9 rounded-lg" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{latestExp.role || 'Role'}</p>
-                <p className="text-xs text-gray-500">{latestExp.company || 'Company'} · {latestExp.start_date ? `${latestExp.start_date}${latestExp.end_date ? ` - ${latestExp.end_date}` : ''}` : ''}</p>
-                {latestExp.description && (
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">{latestExp.description}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── Highlights ── */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
           <div className="flex items-center justify-between mb-3">
@@ -279,6 +249,52 @@ export default function FriendProfile() {
             </div>
           </div>
         )}
+        {/* ── Posts ── */}
+        <div className="space-y-3">
+          {posts.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-8 flex flex-col items-center gap-2 text-gray-300 dark:text-gray-600">
+              <ImageIcon size={28} className="opacity-40" />
+              <p className="text-sm">No posts yet</p>
+            </div>
+          ) : posts.map(post => (
+            <div key={post.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+              <div className="flex items-center gap-3 mb-3">
+                {profile.avatar
+                  ? <img src={profile.avatar} loading="lazy" alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-900" />
+                  : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
+                      {profile.name?.[0]}
+                    </div>
+                }
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{profile.name}</p>
+                  <p className="text-[11px] text-gray-400">
+                    {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+              {post.content && (
+                <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed mb-3">{post.content}</p>
+              )}
+              {post.image_url && (
+                <img src={post.image_url} loading="lazy" alt="" className="w-full rounded-xl object-cover max-h-80 mb-3" />
+              )}
+              {post.video_url && (
+                <video src={post.video_url} controls className="w-full rounded-xl max-h-80 mb-3" />
+              )}
+              <div className="flex items-center gap-4 pt-2 border-t border-gray-50 dark:border-gray-800">
+                <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <ThumbsUp size={13} />
+                  {Array.isArray(post.reactions) ? post.reactions.length : (post.reaction_count || 0)}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <MessageSquare size={13} />
+                  {post.comment_count || 0}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </Layout>
   );

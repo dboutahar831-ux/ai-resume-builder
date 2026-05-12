@@ -13,8 +13,10 @@ export function getSocket() {
     const token = localStorage.getItem('token');
     socket = io(API_URL, {
       auth: { token },
-      reconnection: false,
-      timeout: 5000,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+      timeout: 10000,
     });
 
     socket.on('connect_error', (err) => {

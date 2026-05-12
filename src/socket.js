@@ -55,8 +55,6 @@ function setupSocket(io) {
         }
         const enriched = {
           ...msg,
-          image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
-          voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
           sender_name: socket.user.name || 'Unknown',
           sender_avatar: socket.user.avatar || null,
           reply_to: reply_preview,

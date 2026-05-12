@@ -120,10 +120,8 @@ router.get('/:userId', auth, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT m.id, m.sender_id, m.receiver_id, m.content,
-              CASE WHEN m.image_url IS NOT NULL AND m.image_url <> ''
-                   THEN '/api/messages/img/' || m.id ELSE NULL END AS image_url,
-              CASE WHEN m.voice_url IS NOT NULL AND m.voice_url <> ''
-                   THEN '/api/messages/voice/' || m.id ELSE NULL END AS voice_url,
+              m.image_url,
+              m.voice_url,
               m.sticker, m.reply_to_id, m.deleted, m.deleted_for_sender, m.edited, m.edited_at, m.read, m.read_at, m.created_at,
               u.name AS sender_name, u.avatar AS sender_avatar,
               COALESCE(
@@ -149,9 +147,7 @@ router.get('/:userId', auth, async (req, res) => {
   if (replyIds.length > 0) {
     try {
       const replyRes = await pool.query(
-        `SELECT m.id, m.sender_id, m.content, m.sticker,
-                CASE WHEN m.image_url IS NOT NULL AND m.image_url <> ''
-                     THEN '/api/messages/img/' || m.id ELSE NULL END AS image_url,
+        `SELECT m.id, m.sender_id, m.content, m.sticker, m.image_url,
                 u.name AS sender_name
          FROM messages m JOIN users u ON u.id = m.sender_id
          WHERE m.id = ANY($1::int[])`,
