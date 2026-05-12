@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
-  Home, LayoutDashboard, FileText, Briefcase, Users, MessageSquare,
-  Menu, X, User, Settings, Bell, UserPlus, FileSignature, ChevronRight,
+  Home, Users, MessageSquare,
+  Menu, X, User, Settings, Bell, UserPlus, ChevronRight,
   Heart, Repeat2, CornerDownRight, LogOut, Moon, Sun,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -206,13 +206,9 @@ export default function Layout({ children }) {
   }, []);
 
   const links = [
-    { to: '/home',          icon: Home,            label: 'Home' },
-    { to: '/dashboard',     icon: LayoutDashboard, label: t.dashboard },
-    { to: '/resumes',       icon: FileText,        label: t.resumeBuilder },
-    { to: '/cover-letters', icon: FileSignature,   label: 'Cover Letters' },
-    { to: '/jobs',          icon: Briefcase,       label: t.jobTracker },
-    { to: '/friends',       icon: Users,           label: 'Friends',  badge: pendingReqs },
-    { to: '/messages',      icon: MessageSquare,   label: 'Messages', badge: unreadMsgs },
+    { to: '/home',     icon: Home,           label: 'Home' },
+    { to: '/friends',  icon: Users,          label: 'Friends',  badge: pendingReqs },
+    { to: '/messages', icon: MessageSquare,  label: 'Messages', badge: unreadMsgs },
   ];
 
   const bottomLinks = [

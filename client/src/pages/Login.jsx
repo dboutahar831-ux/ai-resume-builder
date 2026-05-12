@@ -63,7 +63,7 @@ export default function Login() {
       const res = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/dashboard');
+      navigate('/home');
     } catch (err) {
       const data = err.response?.data;
       if (data?.requiresVerification) { navigate('/verify', { state: { email: data.email } }); return; }

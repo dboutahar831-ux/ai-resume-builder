@@ -9,17 +9,11 @@ const Register = lazy(() => import('./pages/Register'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Home = lazy(() => import('./pages/Home'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Resumes = lazy(() => import('./pages/Resumes'));
-const ResumeBuilder = lazy(() => import('./pages/ResumeBuilder'));
-const JobTracker = lazy(() => import('./pages/JobTracker'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Friends = lazy(() => import('./pages/Friends'));
 const FriendProfile = lazy(() => import('./pages/FriendProfile'));
 const Messages = lazy(() => import('./pages/Messages'));
-const CoverLetters = lazy(() => import('./pages/CoverLetters'));
-const CoverLetterBuilder = lazy(() => import('./pages/CoverLetterBuilder'));
 const PublicResume = lazy(() => import('./pages/PublicResume'));
 const Admin = lazy(() => import('./pages/Admin'));
 
@@ -75,21 +69,13 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/cv/:slug" element={<PublicResume />} />
 
-            <Route path="/home"       element={<PrivateRoute><Home /></PrivateRoute>} />
-            <Route path="/dashboard"  element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/resumes"    element={<PrivateRoute><Resumes /></PrivateRoute>} />
-            <Route path="/resumes/new"       element={<PrivateRoute><ResumeBuilder /></PrivateRoute>} />
-            <Route path="/resumes/:id/edit"  element={<PrivateRoute><ResumeBuilder /></PrivateRoute>} />
-            <Route path="/jobs"       element={<PrivateRoute><JobTracker /></PrivateRoute>} />
-            <Route path="/cover-letters"          element={<PrivateRoute><CoverLetters /></PrivateRoute>} />
-            <Route path="/cover-letters/new"      element={<PrivateRoute><CoverLetterBuilder /></PrivateRoute>} />
-            <Route path="/cover-letters/:id/edit" element={<PrivateRoute><CoverLetterBuilder /></PrivateRoute>} />
-            <Route path="/profile"    element={<PrivateRoute><Profile /></PrivateRoute>} />
-            <Route path="/settings"   element={<PrivateRoute><Settings /></PrivateRoute>} />
-            <Route path="/friends"    element={<PrivateRoute><Friends /></PrivateRoute>} />
+            <Route path="/home"        element={<PrivateRoute><Home /></PrivateRoute>} />
+            <Route path="/profile"     element={<PrivateRoute><Profile /></PrivateRoute>} />
+            <Route path="/settings"    element={<PrivateRoute><Settings /></PrivateRoute>} />
+            <Route path="/friends"     element={<PrivateRoute><Friends /></PrivateRoute>} />
             <Route path="/friends/:id" element={<PrivateRoute><FriendProfile /></PrivateRoute>} />
-            <Route path="/messages"   element={<PrivateRoute><Messages /></PrivateRoute>} />
-            <Route path="/admin"      element={<PrivateRoute><Admin /></PrivateRoute>} />
+            <Route path="/messages"    element={<PrivateRoute><Messages /></PrivateRoute>} />
+            <Route path="/admin"       element={<PrivateRoute><Admin /></PrivateRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

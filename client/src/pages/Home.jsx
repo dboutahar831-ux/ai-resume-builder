@@ -668,7 +668,7 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState('');
-  const [stats, setStats] = useState({ resumes: 0, jobs: 0, friends: 0, unread: 0 });
+  const [stats, setStats] = useState({ friends: 0, unread: 0 });
   const [friends, setFriends] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [addedIds, setAddedIds] = useState(new Set());
@@ -684,14 +684,10 @@ export default function Home() {
   const [streakOpen, setStreakOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
-  const [resumeOpen, setResumeOpen] = useState(false);
-  const [jobsOpen, setJobsOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
-  const [resumeList, setResumeList] = useState([]);
-  const [jobList, setJobList] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [scheduledAt, setScheduledAt] = useState(null);
@@ -710,15 +706,11 @@ export default function Home() {
       .finally(() => setLoading(false));
 
     Promise.all([
-      api.get('/resumes'),
-      api.get('/jobs'),
       api.get('/friends'),
       api.get('/messages/unread/count'),
-    ]).then(([r, j, f, u]) => {
-      setStats({ resumes: r.data.length, jobs: j.data.length, friends: f.data.length, unread: u.data.count });
+    ]).then(([f, u]) => {
+      setStats({ friends: f.data.length, unread: u.data.count });
       setFriends(f.data.slice(0, 7));
-      setResumeList(r.data);
-      setJobList(j.data);
     }).catch(() => {});
     api.get('/friends/requests').then(r => setFriendRequests(r.data)).catch(() => {});
     api.get('/notifications').then(r => {
@@ -757,12 +749,12 @@ export default function Home() {
 
   useEffect(() => {
     const closeAll = (e) => {
-      const closers = ['notif','date','streak','tasks','msg','resume','jobs','friends'];
+      const closers = ['notif','date','streak','tasks','msg','friends'];
       closers.forEach(c => {
         const btn = e.target.closest(`.${c}-far-btn`);
         const dd = e.target.closest(`.${c}-far-dropdown`);
         if (!btn && !dd) {
-          const setter = { notif: setNotifOpen, date: setDateOpen, streak: setStreakOpen, tasks: setTasksOpen, msg: setMsgOpen, resume: setResumeOpen, jobs: setJobsOpen, friends: setFriendsOpen }[c];
+          const setter = { notif: setNotifOpen, date: setDateOpen, streak: setStreakOpen, tasks: setTasksOpen, msg: setMsgOpen, friends: setFriendsOpen }[c];
           setter?.(false);
         }
       });
@@ -1067,65 +1059,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#2EC4B6)' }} />
-
-        {/* Resumes */}
-        <div className="relative resume-far-btn">
-          <button onClick={() => setResumeOpen(o=>!o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-teal-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-teal-500"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">Resumes</span>
-          </button>
-          {resumeOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden resume-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Your Resumes</p><span className="text-[8px] font-bold text-teal-600">{resumeList.length}</span></div>
-              {resumeList.length === 0 ? (
-                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No resumes yet</p></div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {resumeList.slice(0, 5).map((r,i)=><div key={r.id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600 text-[9px] font-bold flex-shrink-0">{r.title?.[0]||'R'}</div>
-                    <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{r.title||r.name||'Resume'}</p></div>
-                  </div>)}
-                </div>
-              )}
-              <Link to="/resumes" onClick={() => setResumeOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Manage resumes →</Link>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#BF5AF2)' }} />
-
-        {/* Jobs */}
-        <div className="relative jobs-far-btn">
-          <button onClick={() => setJobsOpen(o=>!o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-blue-500"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">Jobs</span>
-          </button>
-          {jobsOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden jobs-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Job Tracker</p><span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{jobList.length} saved</span></div>
-              {jobList.length === 0 ? (
-                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No saved jobs yet</p></div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {jobList.slice(0, 5).map((j,i)=><div key={j.id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 text-[9px] font-bold flex-shrink-0">{j.title?.[0]||j.company?.[0]||'J'}</div>
-                    <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{j.title||j.position||j.company||'Job'}</p></div>
-                    {j.status && <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">{j.status}</span>}
-                  </div>)}
-                </div>
-              )}
-              <Link to="/jobs" onClick={() => setJobsOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">View all jobs →</Link>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#2EC4B6)' }} />
 
         {/* Friends */}
         <div className="relative friends-far-btn">

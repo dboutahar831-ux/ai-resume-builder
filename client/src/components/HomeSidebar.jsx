@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Briefcase, Users, Bell, MessageSquare, UserPlus, ChevronRight, FileSignature, Hash } from 'lucide-react';
+import { Users, Bell, MessageSquare, UserPlus, Hash } from 'lucide-react';
 import ProfileCard from './ProfileCard';
 import api from '../api/axios';
 
@@ -52,12 +52,10 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
           </div>
         </ProfileCard>
         {/* Stat counters */}
-        <div className="grid grid-cols-4 gap-1.5 px-4 pb-2 mt-3">
+        <div className="grid grid-cols-2 gap-1.5 px-4 pb-2 mt-3">
           {[
-            { label: 'Resumes', value: stats.resumes, to: '/resumes',  icon: FileText,  color: 'text-indigo-500' },
-            { label: 'Jobs',    value: stats.jobs,    to: '/jobs',     icon: Briefcase, color: 'text-blue-500'   },
-            { label: 'Friends', value: stats.friends, to: '/friends',  icon: Users,     color: 'text-emerald-500'},
-            { label: 'Unread',  value: stats.unread,  to: '/messages', icon: Bell,      color: 'text-amber-500'  },
+            { label: 'Friends', value: stats.friends, to: '/friends',  icon: Users, color: 'text-emerald-500' },
+            { label: 'Unread',  value: stats.unread,  to: '/messages', icon: Bell,  color: 'text-amber-500'  },
           ].map(s => (
             <Link key={s.label} to={s.to}
               className="flex flex-col items-center py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
@@ -142,29 +140,6 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends, sugges
         </div>
       )}
 
-      {/* Quick Access */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">Quick Access</p>
-        <div className="space-y-0.5">
-          {[
-            { to: '/resumes',       icon: FileText,      label: 'Resume Builder', sub: 'Build your resume',   color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-[#1a1a28]' },
-            { to: '/cover-letters', icon: FileSignature, label: 'Cover Letters',  sub: 'Craft cover letters', color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-[#18102a]' },
-            { to: '/jobs',          icon: Briefcase,     label: 'Job Tracker',    sub: 'Track applications',  color: 'text-blue-500',   bg: 'bg-blue-50 dark:bg-[#111828]'   },
-          ].map(item => (
-            <Link key={item.to} to={item.to}
-              className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
-              <div className={`w-7 h-7 rounded-lg ${item.bg} flex items-center justify-center flex-shrink-0`}>
-                <item.icon size={13} className={item.color} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{item.label}</p>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500">{item.sub}</p>
-              </div>
-              <ChevronRight size={12} className="text-gray-300 dark:text-gray-600 group-hover:text-gray-400 flex-shrink-0" />
-            </Link>
-          ))}
-        </div>
-      </div>
     </>
   );
 }

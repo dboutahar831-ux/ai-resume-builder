@@ -4,8 +4,8 @@ import {
   MapPin, Link2, Calendar, Pencil, X, Image as ImageIcon,
   FileText, Briefcase, Users, MessageSquare, Shield,
   Plus, Sparkles, Smile, Trash2, ChevronRight, Play,
-  Share2, Trophy, Star, Activity, Lightbulb, Target,
-  Navigation, ExternalLink, Clock,
+  Share2, Trophy, Star, Lightbulb,
+  Navigation, Video, Send, ThumbsUp,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -383,7 +383,7 @@ export default function Profile() {
   const myId = JSON.parse(localStorage.getItem('user') || '{}').id;
 
   const [user, setUser]       = useState(null);
-  const [stats, setStats]     = useState({ resumes: 0, jobs: 0, friends: 0, messages: 0 });
+  const [stats, setStats]     = useState({ friends: 0, messages: 0 });
   const [friends, setFriends] = useState([]);
   const [form, setForm]       = useState({ name:'', nickname:'', age:'', phone:'', location:'', linkedin:'', avatar:'', bio:'', cover_image:'', skills:[], availability_status:'all' });
   const [skillInput, setSkillInput] = useState('');
@@ -392,7 +392,15 @@ export default function Profile() {
   const [success, setSuccess] = useState('');
   const [error, setError]     = useState('');
   const [tipDismissed, setTipDismissed] = useState(false);
-  const [latestExp, setLatestExp] = useState(null);
+
+  // Posts
+  const [posts, setPosts]         = useState([]);
+  const [postText, setPostText]   = useState('');
+  const [postImage, setPostImage] = useState('');
+  const [postVideo, setPostVideo] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const postImageRef = useRef();
+  const postVideoRef = useRef();
 
   // Stories
   const [myStories, setMyStories]   = useState(null);
@@ -416,13 +424,14 @@ export default function Profile() {
   const coverRef = useRef();
 
   const loadAll = useCallback(async () => {
-    const [profileRes, statsArr, storyRes, noteRes, hlRes, friendRes] = await Promise.allSettled([
+    const [profileRes, statsArr, storyRes, noteRes, hlRes, friendRes, postsRes] = await Promise.allSettled([
       api.get('/auth/profile'),
-      Promise.all([api.get('/resumes'), api.get('/jobs'), api.get('/friends'), api.get('/messages/unread/count')]),
+      Promise.all([api.get('/friends'), api.get('/messages/unread/count')]),
       api.get('/stories/feed'),
       api.get(`/notes/${myId}`),
       api.get(`/highlights/${myId}`),
       api.get('/friends'),
+      api.get(`/posts/user/${myId}`),
     ]);
 
     if (profileRes.status === 'fulfilled') {
@@ -431,17 +440,8 @@ export default function Profile() {
       setForm({ name: d.name||'', nickname: d.nickname||'', age: d.age||'', phone: d.phone||'', location: d.location||'', linkedin: d.linkedin||'', avatar: d.avatar||'', bio: d.bio||'', cover_image: d.cover_image||'', skills: d.skills||[], availability_status: d.availability_status||'all' });
     }
     if (statsArr.status === 'fulfilled') {
-      const [r, j, f, m] = statsArr.value;
-      setStats({ resumes: r.data.length, jobs: j.data.length, friends: f.data.length, messages: m.data.count });
-      // Extract latest experience from resumes
-      const resumeList = r.data;
-      if (resumeList.length > 0) {
-        const latest = resumeList.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0];
-        if (latest?.experience?.length > 0) {
-          const sortedExp = [...latest.experience].sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
-          setLatestExp(sortedExp[0]);
-        }
-      }
+      const [f, m] = statsArr.value;
+      setStats({ friends: f.data.length, messages: m.data.count });
     }
     if (storyRes.status === 'fulfilled') {
       const mine = storyRes.value.data.find(u => u.user_id === myId);
@@ -450,6 +450,7 @@ export default function Profile() {
     if (noteRes.status === 'fulfilled') setNote(noteRes.value.data);
     if (hlRes.status === 'fulfilled') setHighlights(hlRes.value.data);
     if (friendRes.status === 'fulfilled') setFriends(friendRes.value.data);
+    if (postsRes.status === 'fulfilled') setPosts(postsRes.value.data);
   }, [myId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -563,10 +564,9 @@ export default function Profile() {
   );
 
   const statCards = [
-    { label: 'Resumes', value: stats.resumes, to: '/resumes',  icon: FileText,      color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/30'  },
-    { label: 'Jobs',    value: stats.jobs,    to: '/jobs',     icon: Briefcase,     color: 'text-sky-500',    bg: 'bg-sky-50 dark:bg-sky-900/30'        },
-    { label: 'Friends', value: stats.friends, to: '/friends',  icon: Users,         color: 'text-emerald-500',bg: 'bg-emerald-50 dark:bg-emerald-900/30'},
-    { label: 'Unread',  value: stats.messages,to: '/messages', icon: MessageSquare, color: 'text-amber-500',  bg: 'bg-amber-50 dark:bg-amber-900/30'    },
+    { label: 'Friends', value: stats.friends,  to: '/friends',  icon: Users,         color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+    { label: 'Posts',   value: posts.length,   to: null,         icon: MessageSquare, color: 'text-indigo-500',  bg: 'bg-indigo-50 dark:bg-indigo-900/30'   },
+    { label: 'Unread',  value: stats.messages, to: '/messages', icon: MessageSquare, color: 'text-amber-500',   bg: 'bg-amber-50 dark:bg-amber-900/30'     },
   ];
 
   const storyFeedEntry = myStories ? [myStories] : [];
@@ -888,86 +888,114 @@ export default function Profile() {
 
         {/* ── Stats ── */}
         <ScrollReveal>
-          <div className="grid grid-cols-4 gap-3">
-            {statCards.map((s, i) => (
-              <Link key={s.label} to={s.to}
-                className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all group`}>
-                <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <s.icon size={18} className={s.color} />
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    <AnimatedCounter value={s.value} />
-                  </p>
-                  <p className="text-xs text-gray-400 font-medium">{s.label}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </ScrollReveal>
-
-        {/* ── Quick Actions ── */}
-        <ScrollReveal>
-          <div className="grid grid-cols-3 gap-2">
-            <Link to="/resumes"
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group">
-              <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FileText size={16} className="text-indigo-500" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Create Resume</p>
-                <p className="text-[10px] text-gray-400">Build a new resume</p>
-              </div>
-            </Link>
-            <Link to="/jobs"
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group">
-              <div className="w-9 h-9 bg-sky-50 dark:bg-sky-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Briefcase size={16} className="text-sky-500" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Browse Jobs</p>
-                <p className="text-[10px] text-gray-400">Find opportunities</p>
-              </div>
-            </Link>
-            <button onClick={handleShare}
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group text-left">
-              <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Share2 size={16} className="text-emerald-500" />
-              </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Share Profile</p>
-                <p className="text-[10px] text-gray-400">Copy profile link</p>
-              </div>
-            </button>
-          </div>
-        </ScrollReveal>
-
-        {/* ── Work Experience Preview ── */}
-        {latestExp && !editing && (
-          <ScrollReveal>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 bg-sky-50 dark:bg-sky-900/30 rounded-xl flex items-center justify-center">
-                  <Briefcase size={13} className="text-sky-500" />
-                </div>
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Latest Experience</p>
-              </div>
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                <div className="w-9 h-9 rounded-lg" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">{latestExp.role || 'Role'}</p>
-                  <p className="text-xs text-gray-500">{latestExp.company || 'Company'} · {latestExp.start_date ? `${latestExp.start_date}${latestExp.end_date ? ` - ${latestExp.end_date}` : ''}` : ''}</p>
-                  {latestExp.description && (
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">{latestExp.description}</p>
-                  )}
-                </div>
-                <Link to="/resumes" className="text-indigo-500 hover:text-indigo-600 p-1 flex-shrink-0">
-                  <ExternalLink size={13} />
+          <div className="grid grid-cols-3 gap-3">
+            {statCards.map((s) => {
+              const inner = (
+                <>
+                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <s.icon size={18} className={s.color} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      <AnimatedCounter value={s.value} />
+                    </p>
+                    <p className="text-xs text-gray-400 font-medium">{s.label}</p>
+                  </div>
+                </>
+              );
+              return s.to ? (
+                <Link key={s.label} to={s.to}
+                  className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                  {inner}
                 </Link>
+              ) : (
+                <div key={s.label}
+                  className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 flex flex-col items-center gap-2 group">
+                  {inner}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollReveal>
+
+        {/* ── Share Profile ── */}
+        <ScrollReveal>
+          <button onClick={handleShare}
+            className="w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex items-center gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all group text-left">
+            <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Share2 size={16} className="text-emerald-500" />
+            </div>
+            <div className="text-left">
+              <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Share Profile</p>
+              <p className="text-[10px] text-gray-400">Copy your profile link</p>
+            </div>
+          </button>
+        </ScrollReveal>
+
+        {/* ── Create Post ── */}
+        <ScrollReveal>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <div className="flex items-start gap-3">
+              <Avatar src={user.avatar} name={user.name} size="w-9 h-9" />
+              <div className="flex-1">
+                <textarea
+                  value={postText}
+                  onChange={e => setPostText(e.target.value)}
+                  placeholder="Share something with your network..."
+                  rows={postText ? 3 : 2}
+                  className="w-full resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+                />
+                {(postImage || postVideo) && (
+                  <div className="relative mt-2 rounded-xl overflow-hidden max-h-48">
+                    {postImage && <img src={postImage} loading="lazy" alt="" className="w-full object-cover max-h-48" />}
+                    {postVideo && <video src={postVideo} controls className="w-full max-h-48" />}
+                    <button
+                      onClick={() => { setPostImage(''); setPostVideo(''); }}
+                      className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors">
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex gap-1">
+                    <button onClick={() => postImageRef.current?.click()}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <ImageIcon size={13} />Photo
+                    </button>
+                    <button onClick={() => postVideoRef.current?.click()}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <Video size={13} />Video
+                    </button>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if ((!postText.trim() && !postImage && !postVideo) || submitting) return;
+                      setSubmitting(true);
+                      try {
+                        const res = await api.post('/posts', {
+                          content: postText.trim() || null,
+                          image_url: postImage || null,
+                          video_url: postVideo || null,
+                        });
+                        setPosts(p => [res.data, ...p]);
+                        setPostText(''); setPostImage(''); setPostVideo('');
+                      } finally { setSubmitting(false); }
+                    }}
+                    disabled={(!postText.trim() && !postImage && !postVideo) || submitting}
+                    className="flex items-center gap-1.5 px-4 py-1.5 text-white text-xs font-semibold rounded-xl disabled:opacity-50 hover:opacity-90 transition-all"
+                    style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+                    {submitting
+                      ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <Send size={12} />}
+                    Post
+                  </button>
+                </div>
               </div>
             </div>
-          </ScrollReveal>
-        )}
+          </div>
+        </ScrollReveal>
+        <input ref={postImageRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setPostImage(ev.target.result); setPostVideo(''); }; r.readAsDataURL(f); e.target.value=''; }} />
+        <input ref={postVideoRef} type="file" accept="video/*" className="hidden" onChange={e => { const f = e.target.files[0]; if (!f || f.size > 50*1024*1024) return; const r = new FileReader(); r.onload = ev => { setPostVideo(ev.target.result); setPostImage(''); }; r.readAsDataURL(f); e.target.value=''; }} />
 
         {/* ── Profile Tips ── */}
         {!tipDismissed && !editing && (
@@ -1111,6 +1139,64 @@ export default function Profile() {
             </div>
           </ScrollReveal>
         )}
+
+        {/* ── My Posts Feed ── */}
+        <ScrollReveal>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Posts</p>
+              <span className="text-xs text-gray-400 font-normal">· {posts.length}</span>
+            </div>
+            {posts.length === 0 ? (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-10 flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center mb-3">
+                  <MessageSquare size={22} className="text-indigo-400" />
+                </div>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">No posts yet</p>
+                <p className="text-xs text-gray-400">Share something with your network above</p>
+              </div>
+            ) : (
+              posts.map(post => (
+                <div key={post.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <Avatar src={user.avatar} name={user.name} size="w-9 h-9" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {(() => {
+                            const diff = Date.now() - new Date(post.created_at).getTime();
+                            const m = Math.floor(diff / 60000);
+                            if (m < 1) return 'Just now';
+                            if (m < 60) return `${m}m`;
+                            const h = Math.floor(m / 60);
+                            if (h < 24) return `${h}h`;
+                            return `${Math.floor(h / 24)}d`;
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                    {post.content && <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{post.content}</p>}
+                  </div>
+                  {post.image_url && (
+                    <img src={post.image_url} loading="lazy" alt="" className="w-full max-h-80 object-cover" />
+                  )}
+                  {post.video_url && (
+                    <video src={post.video_url} controls className="w-full max-h-80" />
+                  )}
+                  <div className="px-4 py-2.5 flex items-center gap-4 border-t border-gray-50 dark:border-gray-800">
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <ThumbsUp size={13} />{post.reactions_count || 0}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <MessageSquare size={13} />{post.comments_count || 0}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollReveal>
 
       </div>
     </Layout>

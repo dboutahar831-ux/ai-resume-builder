@@ -85,6 +85,31 @@ router.get('/trending', auth, async (req, res) => {
   } catch { res.json([]); }
 });
 
+// GET /api/posts/user/:userId — all posts by a specific user
+router.get('/user/:userId', auth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        p.id, p.content, p.image_url, p.video_url, p.created_at,
+        p.original_post_id, p.repost_text,
+        u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+        COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+        COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+        (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+         FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+        ) AS reactions_summary,
+        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction
+      FROM posts p
+      JOIN users u ON u.id = p.user_id
+      WHERE p.user_id = $2
+        AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
+      ORDER BY p.created_at DESC
+      LIMIT 50
+    `, [req.user.id, req.params.userId]);
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Failed to load user posts.' }); }
+});
+
 // POST /api/posts
 router.post('/', auth, async (req, res) => {
   const { content, image_url, video_url, scheduled_at, mention_ids } = req.body;
