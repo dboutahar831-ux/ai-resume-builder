@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Sparkles, X, Users, ThumbsUp, MessageSquare, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Sparkles, X, Users, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProfileCard from '../components/ProfileCard';
+import PostCard from '../components/PostCard';
 import api from '../api/axios';
 
 function HighlightViewer({ highlight, onClose }) {
@@ -96,6 +97,45 @@ export default function FriendProfile() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  const handleReact = async (postId, type) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    const removing = !type;
+    const typeToSend = type || post.my_reaction;
+    if (!typeToSend) return;
+    const prevReaction = post.my_reaction;
+    const prevCount = post.reactions_count;
+    setPosts(p => p.map(x => x.id === postId ? {
+      ...x,
+      my_reaction: removing ? null : type,
+      reactions_count: removing
+        ? Math.max(0, Number(x.reactions_count) - 1)
+        : prevReaction ? Number(x.reactions_count) : Number(x.reactions_count) + 1,
+    } : x));
+    try {
+      await api.post(`/posts/${postId}/react`, { type: typeToSend });
+    } catch {
+      setPosts(p => p.map(x => x.id === postId ? { ...x, my_reaction: prevReaction, reactions_count: prevCount } : x));
+    }
+  };
+
+  const handleDelete = async (postId) => {
+    try {
+      await api.delete(`/posts/${postId}`);
+      setPosts(p => p.filter(x => x.id !== postId));
+    } catch {}
+  };
+
+  const handleRepost = async (postId, repost_text) => {
+    try { await api.post(`/posts/${postId}/repost`, { repost_text }); } catch {}
+  };
+
+  const handleCommentCountChange = (postId, delta) => {
+    setPosts(p => p.map(x => x.id === postId
+      ? { ...x, comments_count: Math.max(0, Number(x.comments_count) + delta) }
+      : x));
+  };
 
   const handleAction = async (type) => {
     setActionLoading(true);
@@ -257,59 +297,15 @@ export default function FriendProfile() {
               <p className="text-sm">No posts yet</p>
             </div>
           ) : posts.map(post => (
-            <div key={post.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
-              <div className="flex items-center gap-3 mb-3">
-                {profile.avatar
-                  ? <img src={profile.avatar} loading="lazy" alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-900" />
-                  : <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                      style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
-                      {profile.name?.[0]}
-                    </div>
-                }
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{profile.name}</p>
-                  <p className="text-[11px] text-gray-400">
-                    {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
-                </div>
-              </div>
-              {post.content && (
-                <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed mb-3">{post.content}</p>
-              )}
-              {post.image_url && (
-                <img src={post.image_url} loading="lazy" alt="" className="w-full rounded-xl object-cover max-h-80 mb-3" />
-              )}
-              {post.video_url && (
-                <video src={post.video_url} controls className="w-full rounded-xl max-h-80 mb-3" />
-              )}
-              <div className="flex items-center gap-4 pt-2 border-t border-gray-50 dark:border-gray-800">
-                <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                  {post.reactions_summary?.length > 0 ? (
-                    <span className="flex items-center gap-0.5">
-                      {post.reactions_summary.sort((a, b) => b.count - a.count).slice(0, 3).map(s => {
-                        const emoji = { like: '👍', heart: '❤️', laugh: '😂', sad: '😢', angry: '😡' }[s.type];
-                        return emoji ? <span key={s.type} className="text-sm leading-none">{emoji}</span> : null;
-                      })}
-                    </span>
-                  ) : (
-                    <ThumbsUp size={13} />
-                  )}
-                  {post.reactions_count || 0}
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                  <MessageSquare size={13} />
-                  {post.comments_count || 0}
-                </span>
-                {post.my_reaction && (
-                  <span className="ml-auto text-xs font-medium text-indigo-500 flex items-center gap-1">
-                    <span className="text-sm leading-none">
-                      {{ like: '👍', heart: '❤️', laugh: '😂', sad: '😢', angry: '😡' }[post.my_reaction]}
-                    </span>
-                    You reacted
-                  </span>
-                )}
-              </div>
-            </div>
+            <PostCard
+              key={post.id}
+              post={post}
+              myId={myId}
+              onReact={handleReact}
+              onDelete={handleDelete}
+              onRepost={handleRepost}
+              onCommentCountChange={handleCommentCountChange}
+            />
           ))}
         </div>
       </div>
