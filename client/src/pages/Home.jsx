@@ -1211,7 +1211,7 @@ export default function Home() {
 
             {/* Composer */}
             <div
-              className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 ${composerExpanded ? 'border-indigo-200 shadow-md' : 'border-gray-100'}`}
+              className={`bg-white rounded-2xl border shadow-sm transition-all duration-200 ${composerExpanded ? 'border-indigo-200 shadow-md' : 'border-gray-100'}`}
               style={{ animation: 'slideDown 0.3s ease' }}
             >
               {/* Top row */}

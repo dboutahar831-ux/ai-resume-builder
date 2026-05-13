@@ -17,7 +17,7 @@ export function useMention() {
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(async () => {
         try {
-          const res = await api.get(`/auth/users/search?q=${encodeURIComponent(match[1])}`);
+          const res = await api.get(`/friends/mention?q=${encodeURIComponent(match[1])}`);
           setSuggestions(res.data);
           setShowSuggestions(res.data.length > 0);
         } catch { setShowSuggestions(false); }

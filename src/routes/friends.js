@@ -31,6 +31,29 @@ router.get('/search', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Failed to search users.' }); }
 });
 
+// GET /api/friends/mention?q= — search accepted friends for @mention autocomplete
+router.get('/mention', auth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.avatar, u.bio, u.location
+       FROM users u
+       JOIN friendships f ON (
+         (f.requester_id = $1 AND f.addressee_id = u.id) OR
+         (f.requester_id = u.id AND f.addressee_id = $1)
+       )
+       WHERE f.status = 'accepted'
+         AND u.id != $1
+         AND ($2 = '' OR u.name ILIKE $3)
+         AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id=$1 AND blocked_id=u.id)
+       ORDER BY u.name ASC
+       LIMIT 10`,
+      [req.user.id, q, `%${q}%`]
+    );
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Failed to search friends.' }); }
+});
+
 // GET /api/friends/suggestions — users not yet connected
 router.get('/suggestions', auth, async (req, res) => {
   try {
