@@ -700,6 +700,7 @@ export default function Home() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [trendingTopics, setTrendingTopics] = useState(FALLBACK_TOPICS);
   const [scheduleModal, setScheduleModal] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
@@ -829,6 +830,7 @@ export default function Home() {
       setPostImage('');
       setPostVideo('');
       setScheduledAt(null);
+      setComposerFocused(false);
       postMention.reset();
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } finally { setSubmitting(false); }
@@ -903,6 +905,7 @@ export default function Home() {
   };
 
   const hasMedia = postImage || postVideo;
+  const composerExpanded = composerFocused || !!(postText || postImage || postVideo || scheduledAt);
 
   return (
     <Layout>
@@ -1207,10 +1210,13 @@ export default function Home() {
             <StoriesBar myUser={myUser} />
 
             {/* Composer */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
-              style={{ animation: 'slideDown 0.3s ease' }}>
-              <div className="flex gap-3">
-                <Link to="/profile" className="flex-shrink-0">
+            <div
+              className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all duration-200 ${composerExpanded ? 'border-indigo-200 shadow-md' : 'border-gray-100'}`}
+              style={{ animation: 'slideDown 0.3s ease' }}
+            >
+              {/* Top row */}
+              <div className="flex gap-3 items-start p-4 pb-3">
+                <Link to="/profile" className="flex-shrink-0 mt-0.5">
                   <Avatar user={myUser} size="md" />
                 </Link>
                 <div className="flex-1 relative">
@@ -1219,46 +1225,59 @@ export default function Home() {
                     show={postMention.showSuggestions}
                     onSelect={u => postMention.pickMention(u, postText, setPostText)}
                   />
-                  <textarea
-                    ref={el => { textareaRef.current = el; postMention.inputRef.current = el; }}
-                    value={postText}
-                    onChange={handleTextChange}
-                    onKeyDown={e => e.key === 'Enter' && e.ctrlKey && submitPost()}
-                    placeholder={`What's on your mind, ${myUser.name?.split(' ')[0] || ''}? (@ to mention)`}
-                    rows={2}
-                    className="w-full text-sm text-gray-800 placeholder-gray-400 resize-none outline-none leading-relaxed bg-transparent"
-                    style={{ minHeight: '52px', maxHeight: '200px' }}
-                  />
-                  {postImage && (
-                    <div className="relative mt-2 inline-block">
-                      <img src={postImage} loading="lazy" alt="preview"
-                        className="max-h-52 max-w-full rounded-xl object-cover border border-gray-200" />
-                      <button onClick={() => setPostImage('')}
-                        className="absolute top-2 right-2 w-6 h-6 bg-gray-800/75 text-white rounded-full flex items-center justify-center hover:bg-gray-900">
-                        <X size={11} />
-                      </button>
-                    </div>
-                  )}
-                  {postVideo && (
-                    <div className="relative mt-2">
-                      <video src={postVideo} controls className="max-h-52 rounded-xl w-full bg-black" />
-                      <button onClick={() => setPostVideo('')}
-                        className="absolute top-2 right-2 w-6 h-6 bg-gray-800/75 text-white rounded-full flex items-center justify-center hover:bg-gray-900">
-                        <X size={11} />
-                      </button>
-                    </div>
+                  {!composerExpanded ? (
+                    <button
+                      onClick={() => setComposerFocused(true)}
+                      className="w-full text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-400 transition-colors"
+                    >
+                      What's on your mind, {myUser.name?.split(' ')[0] || ''}? (@ to mention)
+                    </button>
+                  ) : (
+                    <>
+                      <textarea
+                        ref={el => { textareaRef.current = el; postMention.inputRef.current = el; }}
+                        value={postText}
+                        onChange={handleTextChange}
+                        onKeyDown={e => e.key === 'Enter' && e.ctrlKey && submitPost()}
+                        onBlur={() => { if (!postText.trim() && !postImage && !postVideo && !scheduledAt) setComposerFocused(false); }}
+                        placeholder={`What's on your mind, ${myUser.name?.split(' ')[0] || ''}? (@ to mention)`}
+                        rows={3}
+                        autoFocus
+                        className="w-full text-sm text-gray-800 placeholder-gray-400 resize-none outline-none leading-relaxed bg-transparent"
+                        style={{ minHeight: '80px', maxHeight: '250px' }}
+                      />
+                      {postImage && (
+                        <div className="relative mt-2 inline-block">
+                          <img src={postImage} loading="lazy" alt="preview"
+                            className="max-h-52 max-w-full rounded-xl object-cover border border-gray-200" />
+                          <button onClick={() => setPostImage('')}
+                            className="absolute top-2 right-2 w-6 h-6 bg-gray-800/75 text-white rounded-full flex items-center justify-center hover:bg-gray-900">
+                            <X size={11} />
+                          </button>
+                        </div>
+                      )}
+                      {postVideo && (
+                        <div className="relative mt-2">
+                          <video src={postVideo} controls className="max-h-52 rounded-xl w-full bg-black" />
+                          <button onClick={() => setPostVideo('')}
+                            className="absolute top-2 right-2 w-6 h-6 bg-gray-800/75 text-white rounded-full flex items-center justify-center hover:bg-gray-900">
+                            <X size={11} />
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
 
-              {enhanceError && (
-                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+              {composerExpanded && enhanceError && (
+                <p className="text-xs text-red-500 mx-4 mb-2 flex items-center gap-1">
                   <span>⚠</span>{enhanceError}
                 </p>
               )}
 
-              {scheduledAt && (
-                <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-xl">
+              {composerExpanded && scheduledAt && (
+                <div className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 bg-indigo-50 rounded-xl">
                   <CalendarClock size={13} className="text-indigo-500 flex-shrink-0" />
                   <span className="text-xs text-indigo-700 font-medium flex-1">
                     Scheduled for {new Date(scheduledAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -1269,49 +1288,55 @@ export default function Home() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 gap-2">
+              {/* Action bar */}
+              <div className={`flex items-center gap-2 px-4 pb-4 pt-2 border-t border-gray-100 ${composerExpanded ? 'justify-between' : 'justify-start'}`}>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => postFileRef.current?.click()}
+                  <button
+                    onClick={() => { setComposerFocused(true); postFileRef.current?.click(); }}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition-all active:scale-95">
                     <Image size={16} className="text-emerald-500" />
                     <span className="font-medium hidden sm:inline">Photo</span>
                   </button>
-                  <button onClick={() => postVideoRef.current?.click()}
+                  <button
+                    onClick={() => { setComposerFocused(true); postVideoRef.current?.click(); }}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-95">
                     <Video size={16} className="text-blue-500" />
                     <span className="font-medium hidden sm:inline">Video</span>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <button onClick={aiEnhance}
-                    disabled={!postText.trim() || enhancing || submitting}
-                    title="AI Enhance"
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 text-white shadow-sm hover:opacity-90"
-                    style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
-                    {enhancing
-                      ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <Sparkles size={13} />}
-                    <span className="hidden sm:inline">{enhancing ? 'Enhancing...' : 'AI Enhance'}</span>
-                  </button>
+                {composerExpanded && (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={aiEnhance}
+                      disabled={!postText.trim() || enhancing || submitting}
+                      title="AI Enhance"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 text-white shadow-sm hover:opacity-90"
+                      style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+                      {enhancing
+                        ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : <Sparkles size={13} />}
+                      <span className="hidden sm:inline">{enhancing ? 'Enhancing...' : 'AI Enhance'}</span>
+                    </button>
 
-                  <button onClick={() => setScheduleModal(true)}
-                    disabled={(!postText.trim() && !hasMedia) || submitting}
-                    title="Schedule Post"
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 bg-emerald-600 text-white shadow-sm">
-                    <Clock size={13} />
-                    <span className="hidden sm:inline">Schedule</span>
-                  </button>
+                    <button onClick={() => setScheduleModal(true)}
+                      disabled={(!postText.trim() && !hasMedia) || submitting}
+                      title="Schedule Post"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-40 bg-emerald-600 text-white shadow-sm">
+                      <Clock size={13} />
+                      <span className="hidden sm:inline">Schedule</span>
+                    </button>
 
-                  <button onClick={submitPost}
-                    disabled={(!postText.trim() && !hasMedia) || submitting}
-                    className="px-4 py-1.5 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-40 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
-                    {submitting
-                      ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : 'Post'}
-                  </button>
-                </div>
+                    <button onClick={submitPost}
+                      disabled={(!postText.trim() && !hasMedia) || submitting}
+                      className="px-4 py-1.5 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-40 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
+                      {submitting
+                        ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : 'Post'}
+                    </button>
+                  </div>
+                )}
               </div>
+
               <input ref={postFileRef} type="file" accept="image/*" className="hidden" onChange={handlePostImage} />
               <input ref={postVideoRef} type="file" accept="video/*" className="hidden" onChange={handlePostVideo} />
             </div>

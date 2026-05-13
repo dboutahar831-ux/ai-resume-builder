@@ -203,49 +203,80 @@ export default function StoriesBar({ myUser }) {
 
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 mb-4"
         style={{ animation: 'slideDown 0.3s ease' }}>
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
 
-          {/* My Story bubble */}
-          <div className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer"
+          {/* My Story Card */}
+          <div className="flex-shrink-0 cursor-pointer"
             onClick={() => hasMyStory ? setViewerIdx(feed.indexOf(myStories)) : setAddModal(true)}>
-            <div className="relative">
-              <div className={`w-14 h-14 rounded-full ${hasMyStory ? 'p-[2.5px]' : ''} ${hasMyStory && !myAllSeen ? 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600' : hasMyStory ? 'bg-gray-300 dark:bg-gray-600' : ''}`}>
-                <div className={`w-full h-full rounded-full overflow-hidden ${hasMyStory ? 'p-0.5 bg-white dark:bg-gray-900' : ''}`}>
-                  {myUser?.avatar
-                    ? <img src={myUser.avatar} loading="lazy" alt="" className="w-full h-full rounded-full object-cover" />
-                    : <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">{myUser?.name?.[0]}</span>
+            <div className={`${hasMyStory ? (myAllSeen ? 'p-[2.5px] bg-gray-300 dark:bg-gray-600' : 'p-[2.5px] bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600') : ''} rounded-xl`}>
+              <div className={`w-[76px] h-[124px] ${hasMyStory ? 'rounded-[10px]' : 'rounded-xl'} overflow-hidden relative bg-gray-100 dark:bg-gray-800`}>
+                {myUser?.avatar && (
+                  <img src={myUser.avatar} loading="lazy" alt="" className="absolute inset-0 w-full h-full object-cover" />
+                )}
+                {!myUser?.avatar && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-300 to-indigo-600" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/65" />
+
+                {hasMyStory ? (
+                  <div className="absolute top-2 left-2 w-8 h-8 rounded-full overflow-hidden border-2 border-white dark:border-gray-900">
+                    {myUser?.avatar
+                      ? <img src={myUser.avatar} loading="lazy" alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">{myUser?.name?.[0]}</span>
+                        </div>
+                    }
+                  </div>
+                ) : (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2">
+                    <div className="relative">
+                      <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-white">
+                        {myUser?.avatar
+                          ? <img src={myUser.avatar} loading="lazy" alt="" className="w-full h-full object-cover" />
+                          : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+                              <span className="text-white font-bold">{myUser?.name?.[0]}</span>
+                            </div>
+                        }
                       </div>
-                  }
-                </div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-indigo-600 border-2 border-white dark:border-gray-800 rounded-full flex items-center justify-center">
+                        <Plus size={10} className="text-white" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="absolute bottom-2 left-0 right-0 text-center text-[10px] font-bold text-white truncate px-1 drop-shadow-sm">
+                  {hasMyStory ? 'My Story' : 'Add Story'}
+                </p>
               </div>
-              {!hasMyStory && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-indigo-600 border-2 border-white dark:border-gray-900 rounded-full flex items-center justify-center">
-                  <Plus size={10} className="text-white" />
-                </div>
-              )}
             </div>
-            <p className="text-[10px] font-medium text-gray-600 dark:text-gray-400 truncate w-14 text-center">
-              {hasMyStory ? 'My Story' : 'Add Story'}
-            </p>
           </div>
 
-          {/* Friends' stories */}
-          {feed.filter(u => u.user_id !== myUser?.id).map((u, i) => (
+          {/* Friends' Story Cards */}
+          {feed.filter(u => u.user_id !== myUser?.id).map((u) => (
             <div key={u.user_id}
-              className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer"
+              className="flex-shrink-0 cursor-pointer"
               onClick={() => setViewerIdx(feed.indexOf(u))}>
-              <div className={`w-14 h-14 rounded-full p-[2.5px] ${u.all_seen ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600'}`}>
-                <div className="w-full h-full rounded-full p-0.5 bg-white dark:bg-gray-900">
+              <div className={`p-[2.5px] rounded-xl ${u.all_seen ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600'}`}>
+                <div className="w-[76px] h-[124px] rounded-[10px] overflow-hidden relative">
                   {u.avatar
-                    ? <img src={u.avatar} loading="lazy" alt={u.name} className="w-full h-full rounded-full object-cover" />
-                    : <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">{u.name?.[0]}</span>
-                      </div>
+                    ? <img src={u.avatar} loading="lazy" alt={u.name} className="absolute inset-0 w-full h-full object-cover" />
+                    : <div className="absolute inset-0 bg-gradient-to-br from-indigo-300 to-indigo-600" />
                   }
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/65" />
+                  <div className="absolute top-2 left-2 w-8 h-8 rounded-full overflow-hidden border-2 border-white dark:border-gray-900">
+                    {u.avatar
+                      ? <img src={u.avatar} loading="lazy" alt={u.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs">{u.name?.[0]}</span>
+                        </div>
+                    }
+                  </div>
+                  <p className="absolute bottom-2 left-0 right-0 text-center text-[10px] font-bold text-white truncate px-1 drop-shadow-sm">
+                    {u.name?.split(' ')[0]}
+                  </p>
                 </div>
               </div>
-              <p className="text-[10px] font-medium text-gray-600 dark:text-gray-400 truncate w-14 text-center">{u.name?.split(' ')[0]}</p>
             </div>
           ))}
         </div>
