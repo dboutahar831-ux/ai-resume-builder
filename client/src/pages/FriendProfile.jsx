@@ -284,13 +284,30 @@ export default function FriendProfile() {
               )}
               <div className="flex items-center gap-4 pt-2 border-t border-gray-50 dark:border-gray-800">
                 <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                  <ThumbsUp size={13} />
-                  {Array.isArray(post.reactions) ? post.reactions.length : (post.reaction_count || 0)}
+                  {post.reactions_summary?.length > 0 ? (
+                    <span className="flex items-center gap-0.5">
+                      {post.reactions_summary.sort((a, b) => b.count - a.count).slice(0, 3).map(s => {
+                        const emoji = { like: '👍', heart: '❤️', laugh: '😂', sad: '😢', angry: '😡' }[s.type];
+                        return emoji ? <span key={s.type} className="text-sm leading-none">{emoji}</span> : null;
+                      })}
+                    </span>
+                  ) : (
+                    <ThumbsUp size={13} />
+                  )}
+                  {post.reactions_count || 0}
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-gray-400">
                   <MessageSquare size={13} />
-                  {post.comment_count || 0}
+                  {post.comments_count || 0}
                 </span>
+                {post.my_reaction && (
+                  <span className="ml-auto text-xs font-medium text-indigo-500 flex items-center gap-1">
+                    <span className="text-sm leading-none">
+                      {{ like: '👍', heart: '❤️', laugh: '😂', sad: '😢', angry: '😡' }[post.my_reaction]}
+                    </span>
+                    You reacted
+                  </span>
+                )}
               </div>
             </div>
           ))}
