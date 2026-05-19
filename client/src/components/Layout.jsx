@@ -186,7 +186,8 @@ export default function Layout({ children }) {
       };
       postNotifs.data.forEach(n => {
         const label = typeText[n.type] || 'interacted with your post';
-        notifications.push({ type: n.type, text: `${n.actor_name} ${label}`, link: '/home', icon: n.type, read: n.read, time: timeAgo(n.created_at) });
+        const link = n.post_id ? `/post/${n.post_id}` : '/home';
+        notifications.push({ type: n.type, text: `${n.actor_name} ${label}`, link, icon: n.type, read: n.read, time: timeAgo(n.created_at) });
       });
 
       setNotifItems(notifications);
@@ -210,10 +211,11 @@ export default function Layout({ children }) {
     };
     const handleNotif = (n) => {
       const label = typeText[n.type] || 'interacted with your post';
+      const link = n.post_id ? `/post/${n.post_id}` : '/home';
       setNotifItems(prev => [{
         type: n.type,
         text: `${n.actor_name} ${label}`,
-        link: '/home',
+        link,
         icon: n.type,
         read: false,
         time: 'Just now',

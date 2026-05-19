@@ -90,7 +90,7 @@ export default function Notifications() {
               const meta = META[n.type] || META.comment;
               const { Icon } = meta;
               return (
-                <Link key={n.id} to={n.post_id ? '/home' : '/home'}
+                <Link key={n.id} to={n.post_id ? `/post/${n.post_id}` : '/home'}
                   className={`flex items-start gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${!n.read ? 'bg-indigo-50/40 dark:bg-indigo-900/10' : ''}`}>
                   <div className="relative flex-shrink-0">
                     <Avatar user={n} />

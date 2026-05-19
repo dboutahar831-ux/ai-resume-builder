@@ -311,9 +311,9 @@ function RepostModal({ post, onClose, onRepost }) {
   );
 }
 
-export default function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepost }) {
+export default function PostCard({ post, myId, onDelete, onReact, onCommentCountChange, onRepost, defaultShowComments = false }) {
   const addToast = useToast();
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(defaultShowComments);
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState('');

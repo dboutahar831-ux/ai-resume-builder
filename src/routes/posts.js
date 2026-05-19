@@ -375,6 +375,37 @@ router.get('/bookmarks', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Failed to load bookmarks.' }); }
 });
 
+// GET /api/posts/:id — single post (must come after all specific string routes)
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        p.id, p.content, p.image_url, p.video_url, p.created_at,
+        p.original_post_id, p.repost_text, p.link_metadata,
+        p.edited, p.edited_at,
+        u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+        CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
+        op.content AS original_content, op.image_url AS original_image_url,
+        op.video_url AS original_video_url, op.created_at AS original_created_at,
+        ou.id AS original_user_id, ou.name AS original_user_name, ou.avatar AS original_user_avatar,
+        COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+        COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+        (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+         FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+        ) AS reactions_summary,
+        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $2 LIMIT 1) AS my_reaction,
+        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $2) AS is_bookmarked
+      FROM posts p
+      JOIN users u ON u.id = p.user_id
+      LEFT JOIN posts op ON op.id = p.original_post_id
+      LEFT JOIN users ou ON ou.id = op.user_id
+      WHERE p.id = $1
+    `, [req.params.id, req.user.id]);
+    if (!result.rows[0]) return res.status(404).json({ error: 'Post not found.' });
+    res.json(result.rows[0]);
+  } catch { res.status(500).json({ error: 'Failed to load post.' }); }
+});
+
 // POST /api/posts/:id/bookmark
 router.post('/:id/bookmark', auth, async (req, res) => {
   try {
