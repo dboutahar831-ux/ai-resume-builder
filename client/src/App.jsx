@@ -16,12 +16,6 @@ const FriendProfile = lazy(() => import('./pages/FriendProfile'));
 const Messages = lazy(() => import('./pages/Messages'));
 const PublicResume = lazy(() => import('./pages/PublicResume'));
 const Admin = lazy(() => import('./pages/Admin'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const JobTracker = lazy(() => import('./pages/JobTracker'));
-const Resumes = lazy(() => import('./pages/Resumes'));
-const ResumeBuilder = lazy(() => import('./pages/ResumeBuilder'));
-const CoverLetters = lazy(() => import('./pages/CoverLetters'));
-const CoverLetterBuilder = lazy(() => import('./pages/CoverLetterBuilder'));
 
 function Loader() {
   return (
@@ -51,12 +45,6 @@ function NotFound() {
           style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
           {isLoggedIn ? 'Go to Feed' : 'Go Home'}
         </Link>
-        {isLoggedIn && (
-          <Link to="/dashboard"
-            className="px-6 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-sm font-medium rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all">
-            Dashboard
-          </Link>
-        )}
       </div>
     </div>
   );
@@ -82,14 +70,6 @@ export default function App() {
             <Route path="/friends/:id"             element={<PrivateRoute><FriendProfile /></PrivateRoute>} />
             <Route path="/messages"                element={<PrivateRoute><Messages /></PrivateRoute>} />
             <Route path="/admin"                   element={<PrivateRoute><Admin /></PrivateRoute>} />
-            <Route path="/dashboard"               element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/jobs"                    element={<PrivateRoute><JobTracker /></PrivateRoute>} />
-            <Route path="/resumes"                 element={<PrivateRoute><Resumes /></PrivateRoute>} />
-            <Route path="/resumes/new"             element={<PrivateRoute><ResumeBuilder /></PrivateRoute>} />
-            <Route path="/resumes/:id/edit"        element={<PrivateRoute><ResumeBuilder /></PrivateRoute>} />
-            <Route path="/cover-letters"           element={<PrivateRoute><CoverLetters /></PrivateRoute>} />
-            <Route path="/cover-letters/new"       element={<PrivateRoute><CoverLetterBuilder /></PrivateRoute>} />
-            <Route path="/cover-letters/:id/edit"  element={<PrivateRoute><CoverLetterBuilder /></PrivateRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
