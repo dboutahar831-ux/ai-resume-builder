@@ -73,6 +73,54 @@ function setupSocket(io) {
       }
     });
 
+    // Handle deleting a group message (sender only)
+    socket.on('group:message:delete', async ({ messageId, groupId }, callback) => {
+      try {
+        const msgRes = await pool.query(
+          'SELECT sender_id FROM messages WHERE id=$1 AND group_id=$2',
+          [messageId, groupId]
+        );
+        if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
+        if (msgRes.rows[0].sender_id !== userId) return callback?.({ ok: false, error: 'Not your message.' });
+        await pool.query('UPDATE messages SET deleted=TRUE WHERE id=$1', [messageId]);
+        io.to(`group:${groupId}`).emit('group:message:deleted', { messageId, groupId });
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] group:message:delete error:', err.message);
+        callback?.({ ok: false, error: 'Failed to delete message.' });
+      }
+    });
+
+    // Handle editing a group message (sender only, text only)
+    socket.on('group:message:edit', async ({ messageId, groupId, content }, callback) => {
+      try {
+        if (!content?.trim()) return callback?.({ ok: false, error: 'Content cannot be empty.' });
+        const msgRes = await pool.query(
+          'SELECT sender_id FROM messages WHERE id=$1 AND group_id=$2',
+          [messageId, groupId]
+        );
+        if (!msgRes.rows[0]) return callback?.({ ok: false, error: 'Message not found.' });
+        if (msgRes.rows[0].sender_id !== userId) return callback?.({ ok: false, error: 'Not your message.' });
+        await pool.query(
+          'UPDATE messages SET content=$1, edited=TRUE, edited_at=NOW() WHERE id=$2',
+          [content.trim(), messageId]
+        );
+        io.to(`group:${groupId}`).emit('group:message:edited', { messageId, groupId, content: content.trim() });
+        callback?.({ ok: true });
+      } catch (err) {
+        console.error('[Socket] group:message:edit error:', err.message);
+        callback?.({ ok: false, error: 'Failed to edit message.' });
+      }
+    });
+
+    // Handle typing in groups
+    socket.on('group:typing:start', ({ groupId }) => {
+      socket.to(`group:${groupId}`).emit('group:typing', { userId, groupId, typing: true, name: socket.user.name });
+    });
+    socket.on('group:typing:stop', ({ groupId }) => {
+      socket.to(`group:${groupId}`).emit('group:typing', { userId, groupId, typing: false, name: socket.user.name });
+    });
+
     // Handle sending a message
     socket.on('message:send', async ({ receiverId, content, image_url, voice_url, sticker, reply_to_id }, callback) => {
       try {

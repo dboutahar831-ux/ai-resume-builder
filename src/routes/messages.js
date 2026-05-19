@@ -133,8 +133,8 @@ router.get('/:userId', auth, async (req, res) => {
        JOIN users u ON u.id = m.sender_id
        WHERE ((m.sender_id=$1 AND m.receiver_id=$2 AND m.deleted_for_sender IS NOT TRUE)
           OR (m.sender_id=$2 AND m.receiver_id=$1 AND m.deleted_for_receiver IS NOT TRUE))
-       ORDER BY m.created_at ASC LIMIT 100`,
-      [req.user.id, req.params.userId]
+       ORDER BY m.created_at DESC LIMIT 50 OFFSET $3`,
+      [req.user.id, req.params.userId, Number(req.query.offset) || 0]
     );
     rows = r.rows;
   } catch (err) {
@@ -158,7 +158,9 @@ router.get('/:userId', auth, async (req, res) => {
       }
     } catch {}
   }
-  rows = rows.map(r => ({ ...r, reply_to: r.reply_to_id ? (replyMap[r.reply_to_id] || null) : null }));
+  rows = rows
+    .map(r => ({ ...r, reply_to: r.reply_to_id ? (replyMap[r.reply_to_id] || null) : null }))
+    .reverse(); // restore chronological order (query was DESC for efficient pagination)
 
   res.json(rows);
 

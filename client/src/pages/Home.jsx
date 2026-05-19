@@ -11,6 +11,7 @@ import HomeSidebar from '../components/HomeSidebar';
 import { useMention } from '../hooks/useMention';
 import { useToast } from '../components/Toast';
 import api from '../api/axios';
+import { compressImage } from '../utils/imageUtils';
 import PostCard, { Avatar, timeAgo, isOnline } from '../components/PostCard';
 
 const FALLBACK_TOPICS = ['#JobSearchAI', '#ResumeTips', '#CareerGrowth', '#InterviewPrep', '#TechJobs', '#HiringNow', '#CareerAdvice', '#LinkedInTips'];
@@ -237,13 +238,14 @@ export default function Home() {
     } finally { setSubmitting(false); }
   };
 
-  const handlePostImage = (e) => {
+  const handlePostImage = async (e) => {
     const file = e.target.files[0];
     if (!file || file.size > 10 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = ev => { setPostImage(ev.target.result); setPostVideo(''); };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    try {
+      const compressed = await compressImage(file);
+      setPostImage(compressed); setPostVideo('');
+    } catch { addToast('Failed to process image.', 'error'); }
   };
 
   const handlePostVideo = (e) => {

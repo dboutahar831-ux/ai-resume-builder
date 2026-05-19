@@ -35,6 +35,11 @@ pool.query(`
   ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_for_receiver BOOLEAN NOT NULL DEFAULT FALSE
 `).catch(err => console.error('[Migration] messages columns:', err.message));
 
+pool.query(`
+  ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
+  ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ
+`).catch(err => console.error('[Migration] posts columns:', err.message));
+
 // Trust proxy for rate limiter behind reverse proxies
 app.set('trust proxy', 1);
 
@@ -60,8 +65,30 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'GET',
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api', apiLimiter);
+app.use('/api/posts', writeLimiter);
+app.use('/api/messages', writeLimiter);
+app.use('/api/groups', writeLimiter);
 
 // Health check — also verifies DB connectivity
 app.get('/health', async (req, res) => {

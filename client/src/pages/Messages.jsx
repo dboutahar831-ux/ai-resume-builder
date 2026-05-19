@@ -136,10 +136,16 @@ export default function Messages() {
   const [groupMessages, setGroupMessages] = useState([]);
   const [groupSending, setGroupSending] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [groupTypers, setGroupTypers] = useState(new Map());
+  const [editingGroupMsgId, setEditingGroupMsgId] = useState(null);
+  const [editGroupContent, setEditGroupContent] = useState('');
 
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const editInputRef = useRef(null);
+  const [msgOffset, setMsgOffset] = useState(0);
+  const [hasMoreMsgs, setHasMoreMsgs] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const bottomRef = useRef();
   const inputRef = useRef();
@@ -229,6 +235,26 @@ export default function Messages() {
       });
     });
 
+    socket.on('group:message:deleted', ({ messageId, groupId }) => {
+      if (groupId !== activeGroupRef.current?.id) return;
+      setGroupMessages(prev => prev.map(m => m.id === messageId ? { ...m, deleted: true } : m));
+    });
+
+    socket.on('group:message:edited', ({ messageId, groupId, content }) => {
+      if (groupId !== activeGroupRef.current?.id) return;
+      setGroupMessages(prev => prev.map(m => m.id === messageId ? { ...m, content, edited: true } : m));
+    });
+
+    socket.on('group:typing', ({ userId: tid, groupId, typing, name }) => {
+      if (groupId !== activeGroupRef.current?.id) return;
+      setGroupTypers(prev => {
+        const next = new Map(prev);
+        if (typing) next.set(tid, name);
+        else next.delete(tid);
+        return next;
+      });
+    });
+
     return () => {
       socket.off('message:new');
       socket.off('typing');
@@ -237,6 +263,9 @@ export default function Messages() {
       socket.off('message:edited');
       socket.off('conversation:cleared');
       socket.off('group:message:new');
+      socket.off('group:message:deleted');
+      socket.off('group:message:edited');
+      socket.off('group:typing');
     };
   }, []);
 
@@ -275,10 +304,28 @@ export default function Messages() {
   const loadMessages = useCallback(async (userId) => {
     if (!userId) return;
     try {
-      const res = await api.get(`/messages/${userId}`);
-      if (Array.isArray(res.data)) setMessages(res.data);
+      const res = await api.get(`/messages/${userId}?offset=0`);
+      if (Array.isArray(res.data)) {
+        setMessages(res.data);
+        setMsgOffset(res.data.length);
+        setHasMoreMsgs(res.data.length >= 50);
+      }
     } catch {}
   }, []);
+
+  const loadOlderMessages = useCallback(async () => {
+    const userId = activeUserRef.current?.id;
+    if (!userId || loadingOlder || !hasMoreMsgs) return;
+    setLoadingOlder(true);
+    try {
+      const res = await api.get(`/messages/${userId}?offset=${msgOffset}`);
+      if (Array.isArray(res.data)) {
+        setMessages(prev => [...res.data, ...prev]);
+        setMsgOffset(prev => prev + res.data.length);
+        setHasMoreMsgs(res.data.length >= 50);
+      }
+    } catch {} finally { setLoadingOlder(false); }
+  }, [msgOffset, hasMoreMsgs, loadingOlder]);
 
   useEffect(() => {
     const init = async () => {
@@ -493,6 +540,31 @@ export default function Messages() {
     setEditContent('');
   }, []);
 
+  const submitGroupEdit = useCallback((msgId, content) => {
+    if (!content?.trim()) return;
+    const groupId = activeGroupRef.current?.id;
+    if (!groupId) return;
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit('group:message:edit', { messageId: msgId, groupId, content: content.trim() }, (res) => {
+        if (res?.ok) setGroupMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: content.trim(), edited: true } : m));
+      });
+    }
+    setEditingGroupMsgId(null);
+    setEditGroupContent('');
+  }, []);
+
+  const deleteGroupMessage = useCallback((msgId) => {
+    const groupId = activeGroupRef.current?.id;
+    if (!groupId) return;
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit('group:message:delete', { messageId: msgId, groupId }, (res) => {
+        if (res?.ok) setGroupMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted: true } : m));
+      });
+    }
+  }, []);
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
@@ -516,6 +588,16 @@ export default function Messages() {
           lastTypingPost.current = now;
           api.post(`/messages/typing/${activeUser.id}`).catch(() => {});
         }
+      }
+    }
+    if (activeGroupRef.current) {
+      const socket = socketRef.current;
+      if (socket?.connected) {
+        socket.emit('group:typing:start', { groupId: activeGroupRef.current.id });
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          socket.emit('group:typing:stop', { groupId: activeGroupRef.current?.id });
+        }, 2000);
       }
     }
   };
@@ -802,6 +884,16 @@ export default function Messages() {
 
             {/* Messages — sticky to bottom via min-h-full + justify-end */}
             <div className="min-h-full flex flex-col justify-end px-5 pb-5 pt-2 gap-1.5">
+            {!activeGroup && hasMoreMsgs && (
+              <div className="flex justify-center pt-2 pb-1">
+                <button onClick={loadOlderMessages} disabled={loadingOlder}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-50">
+                  {loadingOlder
+                    ? <><span className="w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />Loading…</>
+                    : 'Load older messages'}
+                </button>
+              </div>
+            )}
             {(activeGroup ? groupMessages : messages).map((msg, i) => {
               const msgs = activeGroup ? groupMessages : messages;
               const isMe = msg.sender_id === myUser.id;
@@ -867,6 +959,24 @@ export default function Messages() {
                               </button>
                             )}
                             <button onClick={() => setConfirmDelete({ type: isMe ? 'message' : 'received', id: msg.id })}
+                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                              title="Delete">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Group message actions (sender only) */}
+                        {activeGroup && isMe && (
+                          <div className="opacity-0 group-hover/message:opacity-100 transition-opacity flex items-center gap-0.5 pb-1">
+                            {!msg.image_url && !msg.voice_url && (
+                              <button onClick={() => { setEditingGroupMsgId(msg.id); setEditGroupContent(msg.content || ''); }}
+                                className="p-1 text-gray-400 hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                                title="Edit">
+                                <Edit3 size={14} />
+                              </button>
+                            )}
+                            <button onClick={() => deleteGroupMessage(msg.id)}
                               className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                               title="Delete">
                               <Trash2 size={14} />
@@ -946,6 +1056,26 @@ export default function Messages() {
                                     className="px-3 py-1 text-[11px] font-semibold bg-white/25 hover:bg-white/35 text-white rounded-lg transition-all">Save</button>
                                 </div>
                               </div>
+                            ) : editingGroupMsgId === msg.id ? (
+                              <div className="flex flex-col gap-2 min-w-[180px]">
+                                <textarea
+                                  value={editGroupContent}
+                                  onChange={e => setEditGroupContent(e.target.value)}
+                                  autoFocus
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitGroupEdit(msg.id, editGroupContent); }
+                                    if (e.key === 'Escape') { setEditingGroupMsgId(null); setEditGroupContent(''); }
+                                  }}
+                                  className="w-full px-3 py-2 text-sm text-white bg-white/20 border border-white/40 rounded-xl resize-none focus:outline-none focus:border-white/60"
+                                  rows={2}
+                                />
+                                <div className="flex gap-2 justify-end">
+                                  <button onClick={() => { setEditingGroupMsgId(null); setEditGroupContent(''); }}
+                                    className="px-2.5 py-1 text-[11px] text-white/60 hover:text-white transition-colors">Cancel</button>
+                                  <button onClick={() => submitGroupEdit(msg.id, editGroupContent)}
+                                    className="px-3 py-1 text-[11px] font-semibold bg-white/25 hover:bg-white/35 text-white rounded-lg transition-all">Save</button>
+                                </div>
+                              </div>
                             ) : (
                               <p className="whitespace-pre-wrap">
                                 {msg.content}
@@ -982,6 +1112,19 @@ export default function Messages() {
             })}
 
             {isTyping && activeUser && <TypingDots />}
+            {activeGroup && groupTypers.size > 0 && (
+              <div className="flex items-end justify-start mb-1 gap-2">
+                <div className="bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                  <p className="text-[11px] text-gray-400 mb-1">{[...groupTypers.values()].join(', ')} typing…</p>
+                  <div className="flex gap-1 items-center h-4">
+                    {[0, 150, 300].map(d => (
+                      <span key={d} className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"
+                        style={{ animationDelay: `${d}ms`, animationDuration: '1s' }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={bottomRef} />
             </div>{/* end min-h-full messages wrapper */}
           </div>{/* end messages area */}

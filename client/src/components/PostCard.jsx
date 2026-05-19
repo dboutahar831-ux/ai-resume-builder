@@ -8,6 +8,7 @@ import MentionSuggestions from './MentionSuggestions';
 import { useMention } from '../hooks/useMention';
 import { useToast } from './Toast';
 import api from '../api/axios';
+import { compressImage } from '../utils/imageUtils';
 
 export const REACTIONS = [
   { type: 'like',  emoji: '👍', label: 'Like',  color: 'text-indigo-600', bg: 'bg-indigo-50',  ring: 'ring-indigo-200' },
@@ -367,13 +368,14 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
     finally { setEditPostSaving(false); }
   };
 
-  const handleCommentImage = (e) => {
+  const handleCommentImage = async (e) => {
     const file = e.target.files[0];
     if (!file || file.size > 3 * 1024 * 1024) return;
-    const reader = new FileReader();
-    reader.onload = ev => setCommentImage(ev.target.result);
-    reader.readAsDataURL(file);
     e.target.value = '';
+    try {
+      const compressed = await compressImage(file, 800, 0.80);
+      setCommentImage(compressed);
+    } catch { addToast('Failed to process image.', 'error'); }
   };
 
   const handleDeleteComment = async (commentId) => {
