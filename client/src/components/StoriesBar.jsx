@@ -5,6 +5,7 @@ import api from '../api/axios';
 import StoryViewer from './StoryViewer';
 import MentionSuggestions from './MentionSuggestions';
 import { useMention } from '../hooks/useMention';
+import { compressImage } from '../utils/imageUtils';
 
 function AddStoryModal({ onClose, onAdded }) {
   const addToast = useToast();
@@ -22,11 +23,21 @@ function AddStoryModal({ onClose, onAdded }) {
     const file = e.target.files[0];
     if (!file) return;
     const isVideo = file.type.startsWith('video/');
-    if (file.size > (isVideo ? 15 : 5) * 1024 * 1024)
-      return addToast(`Max ${isVideo ? '15' : '5'}MB`, 'warning');
-    const reader = new FileReader();
-    reader.onload = ev => { setMedia(ev.target.result); setMediaType(isVideo ? 'video' : 'image'); };
-    reader.readAsDataURL(file);
+    if (file.size > (isVideo ? 15 : 8) * 1024 * 1024)
+      return addToast(`Max ${isVideo ? '15' : '8'}MB`, 'warning');
+    if (isVideo) {
+      const reader = new FileReader();
+      reader.onload = ev => { setMedia(ev.target.result); setMediaType('video'); };
+      reader.readAsDataURL(file);
+    } else {
+      try {
+        const compressed = await compressImage(file, 1080, 0.82);
+        setMedia(compressed);
+        setMediaType('image');
+      } catch {
+        addToast('Failed to process image', 'error');
+      }
+    }
     e.target.value = '';
   };
 

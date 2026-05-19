@@ -421,8 +421,8 @@ export default function Layout({ children }) {
           { to: '/home',     icon: Home,         label: 'Home'    },
           { to: '/friends',  icon: Users,         label: 'Friends', badge: pendingReqs },
           { to: '/messages', icon: MessageSquare, label: 'Messages',badge: unreadMsgs  },
+          { to: '/search',   icon: Search,        label: 'Search'  },
           { to: '/profile',  icon: User,          label: 'Profile' },
-          { to: '/settings', icon: Settings,      label: 'More'    },
         ].map(({ to, icon: Icon, label, badge }) => (
           <NavLink key={to} to={to} onClick={() => setOpen(false)}
             className={({ isActive }) =>
