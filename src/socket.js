@@ -79,8 +79,7 @@ function setupSocket(io) {
 
         await pool.query('UPDATE messages SET deleted=TRUE WHERE id=$1', [messageId]);
 
-        const receiverId = msgRes.rows[0].sender_id === userId ? msgRes.rows[0].receiver_id : msgRes.rows[0].sender_id;
-        io.to(`user:${receiverId}`).emit('message:deleted', { messageId, userId });
+        io.to(`user:${msgRes.rows[0].receiver_id}`).emit('message:deleted', { messageId, userId });
         callback?.({ ok: true });
       } catch (err) {
         console.error('[Socket] message:delete error:', err.message);

@@ -88,7 +88,6 @@ export default function Home() {
   const [notifications, setNotifications] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [conversations, setConversations] = useState([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [scheduledAt, setScheduledAt] = useState(null);
   const postFileRef = useRef();
   const postVideoRef = useRef();
@@ -146,22 +145,9 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  useEffect(() => {
-    const closeAll = (e) => {
-    };
-    document.addEventListener('mousedown', closeAll);
-    return () => document.removeEventListener('mousedown', closeAll);
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
   const markAllRead = async () => {
     try { await api.put('/notifications/read-all'); } catch {}
     setNotifCount(0);
-    setNotifOpen(false);
   };
 
   const acceptFriendReq = async (userId) => {

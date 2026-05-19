@@ -4,6 +4,7 @@ import {
   Home, Users, MessageSquare,
   Menu, X, User, Settings, Bell, UserPlus, ChevronRight,
   Heart, Repeat2, CornerDownRight, LogOut, Moon, Sun,
+  LayoutDashboard, Briefcase, FileText, Mail,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -211,6 +212,13 @@ export default function Layout({ children }) {
     { to: '/messages', icon: MessageSquare,  label: 'Messages', badge: unreadMsgs },
   ];
 
+  const toolLinks = [
+    { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/resumes',       icon: FileText,        label: 'Resumes' },
+    { to: '/cover-letters', icon: Mail,            label: 'Cover Letters' },
+    { to: '/jobs',          icon: Briefcase,       label: 'Job Tracker' },
+  ];
+
   const bottomLinks = [
     { to: '/profile',  icon: User,     label: t.profile },
     { to: '/settings', icon: Settings, label: t.settings },
@@ -265,6 +273,27 @@ export default function Layout({ children }) {
                       </span>
                     : <ChevronRight size={13} className={`flex-shrink-0 ${isActive ? 'text-white/50' : 'text-gray-300 dark:text-gray-500'}`} />
                   }
+                </>
+              )}
+            </NavLink>
+          ))}
+
+          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-3 pb-3 pt-4">Career Tools</p>
+          {toolLinks.map(({ to, icon: Icon, label }) => (
+            <NavLink key={to} to={to} onClick={() => setOpen(false)}
+              style={({ isActive }) => isActive ? activeStyle : {}}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive
+                    ? 'text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-[#E8ECF8]'
+                }`
+              }>
+              {({ isActive }) => (
+                <>
+                  <Icon size={17} className={isActive ? 'text-white' : ''} />
+                  <span className="flex-1">{label}</span>
+                  <ChevronRight size={13} className={`flex-shrink-0 ${isActive ? 'text-white/50' : 'text-gray-300 dark:text-gray-500'}`} />
                 </>
               )}
             </NavLink>

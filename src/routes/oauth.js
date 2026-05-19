@@ -6,7 +6,8 @@ const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'nexly-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 
 // Serialize / Deserialize
 passport.serializeUser((user, done) => done(null, user.id));
