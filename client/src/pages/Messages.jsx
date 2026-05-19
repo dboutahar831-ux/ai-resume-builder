@@ -123,6 +123,7 @@ export default function Messages() {
   const [mobileView, setMobileView] = useState('list');
 
   const [isTyping, setIsTyping] = useState(false);
+  const [onlineIds, setOnlineIds] = useState(new Set());
   const [msgImage, setMsgImage] = useState('');
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
@@ -182,6 +183,13 @@ export default function Messages() {
 
     socket.on('connect', () => {
       console.log('[Socket] Connected');
+    });
+
+    socket.on('user:online', ({ userId }) => {
+      setOnlineIds(prev => { const s = new Set(prev); s.add(userId); return s; });
+    });
+    socket.on('user:offline', ({ userId }) => {
+      setOnlineIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
     });
 
     socket.on('message:new', (msg) => {
@@ -266,6 +274,8 @@ export default function Messages() {
       socket.off('group:message:deleted');
       socket.off('group:message:edited');
       socket.off('group:typing');
+      socket.off('user:online');
+      socket.off('user:offline');
     };
   }, []);
 
@@ -826,8 +836,8 @@ export default function Messages() {
                   className="font-bold text-gray-900 dark:text-gray-100 text-sm hover:text-indigo-600 transition-colors block truncate">
                   {activeUser.name}
                 </Link>
-                <p className={`text-xs font-medium ${isTyping ? 'text-emerald-500' : isOnline(activeUser.last_seen_at) ? 'text-emerald-500' : 'text-gray-400'}`}>
-                  {isTyping ? '● typing...' : formatLastSeen(activeUser.last_seen_at)}
+                <p className={`text-xs font-medium ${isTyping ? 'text-emerald-500' : onlineIds.has(activeUser.id) || isOnline(activeUser.last_seen_at) ? 'text-emerald-500' : 'text-gray-400'}`}>
+                  {isTyping ? '● typing...' : onlineIds.has(activeUser.id) ? 'Active now' : formatLastSeen(activeUser.last_seen_at)}
                 </p>
               </div>
               <button onClick={() => setConfirmDelete({ type: 'conversation', userId: activeUser.id })}

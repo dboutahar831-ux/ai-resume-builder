@@ -3,6 +3,9 @@ const router = express.Router();
 const pool = require('../db');
 const auth = require('../middleware/auth');
 
+let _io = null;
+router.setIo = (io) => { _io = io; };
+
 // GET /api/friends/search?q=
 router.get('/search', auth, async (req, res) => {
   const q = (req.query.q || '').trim();
@@ -180,6 +183,14 @@ router.post('/request/:userId', auth, async (req, res) => {
       `INSERT INTO friendships (requester_id, addressee_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
       [req.user.id, targetId]
     );
+    // Notify the target user in real-time
+    if (_io) {
+      _io.to(`user:${targetId}`).emit('friend:request', {
+        id: req.user.id,
+        name: req.user.name,
+        avatar: req.user.avatar || null,
+      });
+    }
     res.json({ message: 'Request sent.' });
   } catch { res.status(500).json({ error: 'Failed to send request.' }); }
 });
@@ -192,6 +203,14 @@ router.put('/accept/:userId', auth, async (req, res) => {
        WHERE requester_id=$1 AND addressee_id=$2 AND status='pending'`,
       [req.params.userId, req.user.id]
     );
+    // Notify requester their request was accepted
+    if (_io) {
+      _io.to(`user:${req.params.userId}`).emit('friend:accepted', {
+        id: req.user.id,
+        name: req.user.name,
+        avatar: req.user.avatar || null,
+      });
+    }
     res.json({ message: 'Request accepted.' });
   } catch { res.status(500).json({ error: 'Failed to accept request.' }); }
 });

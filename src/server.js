@@ -5,6 +5,7 @@ const { app, corsOrigins } = require('./app');
 const { setupSocket } = require('./socket');
 const groupsRouter = require('./routes/groups');
 const postsRouter = require('./routes/posts');
+const friendsRouter = require('./routes/friends');
 
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,7 @@ const io = new Server(server, {
 setupSocket(io);
 groupsRouter.setIo(io);
 postsRouter.setIo(io);
+friendsRouter.setIo(io);
 
 // Start server only when run directly
 if (require.main === module) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
-  Home, Users, MessageSquare,
+  Home, Users, MessageSquare, Search,
   Menu, X, User, Settings, Bell, UserPlus, ChevronRight,
   Heart, Repeat2, CornerDownRight, LogOut, Moon, Sun,
 } from 'lucide-react';
@@ -222,11 +222,36 @@ export default function Layout({ children }) {
     const handleNewMsg = () => {
       setUnreadMsgs(c => c + 1);
     };
+    const handleFriendRequest = (user) => {
+      setPendingReqs(c => c + 1);
+      setNotifItems(prev => [{
+        type: 'request',
+        text: `${user.name} sent you a friend request`,
+        link: '/friends',
+        icon: 'friend',
+        read: false,
+        time: 'Just now',
+      }, ...prev]);
+    };
+    const handleFriendAccepted = (user) => {
+      setNotifItems(prev => [{
+        type: 'request',
+        text: `${user.name} accepted your friend request`,
+        link: `/friends/${user.id}`,
+        icon: 'friend',
+        read: false,
+        time: 'Just now',
+      }, ...prev]);
+    };
     socket.on('notification:new', handleNotif);
     socket.on('message:new', handleNewMsg);
+    socket.on('friend:request', handleFriendRequest);
+    socket.on('friend:accepted', handleFriendAccepted);
     return () => {
       socket.off('notification:new', handleNotif);
       socket.off('message:new', handleNewMsg);
+      socket.off('friend:request', handleFriendRequest);
+      socket.off('friend:accepted', handleFriendAccepted);
     };
   }, []);
 
@@ -242,6 +267,7 @@ export default function Layout({ children }) {
     { to: '/friends',       icon: Users,         label: 'Friends',       badge: pendingReqs },
     { to: '/messages',      icon: MessageSquare, label: 'Messages',      badge: unreadMsgs },
     { to: '/notifications', icon: Bell,          label: 'Notifications', badge: notifCount },
+    { to: '/search',        icon: Search,        label: 'Search' },
   ];
 
   const bottomLinks = [
