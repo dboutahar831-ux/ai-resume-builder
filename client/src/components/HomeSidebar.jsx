@@ -104,7 +104,7 @@ export default function HomeSidebar({ myUser, coverImage, stats, friends }) {
           </p>
           <div className="space-y-1">
             {trending.map(t => (
-              <Link key={t.tag} to={`/home?tag=${t.tag}`}
+              <Link key={t.tag} to={`/hashtag/${t.tag}`}
                 className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
                 <span className="text-sm font-medium text-[#6C5CE7] group-hover:text-[#BF5AF2] transition-colors">#{t.tag}</span>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">{t.post_count} posts</span>

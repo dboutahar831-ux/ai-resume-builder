@@ -93,12 +93,16 @@ export default function Home() {
   const [feedOffset, setFeedOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [linkPreview, setLinkPreview] = useState(null);
+  const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
+  const [linkPreviewDismissed, setLinkPreviewDismissed] = useState(false);
   const sentinelRef = useRef();
   const postFileRef = useRef();
   const postVideoRef = useRef();
   const textareaRef = useRef();
   const searchRef = useRef();
   const searchTimerRef = useRef();
+  const linkPreviewTimerRef = useRef();
   const postMention = useMention();
   const addToast = useToast();
 
@@ -226,6 +230,7 @@ export default function Home() {
         video_url: postVideo || null,
         scheduled_at: scheduledAt || null,
         mention_ids: postMention.mentionIds,
+        link_metadata: linkPreview || null,
       });
       if (!scheduledAt) setPosts(p => [res.data, ...p]);
       setPostText('');
@@ -233,6 +238,8 @@ export default function Home() {
       setPostVideo('');
       setScheduledAt(null);
       setComposerFocused(false);
+      setLinkPreview(null);
+      setLinkPreviewDismissed(false);
       postMention.reset();
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } finally { setSubmitting(false); }
@@ -258,10 +265,30 @@ export default function Home() {
   };
 
   const handleTextChange = (e) => {
-    setPostText(e.target.value);
+    const val = e.target.value;
+    setPostText(val);
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-    postMention.onType(e.target.value, e.target.selectionStart);
+    postMention.onType(val, e.target.selectionStart);
+
+    // Link preview detection
+    clearTimeout(linkPreviewTimerRef.current);
+    const urlMatch = val.match(/https?:\/\/[^\s]+/);
+    if (urlMatch && !linkPreviewDismissed) {
+      const url = urlMatch[0];
+      if (!linkPreview || linkPreview.url !== url) {
+        linkPreviewTimerRef.current = setTimeout(async () => {
+          setLinkPreviewLoading(true);
+          try {
+            const res = await api.post('/link-preview', { url });
+            if (res.data?.title) setLinkPreview({ ...res.data, url });
+          } catch {} finally { setLinkPreviewLoading(false); }
+        }, 800);
+      }
+    } else if (!urlMatch) {
+      setLinkPreview(null);
+      setLinkPreviewDismissed(false);
+    }
   };
 
   const handleReact = async (postId, type) => {
@@ -665,6 +692,28 @@ export default function Home() {
                           <button onClick={() => setPostVideo('')}
                             className="absolute top-2 right-2 w-6 h-6 bg-gray-800/75 text-white rounded-full flex items-center justify-center hover:bg-gray-900">
                             <X size={11} />
+                          </button>
+                        </div>
+                      )}
+                      {/* Link Preview card */}
+                      {linkPreviewLoading && !linkPreview && (
+                        <div className="mt-2 h-16 bg-gray-50 dark:bg-gray-800 rounded-xl animate-pulse border border-gray-100 dark:border-gray-700" />
+                      )}
+                      {linkPreview && !linkPreviewDismissed && (
+                        <div className="mt-2 relative flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
+                          {linkPreview.image && (
+                            <img src={linkPreview.image} loading="lazy" alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{linkPreview.url}</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mt-0.5">{linkPreview.title}</p>
+                            {linkPreview.description && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">{linkPreview.description}</p>
+                            )}
+                          </div>
+                          <button onClick={() => { setLinkPreview(null); setLinkPreviewDismissed(true); }}
+                            className="absolute top-2 right-2 w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-300 transition-colors">
+                            <X size={10} />
                           </button>
                         </div>
                       )}

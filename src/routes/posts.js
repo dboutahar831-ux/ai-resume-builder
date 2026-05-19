@@ -34,7 +34,8 @@ router.get('/feed', auth, async (req, res) => {
     const result = await pool.query(`
       SELECT
         p.id, p.content, p.image_url, p.video_url, p.created_at,
-        p.original_post_id, p.repost_text,
+        p.original_post_id, p.repost_text, p.link_metadata,
+        p.edited, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
         CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
         op.content AS original_content,
@@ -49,7 +50,8 @@ router.get('/feed', auth, async (req, res) => {
         (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
          FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
         ) AS reactions_summary,
-        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction
+        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked
       FROM posts p
       JOIN users u ON u.id = p.user_id
       LEFT JOIN posts op ON op.id = p.original_post_id
@@ -103,14 +105,16 @@ router.get('/user/:userId', auth, async (req, res) => {
     const result = await pool.query(`
       SELECT
         p.id, p.content, p.image_url, p.video_url, p.created_at,
-        p.original_post_id, p.repost_text,
+        p.original_post_id, p.repost_text, p.link_metadata,
+        p.edited, p.edited_at,
         u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
         COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
         COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
         (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
          FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
         ) AS reactions_summary,
-        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction
+        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked
       FROM posts p
       JOIN users u ON u.id = p.user_id
       WHERE p.user_id = $2
@@ -124,14 +128,14 @@ router.get('/user/:userId', auth, async (req, res) => {
 
 // POST /api/posts
 router.post('/', auth, async (req, res) => {
-  const { content, image_url, video_url, scheduled_at, mention_ids } = req.body;
+  const { content, image_url, video_url, scheduled_at, mention_ids, link_metadata } = req.body;
   if (!content?.trim() && !image_url && !video_url)
     return res.status(400).json({ error: 'Post cannot be empty.' });
   try {
     const result = await pool.query(
-      `INSERT INTO posts (user_id, content, image_url, video_url, scheduled_at) VALUES ($1,$2,$3,$4,$5)
-       RETURNING id, content, image_url, video_url, created_at, scheduled_at`,
-      [req.user.id, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null]
+      `INSERT INTO posts (user_id, content, image_url, video_url, scheduled_at, link_metadata) VALUES ($1,$2,$3,$4,$5,$6)
+       RETURNING id, content, image_url, video_url, created_at, scheduled_at, link_metadata`,
+      [req.user.id, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null, link_metadata ? JSON.stringify(link_metadata) : null]
     );
     const post = result.rows[0];
     // Extract hashtags
@@ -342,6 +346,55 @@ router.post('/:postId/comments/:commentId/react', auth, async (req, res) => {
     }
     res.json({ my_reaction: type });
   } catch { res.status(500).json({ error: 'Failed to react.' }); }
+});
+
+// GET /api/posts/bookmarks — user's bookmarked posts
+router.get('/bookmarks', auth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        p.id, p.content, p.image_url, p.video_url, p.created_at,
+        p.original_post_id, p.repost_text, p.link_metadata,
+        p.edited, p.edited_at,
+        u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+        COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+        COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+        (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+         FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+        ) AS reactions_summary,
+        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+        TRUE AS is_bookmarked
+      FROM post_bookmarks pb
+      JOIN posts p ON p.id = pb.post_id
+      JOIN users u ON u.id = p.user_id
+      WHERE pb.user_id = $1
+      ORDER BY pb.created_at DESC
+      LIMIT 50
+    `, [req.user.id]);
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Failed to load bookmarks.' }); }
+});
+
+// POST /api/posts/:id/bookmark
+router.post('/:id/bookmark', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'INSERT INTO post_bookmarks (post_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [req.params.id, req.user.id]
+    );
+    res.json({ bookmarked: true });
+  } catch { res.status(500).json({ error: 'Failed to bookmark.' }); }
+});
+
+// DELETE /api/posts/:id/bookmark
+router.delete('/:id/bookmark', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM post_bookmarks WHERE post_id=$1 AND user_id=$2',
+      [req.params.id, req.user.id]
+    );
+    res.json({ bookmarked: false });
+  } catch { res.status(500).json({ error: 'Failed to remove bookmark.' }); }
 });
 
 module.exports = router;

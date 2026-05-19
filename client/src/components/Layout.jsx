@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
-  Home, Users, MessageSquare, Search,
+  Home, Users, MessageSquare, Search, Bookmark,
   Menu, X, User, Settings, Bell, UserPlus, ChevronRight,
   Heart, Repeat2, CornerDownRight, LogOut, Moon, Sun,
 } from 'lucide-react';
@@ -268,6 +268,7 @@ export default function Layout({ children }) {
     { to: '/messages',      icon: MessageSquare, label: 'Messages',      badge: unreadMsgs },
     { to: '/notifications', icon: Bell,          label: 'Notifications', badge: notifCount },
     { to: '/search',        icon: Search,        label: 'Search' },
+    { to: '/bookmarks',     icon: Bookmark,      label: 'Saved' },
   ];
 
   const bottomLinks = [

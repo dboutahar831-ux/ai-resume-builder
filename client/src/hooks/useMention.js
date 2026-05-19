@@ -33,15 +33,16 @@ export function useMention() {
     const cursor = input?.selectionStart ?? value.length;
     const before = value.slice(0, mentionStart);
     const after = value.slice(cursor);
-    const newValue = `${before}@${user.name} ${after}`;
+    // Store as @[name](id) so renderer can link to the profile
+    const token = `@[${user.name}](${user.id})`;
+    const newValue = `${before}${token} ${after}`;
     onChange(newValue);
     setMentionIds(prev => prev.includes(user.id) ? prev : [...prev, user.id]);
-    // Clear suggestions immediately so the list closes
     setShowSuggestions(false);
     setSuggestions([]);
     setTimeout(() => {
       if (!input) return;
-      const pos = mentionStart + user.name.length + 2;
+      const pos = mentionStart + token.length + 1;
       input.focus();
       input.setSelectionRange(pos, pos);
     }, 0);

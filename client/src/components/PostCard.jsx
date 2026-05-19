@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, ThumbsUp,
-  MoreHorizontal, Trash2, Repeat2, CornerDownRight, Pencil, Check,
+  MoreHorizontal, Trash2, Repeat2, CornerDownRight, Pencil, Check, Bookmark,
 } from 'lucide-react';
 import MentionSuggestions from './MentionSuggestions';
 import { useMention } from '../hooks/useMention';
@@ -36,12 +36,20 @@ export function isOnline(lastSeen) {
 
 export function renderWithMentions(text) {
   if (!text) return null;
-  const parts = text.split(/(@\S+|#\w+)/g);
+  // Split on @[name](id), @word, or #word
+  const parts = text.split(/(@\[[^\]]+\]\(\d+\)|@\S+|#\w+)/g);
   return parts.map((part, i) => {
+    // New format: @[name](id)
+    const richMatch = part.match(/^@\[([^\]]+)\]\((\d+)\)$/);
+    if (richMatch) {
+      const [, name, id] = richMatch;
+      return <Link key={i} to={`/friends/${id}`} className="font-semibold hover:underline" style={{ color: '#6C5CE7' }}>@{name}</Link>;
+    }
+    // Legacy format: @name — link to search
     if (part.startsWith('@'))
-      return <span key={i} className="font-semibold cursor-pointer hover:underline" style={{ color: '#6C5CE7' }}>{part}</span>;
+      return <Link key={i} to={`/search?q=${encodeURIComponent(part.slice(1))}`} className="font-semibold hover:underline" style={{ color: '#6C5CE7' }}>{part}</Link>;
     if (part.startsWith('#'))
-      return <Link key={i} to={`/home?tag=${part.slice(1)}`} className="font-semibold hover:underline" style={{ color: '#2EC4B6' }}>{part}</Link>;
+      return <Link key={i} to={`/hashtag/${part.slice(1)}`} className="font-semibold hover:underline" style={{ color: '#2EC4B6' }}>{part}</Link>;
     return part;
   });
 }
@@ -320,6 +328,8 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
   const [editPostSaving, setEditPostSaving] = useState(false);
   const [localContent, setLocalContent] = useState(post.content || '');
   const [localEdited, setLocalEdited] = useState(!!post.edited);
+  const [isBookmarked, setIsBookmarked] = useState(!!post.is_bookmarked);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const commentFileRef = useRef();
   const commentInputRef = useRef();
   const commentMention = useMention();
@@ -354,6 +364,18 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
       commentMention.reset();
       onCommentCountChange(post.id, 1);
     } finally { setSending(false); }
+  };
+
+  const handleBookmark = async () => {
+    if (bookmarkLoading) return;
+    setBookmarkLoading(true);
+    const prev = isBookmarked;
+    setIsBookmarked(!prev);
+    try {
+      if (prev) await api.delete(`/posts/${post.id}/bookmark`);
+      else await api.post(`/posts/${post.id}/bookmark`);
+    } catch { setIsBookmarked(prev); addToast('Failed to update bookmark.', 'error'); }
+    finally { setBookmarkLoading(false); }
   };
 
   const handleEditPost = async () => {
@@ -534,6 +556,22 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
             {post.video_url && (
               <video src={post.video_url} controls className="w-full max-h-96 bg-black" style={{ display: 'block' }} />
             )}
+            {/* Link Preview */}
+            {post.link_metadata?.title && !post.image_url && !post.video_url && (
+              <a href={post.link_metadata.url} target="_blank" rel="noopener noreferrer"
+                className="mx-4 mb-3 flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors overflow-hidden">
+                {post.link_metadata.image && (
+                  <img src={post.link_metadata.image} loading="lazy" alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{post.link_metadata.url}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 mt-0.5">{post.link_metadata.title}</p>
+                  {post.link_metadata.description && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">{post.link_metadata.description}</p>
+                  )}
+                </div>
+              </a>
+            )}
           </>
         )}
 
@@ -556,8 +594,12 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
             <MessageSquare size={14} />Comment
           </button>
           <button onClick={() => setRepostModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-all active:scale-95 ml-auto">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all active:scale-95 ml-auto">
             <Repeat2 size={14} />Share
+          </button>
+          <button onClick={handleBookmark} disabled={bookmarkLoading}
+            className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${isBookmarked ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+            <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
           </button>
         </div>
 

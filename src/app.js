@@ -37,8 +37,19 @@ pool.query(`
 
 pool.query(`
   ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
-  ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ
+  ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+  ALTER TABLE posts ADD COLUMN IF NOT EXISTS link_metadata JSONB
 `).catch(err => console.error('[Migration] posts columns:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS post_bookmarks (
+    id         SERIAL PRIMARY KEY,
+    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(post_id, user_id)
+  )
+`).catch(err => console.error('[Migration] post_bookmarks:', err.message));
 
 // Trust proxy for rate limiter behind reverse proxies
 app.set('trust proxy', 1);
