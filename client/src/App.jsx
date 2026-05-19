@@ -14,6 +14,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Friends = lazy(() => import('./pages/Friends'));
 const FriendProfile = lazy(() => import('./pages/FriendProfile'));
 const Messages = lazy(() => import('./pages/Messages'));
+const Notifications = lazy(() => import('./pages/Notifications'));
 const PublicResume = lazy(() => import('./pages/PublicResume'));
 const Admin = lazy(() => import('./pages/Admin'));
 
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="/friends"                 element={<PrivateRoute><Friends /></PrivateRoute>} />
             <Route path="/friends/:id"             element={<PrivateRoute><FriendProfile /></PrivateRoute>} />
             <Route path="/messages"                element={<PrivateRoute><Messages /></PrivateRoute>} />
+            <Route path="/notifications"           element={<PrivateRoute><Notifications /></PrivateRoute>} />
             <Route path="/admin"                   element={<PrivateRoute><Admin /></PrivateRoute>} />
 
             <Route path="*" element={<NotFound />} />

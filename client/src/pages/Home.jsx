@@ -89,6 +89,10 @@ export default function Home() {
   const [friendRequests, setFriendRequests] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [scheduledAt, setScheduledAt] = useState(null);
+  const [feedOffset, setFeedOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef();
   const postFileRef = useRef();
   const postVideoRef = useRef();
   const textareaRef = useRef();
@@ -97,9 +101,28 @@ export default function Home() {
   const postMention = useMention();
   const addToast = useToast();
 
+  const loadMore = useCallback(async (offset) => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await api.get(`/posts/feed?offset=${offset}`);
+      const newPosts = res.data;
+      if (newPosts.length < 20) setHasMore(false);
+      setPosts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        return [...prev, ...newPosts.filter(p => !existingIds.has(p.id))];
+      });
+      setFeedOffset(offset + newPosts.length);
+    } catch {} finally { setLoadingMore(false); }
+  }, [loadingMore]);
+
   const load = useCallback(async () => {
-    api.get('/posts/feed')
-      .then(res => setPosts(res.data))
+    api.get('/posts/feed?offset=0')
+      .then(res => {
+        setPosts(res.data);
+        setFeedOffset(res.data.length);
+        setHasMore(res.data.length >= 20);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
 
@@ -123,6 +146,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) loadMore(feedOffset);
+    }, { rootMargin: '200px' });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, feedOffset, loadMore]);
 
   useEffect(() => {
     clearTimeout(searchTimerRef.current);
@@ -745,18 +777,30 @@ export default function Home() {
                 </Link>
               </div>
             ) : (
-              posts.map((post, i) => (
-                <div key={post.id} style={{ animation: `fadeInUp ${0.2 + i * 0.04}s ease both` }}>
-                  <PostCard
-                    post={post}
-                    myId={myUser.id}
-                    onDelete={handleDelete}
-                    onReact={handleReact}
-                    onCommentCountChange={handleCommentCountChange}
-                    onRepost={handleRepost}
-                  />
+              <>
+                {posts.map((post, i) => (
+                  <div key={post.id} style={{ animation: `fadeInUp ${0.2 + i * 0.04}s ease both` }}>
+                    <PostCard
+                      post={post}
+                      myId={myUser.id}
+                      onDelete={handleDelete}
+                      onReact={handleReact}
+                      onCommentCountChange={handleCommentCountChange}
+                      onRepost={handleRepost}
+                    />
+                  </div>
+                ))}
+                <div ref={sentinelRef} className="py-2">
+                  {loadingMore && (
+                    <div className="flex justify-center py-4">
+                      <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {!hasMore && posts.length > 0 && (
+                    <p className="text-center text-xs text-gray-400 py-4">You've seen all posts</p>
+                  )}
                 </div>
-              ))
+              </>
             )}
           </div>
 

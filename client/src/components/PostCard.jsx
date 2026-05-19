@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, ThumbsUp,
-  MoreHorizontal, Trash2, Repeat2, CornerDownRight,
+  MoreHorizontal, Trash2, Repeat2, CornerDownRight, Pencil, Check,
 } from 'lucide-react';
 import MentionSuggestions from './MentionSuggestions';
 import { useMention } from '../hooks/useMention';
@@ -314,6 +314,11 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
   const [imgExpanded, setImgExpanded] = useState(false);
   const [repostModal, setRepostModal] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [editingPost, setEditingPost] = useState(false);
+  const [editPostContent, setEditPostContent] = useState(post.content || '');
+  const [editPostSaving, setEditPostSaving] = useState(false);
+  const [localContent, setLocalContent] = useState(post.content || '');
+  const [localEdited, setLocalEdited] = useState(!!post.edited);
   const commentFileRef = useRef();
   const commentInputRef = useRef();
   const commentMention = useMention();
@@ -350,6 +355,18 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
     } finally { setSending(false); }
   };
 
+  const handleEditPost = async () => {
+    if (!editPostContent.trim() || editPostSaving) return;
+    setEditPostSaving(true);
+    try {
+      await api.patch(`/posts/${post.id}`, { content: editPostContent.trim() });
+      setLocalContent(editPostContent.trim());
+      setLocalEdited(true);
+      setEditingPost(false);
+    } catch { addToast('Failed to edit post.', 'error'); }
+    finally { setEditPostSaving(false); }
+  };
+
   const handleCommentImage = (e) => {
     const file = e.target.files[0];
     if (!file || file.size > 3 * 1024 * 1024) return;
@@ -372,8 +389,10 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
     if (!comment) return;
     const typeToSend = type || comment.my_reaction;
     if (!typeToSend) return;
-    await api.post(`/posts/${post.id}/comments/${commentId}/react`, { type: typeToSend });
-    setComments(c => c.map(x => x.id === commentId ? { ...x, my_reaction: type } : x));
+    try {
+      await api.post(`/posts/${post.id}/comments/${commentId}/react`, { type: typeToSend });
+      setComments(c => c.map(x => x.id === commentId ? { ...x, my_reaction: type } : x));
+    } catch { addToast('Failed to react.', 'error'); }
   };
 
   const handleReply = (comment) => {
@@ -425,10 +444,14 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
                   <MoreHorizontal size={16} />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-9 bg-white border border-gray-100 rounded-xl shadow-xl z-10 overflow-hidden min-w-28"
+                  <div className="absolute right-0 top-9 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl z-10 overflow-hidden min-w-28"
                     style={{ animation: 'fadeInUp 0.15s ease' }}>
+                    <button onClick={() => { setEditingPost(true); setEditPostContent(post.content || ''); setShowMenu(false); }}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 w-full transition-colors">
+                      <Pencil size={13} />Edit
+                    </button>
                     <button onClick={() => { onDelete(post.id); setShowMenu(false); }}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 w-full transition-colors">
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 w-full transition-colors">
                       <Trash2 size={13} />Delete
                     </button>
                   </div>
@@ -455,9 +478,9 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
                   <MoreHorizontal size={14} />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-8 bg-white border border-gray-100 rounded-xl shadow-xl z-10 overflow-hidden min-w-28">
+                  <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl z-10 overflow-hidden min-w-28">
                     <button onClick={() => { onDelete(post.id); setShowMenu(false); }}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 w-full">
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 w-full">
                       <Trash2 size={13} />Delete
                     </button>
                   </div>
@@ -471,8 +494,34 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
 
         {!isRepost && (
           <>
-            {post.content && (
-              <p className="px-4 pb-3 text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{renderWithMentions(post.content)}</p>
+            {editingPost ? (
+              <div className="px-4 pb-3">
+                <textarea
+                  value={editPostContent}
+                  onChange={e => setEditPostContent(e.target.value)}
+                  rows={3}
+                  className="w-full text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none"
+                />
+                <div className="flex gap-2 mt-2 justify-end">
+                  <button onClick={() => setEditingPost(false)}
+                    className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleEditPost} disabled={editPostSaving || !editPostContent.trim()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg transition-colors">
+                    <Check size={12} />{editPostSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {localContent && (
+                  <p className="px-4 pb-3 text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+                    {renderWithMentions(localContent)}
+                    {localEdited && <span className="text-[10px] text-gray-400 ml-1">(edited)</span>}
+                  </p>
+                )}
+              </>
             )}
             {post.image_url && (
               <div className="cursor-pointer" onClick={() => setImgExpanded(v => !v)}>

@@ -3,6 +3,13 @@ const pool = require('./db');
 
 const onlineUsers = new Map(); // userId -> Set of socketIds
 
+// Clean up stale typing_status rows every 30 seconds
+setInterval(async () => {
+  try {
+    await pool.query(`DELETE FROM typing_status WHERE typed_at < NOW() - INTERVAL '10 seconds'`);
+  } catch {}
+}, 30000);
+
 function setupSocket(io) {
   // JWT auth middleware for socket connections
   io.use((socket, next) => {
@@ -24,6 +31,47 @@ function setupSocket(io) {
 
     // Notify others that user is online
     socket.broadcast.emit('user:online', { userId });
+
+    // Join all group rooms this user belongs to
+    try {
+      const groups = await pool.query(
+        'SELECT group_id FROM group_members WHERE user_id=$1', [userId]
+      );
+      for (const { group_id } of groups.rows) {
+        socket.join(`group:${group_id}`);
+      }
+    } catch {}
+
+    // Handle sending a group message via socket
+    socket.on('group:message:send', async ({ groupId, content, image_url }, callback) => {
+      try {
+        const member = await pool.query(
+          'SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2',
+          [groupId, userId]
+        );
+        if (!member.rows[0]) return callback?.({ ok: false, error: 'Not a member.' });
+
+        const result = await pool.query(
+          `INSERT INTO messages (sender_id, group_id, content, image_url)
+           VALUES ($1,$2,$3,$4) RETURNING *`,
+          [userId, groupId, content || null, image_url || null]
+        );
+        const msg = result.rows[0];
+        const enriched = {
+          ...msg,
+          image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
+          sender_name: socket.user.name || 'Unknown',
+          sender_avatar: socket.user.avatar || null,
+          reactions: [],
+        };
+        // Broadcast to all members in the group room
+        io.to(`group:${groupId}`).emit('group:message:new', enriched);
+        callback?.({ ok: true, message: enriched });
+      } catch (err) {
+        console.error('[Socket] group:message:send error:', err.message);
+        callback?.({ ok: false, error: 'Failed to send message.' });
+      }
+    });
 
     // Handle sending a message
     socket.on('message:send', async ({ receiverId, content, image_url, voice_url, sticker, reply_to_id }, callback) => {

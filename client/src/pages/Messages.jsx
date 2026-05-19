@@ -144,6 +144,7 @@ export default function Messages() {
   const bottomRef = useRef();
   const inputRef = useRef();
   const activeUserRef = useRef(null);
+  const activeGroupRef = useRef(null);
   const fileRef = useRef();
   const mediaRecRef = useRef(null);
   const chunksRef = useRef([]);
@@ -157,6 +158,7 @@ export default function Messages() {
   const sendingLockRef = useRef(false);
 
   useEffect(() => { activeUserRef.current = activeUser; }, [activeUser]);
+  useEffect(() => { activeGroupRef.current = activeGroup; }, [activeGroup]);
 
   useEffect(() => {
     return () => {
@@ -219,6 +221,14 @@ export default function Messages() {
       loadConversations();
     });
 
+    socket.on('group:message:new', (msg) => {
+      if (msg.group_id !== activeGroupRef.current?.id) return;
+      setGroupMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    });
+
     return () => {
       socket.off('message:new');
       socket.off('typing');
@@ -226,6 +236,7 @@ export default function Messages() {
       socket.off('message:deleted');
       socket.off('message:edited');
       socket.off('conversation:cleared');
+      socket.off('group:message:new');
     };
   }, []);
 
@@ -341,20 +352,38 @@ export default function Messages() {
     } catch {} finally { setMobileView('chat'); }
   };
 
-  const sendGroupMessage = async () => {
-    const hasContent = input.trim() || msgImage;
-    if (!hasContent || !activeGroup || groupSending) return;
+  const sendGroupMessage = useCallback(async () => {
+    const group = activeGroupRef.current;
+    if (!group || groupSending) return;
+    const text = input.trim();
+    const img = msgImage;
+    if (!text && !img) return;
     setGroupSending(true);
-    const payload = { content: input.trim() || null };
-    if (msgImage) payload.image_url = msgImage;
-    try {
-      const res = await api.post(`/groups/${activeGroup.id}/messages`, payload);
-      setGroupMessages(prev => [...prev, res.data]);
-      setInput(''); setMsgImage('');
-      requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' }));
-    } catch { addToast('Failed to send.', 'error'); }
-    finally { setGroupSending(false); }
-  };
+    const socket = socketRef.current;
+    setInput(''); setMsgImage('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+
+    if (socket?.connected) {
+      socket.emit('group:message:send', { groupId: group.id, content: text || null, image_url: img || null }, (res) => {
+        setGroupSending(false);
+        if (!res?.ok) {
+          setInput(text); setMsgImage(img);
+          addToast('Failed to send.', 'error');
+        } else {
+          requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' }));
+        }
+      });
+    } else {
+      try {
+        const payload = { content: text || null };
+        if (img) payload.image_url = img;
+        const res = await api.post(`/groups/${group.id}/messages`, payload);
+        setGroupMessages(prev => [...prev, res.data]);
+        requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'instant' }));
+      } catch { setInput(text); setMsgImage(img); addToast('Failed to send.', 'error'); }
+      finally { setGroupSending(false); }
+    }
+  }, [input, msgImage, groupSending, addToast]);
 
   const sendMessage = async (opts = {}) => {
     const sticker = opts.sticker || null;
@@ -555,10 +584,10 @@ export default function Messages() {
   }, [myUser.id]);
 
   const handleTextareaKeyDown = useCallback((e) => {
-    if (activeGroup) {
+    if (activeGroupRef.current) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGroupMessage(); }
     } else handleKeyDown(e);
-  }, [activeGroup, activeUser, sending, input, msgImage, pendingVoice, replyTo]);
+  }, [sendGroupMessage, handleKeyDown]);
 
   const fmtRec = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 

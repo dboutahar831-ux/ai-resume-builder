@@ -5,14 +5,26 @@ const auth = require('../middleware/auth');
 
 const VALID_REACTIONS = ['like', 'heart', 'laugh', 'sad', 'angry'];
 
+let _io = null;
+router.setIo = (io) => { _io = io; };
+
 async function notify(recipientId, actorId, type, postId, commentId = null) {
   if (recipientId === actorId) return;
   try {
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO notifications (user_id, actor_id, type, post_id, comment_id)
-       VALUES ($1,$2,$3,$4,$5)`,
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [recipientId, actorId, type, postId, commentId || null]
     );
+    const notif = result.rows[0];
+    if (_io && notif) {
+      const actor = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [actorId]);
+      _io.to(`user:${recipientId}`).emit('notification:new', {
+        ...notif,
+        actor_name: actor.rows[0]?.name || 'Someone',
+        actor_avatar: actor.rows[0]?.avatar || null,
+      });
+    }
   } catch {}
 }
 
@@ -50,8 +62,8 @@ router.get('/feed', auth, async (req, res) => {
           ))
       AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
       ORDER BY p.created_at DESC
-      LIMIT 50
-    `, [req.user.id]);
+      LIMIT $2 OFFSET $3
+    `, [req.user.id, 20, Number(req.query.offset) || 0]);
     res.json(result.rows);
   } catch { res.status(500).json({ error: 'Failed to load feed.' }); }
 });
@@ -190,6 +202,20 @@ router.post('/:postId/repost', auth, async (req, res) => {
       reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
     });
   } catch { res.status(500).json({ error: 'Failed to repost.' }); }
+});
+
+// PATCH /api/posts/:id — edit post content (owner only)
+router.patch('/:id', auth, async (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ error: 'Content cannot be empty.' });
+  try {
+    const result = await pool.query(
+      'UPDATE posts SET content=$1, edited=TRUE, edited_at=NOW() WHERE id=$2 AND user_id=$3 RETURNING *',
+      [content.trim(), req.params.id, req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Post not found.' });
+    res.json(result.rows[0]);
+  } catch { res.status(500).json({ error: 'Failed to edit post.' }); }
 });
 
 // DELETE /api/posts/:id

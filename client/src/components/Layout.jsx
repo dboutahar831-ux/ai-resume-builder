@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
+import { getSocket } from '../services/socket';
 
 function NexlyIcon({ className = 'w-8 h-8' }) {
   return (
@@ -194,9 +195,40 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
   }, [loadNotifications]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const socket = getSocket();
+    const typeText = {
+      comment: 'commented on your post',
+      reaction: 'reacted to your post',
+      repost: 'shared your post',
+      reply: 'replied to your comment',
+      mention: 'mentioned you in a post',
+    };
+    const handleNotif = (n) => {
+      const label = typeText[n.type] || 'interacted with your post';
+      setNotifItems(prev => [{
+        type: n.type,
+        text: `${n.actor_name} ${label}`,
+        link: '/home',
+        icon: n.type,
+        read: false,
+        time: 'Just now',
+      }, ...prev]);
+    };
+    const handleNewMsg = () => {
+      setUnreadMsgs(c => c + 1);
+    };
+    socket.on('notification:new', handleNotif);
+    socket.on('message:new', handleNewMsg);
+    return () => {
+      socket.off('notification:new', handleNotif);
+      socket.off('message:new', handleNewMsg);
+    };
+  }, []);
 
   const notifCount = notifItems.filter(n => !n.read).length;
 
@@ -206,9 +238,10 @@ export default function Layout({ children }) {
   }, []);
 
   const links = [
-    { to: '/home',     icon: Home,           label: 'Home' },
-    { to: '/friends',  icon: Users,          label: 'Friends',  badge: pendingReqs },
-    { to: '/messages', icon: MessageSquare,  label: 'Messages', badge: unreadMsgs },
+    { to: '/home',          icon: Home,          label: 'Home' },
+    { to: '/friends',       icon: Users,         label: 'Friends',       badge: pendingReqs },
+    { to: '/messages',      icon: MessageSquare, label: 'Messages',      badge: unreadMsgs },
+    { to: '/notifications', icon: Bell,          label: 'Notifications', badge: notifCount },
   ];
 
   const bottomLinks = [

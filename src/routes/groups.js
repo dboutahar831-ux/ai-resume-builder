@@ -3,6 +3,10 @@ const router = express.Router();
 const pool = require('../db');
 const auth = require('../middleware/auth');
 
+// Lazy getter for io instance (set by server.js after setup)
+let _io = null;
+router.setIo = (io) => { _io = io; };
+
 router.use(auth);
 
 // GET /api/groups — list user's groups
@@ -320,13 +324,16 @@ router.post('/:id/messages', async (req, res) => {
     );
     const msg = result.rows[0];
     const sender = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [req.user.id]);
-    res.json({
+    const enriched = {
       ...msg,
       image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
       sender_name: sender.rows[0]?.name || 'Unknown',
       sender_avatar: sender.rows[0]?.avatar || null,
       reactions: [],
-    });
+    };
+    // Broadcast to all group members via socket
+    if (_io) _io.to(`group:${req.params.id}`).emit('group:message:new', enriched);
+    res.json(enriched);
   } catch {
     res.status(500).json({ error: 'Failed to send message.' });
   }

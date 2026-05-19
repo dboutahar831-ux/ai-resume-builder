@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS posts (
   original_post_id  INTEGER       REFERENCES posts(id) ON DELETE SET NULL,
   repost_text       TEXT,
   scheduled_at      TIMESTAMPTZ,
+  edited            BOOLEAN       NOT NULL DEFAULT FALSE,
+  edited_at         TIMESTAMPTZ,
   created_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
@@ -269,6 +271,10 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN NOT NULL DEFAULT F
 -- Edit message support
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+
+-- Edit post support
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 
 -- Delete for sender only (message hidden from sender but visible to receiver)
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_for_sender BOOLEAN NOT NULL DEFAULT FALSE;
