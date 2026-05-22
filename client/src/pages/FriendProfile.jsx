@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Sparkles, X, Users, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ShieldOff, ShieldAlert, AlertTriangle, Sparkles, X, Users, Image as ImageIcon, Briefcase, Star, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProfileCard from '../components/ProfileCard';
@@ -65,14 +65,19 @@ export default function FriendProfile() {
   const [viewingHL, setViewingHL] = useState(null);
   const [posts, setPosts] = useState([]);
   const [friendList, setFriendList] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [endorsements, setEndorsements] = useState([]);
+  const [endorsingSkill, setEndorsingSkill] = useState(null);
 
   const load = async () => {
     try {
-      const [profileRes, hlRes, postsRes, friendsRes] = await Promise.allSettled([
+      const [profileRes, hlRes, postsRes, friendsRes, projectsRes, endorsementsRes] = await Promise.allSettled([
         api.get(`/friends/profile/${id}`),
         api.get(`/highlights/${id}`),
         api.get(`/posts/user/${id}`),
         api.get(`/friends/user/${id}`),
+        api.get(`/projects/${id}`),
+        api.get(`/endorsements/${id}`),
       ]);
 
       if (profileRes.status === 'fulfilled') {
@@ -93,6 +98,8 @@ export default function FriendProfile() {
       if (friendsRes.status === 'fulfilled') {
         setFriendList(friendsRes.value.data);
       }
+      if (projectsRes.status === 'fulfilled') setProjects(projectsRes.value.data || []);
+      if (endorsementsRes.status === 'fulfilled') setEndorsements(endorsementsRes.value.data || []);
     } catch {} finally { setLoading(false); }
   };
 
@@ -289,6 +296,84 @@ export default function FriendProfile() {
             </div>
           </div>
         )}
+        {/* ── Projects ── */}
+        {projects.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-3">
+              <Briefcase size={14} className="text-indigo-500" />Projects
+            </p>
+            <div className="space-y-3">
+              {projects.map(p => (
+                <div key={p.id}
+                  className={`p-3 bg-gray-50 dark:bg-gray-800 rounded-xl ${p.url ? 'cursor-pointer' : ''}`}
+                  onClick={() => p.url && window.open(p.url, '_blank', 'noopener,noreferrer')}>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 truncate">{p.title}</p>
+                    {p.url && <ExternalLink size={12} className="text-indigo-500 flex-shrink-0" />}
+                  </div>
+                  {p.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{p.description}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Skills & Endorsements ── */}
+        {profile?.skills?.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-3">
+              <Star size={14} className="text-amber-500" />Skills
+              {profile?.friendship_status === 'accepted' && (
+                <span className="ml-auto text-[10px] font-normal text-gray-400">Click a skill to endorse</span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {profile.skills.map(skill => {
+                const endorsement = endorsements.find(e => e.skill === skill);
+                const count = endorsement?.count || 0;
+                const endorsed = endorsement?.endorsed_by_me || false;
+                const isFriend = profile?.friendship_status === 'accepted';
+                return (
+                  <button key={skill}
+                    onClick={async () => {
+                      if (!isFriend || endorsingSkill === skill) return;
+                      setEndorsingSkill(skill);
+                      try {
+                        if (endorsed) {
+                          await api.delete(`/endorsements/${id}/${encodeURIComponent(skill)}`);
+                          setEndorsements(prev =>
+                            prev.map(e => e.skill === skill ? { ...e, endorsed_by_me: false, count: Math.max(0, e.count - 1) } : e)
+                              .filter(e => e.count > 0 || e.endorsed_by_me)
+                          );
+                        } else {
+                          await api.post(`/endorsements/${id}/${encodeURIComponent(skill)}`);
+                          setEndorsements(prev => {
+                            const existing = prev.find(e => e.skill === skill);
+                            if (existing) return prev.map(e => e.skill === skill ? { ...e, endorsed_by_me: true, count: e.count + 1 } : e);
+                            return [...prev, { skill, count: 1, endorsed_by_me: true, endorsers: [] }];
+                          });
+                        }
+                      } catch {}
+                      finally { setEndorsingSkill(null); }
+                    }}
+                    disabled={endorsingSkill === skill}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-60 ${
+                      endorsed
+                        ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                        : isFriend
+                          ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 cursor-pointer'
+                          : 'border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-500 cursor-default'
+                    }`}>
+                    <Star size={10} className={endorsed ? 'text-indigo-500' : 'text-gray-400'} />
+                    {skill}
+                    {count > 0 && <span className="font-bold text-indigo-600 dark:text-indigo-400 ml-0.5">{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Posts ── */}
         <div className="space-y-3">
           {posts.length === 0 ? (

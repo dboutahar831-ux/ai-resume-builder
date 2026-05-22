@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, ThumbsUp,
   MoreHorizontal, Trash2, Repeat2, CornerDownRight, Pencil, Check, Bookmark,
+  Eye, Globe, Users, Lock, Flag, BarChart2,
 } from 'lucide-react';
 import MentionSuggestions from './MentionSuggestions';
 import { useMention } from '../hooks/useMention';
@@ -261,6 +262,148 @@ function OriginalPostBox({ post }) {
   );
 }
 
+const VISIBILITY_META = {
+  public:  { Icon: Globe,  label: 'Public',       color: 'text-emerald-500' },
+  friends: { Icon: Users,  label: 'Friends only', color: 'text-blue-500' },
+  private: { Icon: Lock,   label: 'Only me',      color: 'text-gray-400' },
+};
+
+function PollCard({ poll, postId, myId, isOwner }) {
+  const [localPoll, setLocalPoll] = useState(poll);
+  const [voting, setVoting] = useState(false);
+  const addToast = useToast();
+  if (!localPoll) return null;
+
+  const hasVoted = !!localPoll.my_vote_option_id;
+  const isEnded = localPoll.ended;
+  const showResults = hasVoted || isEnded || isOwner;
+
+  const vote = async (optionId) => {
+    if (voting || isEnded) return;
+    if (localPoll.my_vote_option_id === optionId) return;
+    setVoting(true);
+    try {
+      const res = await api.post(`/polls/${localPoll.id}/vote`, { option_id: optionId });
+      setLocalPoll(res.data);
+    } catch { addToast('Failed to vote.', 'error'); }
+    finally { setVoting(false); }
+  };
+
+  return (
+    <div className="mx-4 mb-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart2 size={14} className="text-indigo-500" />
+        <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{localPoll.question}</p>
+      </div>
+      <div className="space-y-2">
+        {localPoll.options?.map(opt => {
+          const isMyVote = localPoll.my_vote_option_id === opt.id;
+          return (
+            <button key={opt.id} onClick={() => vote(opt.id)} disabled={voting || isEnded || hasVoted}
+              className={`w-full relative flex items-center rounded-xl overflow-hidden border transition-all text-left
+                ${isMyVote ? 'border-indigo-400 dark:border-indigo-500' : 'border-gray-200 dark:border-gray-600'}
+                ${!showResults && !hasVoted && !isEnded ? 'hover:border-indigo-300 dark:hover:border-indigo-600 cursor-pointer' : 'cursor-default'}`}>
+              {showResults && (
+                <div className="absolute inset-0 rounded-xl"
+                  style={{ width: `${opt.pct}%`, background: isMyVote ? 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' : 'rgba(108,92,231,0.08)', transition: 'width 0.5s ease' }} />
+              )}
+              <div className="relative flex items-center justify-between w-full px-3 py-2.5">
+                <span className={`text-sm font-medium ${isMyVote ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                  {opt.text}
+                </span>
+                {showResults && (
+                  <span className={`text-xs font-bold flex-shrink-0 ml-2 ${isMyVote ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {opt.pct}%
+                  </span>
+                )}
+                {!showResults && !hasVoted && <span className="w-3 h-3 rounded-full border-2 border-gray-300 dark:border-gray-500 flex-shrink-0" />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2.5 flex items-center gap-2">
+        <span>{localPoll.total_votes} vote{localPoll.total_votes !== 1 ? 's' : ''}</span>
+        {isEnded && <span className="text-red-400 font-medium">· Poll ended</span>}
+        {!isEnded && localPoll.ends_at && <span>· Ends {new Date(localPoll.ends_at).toLocaleDateString()}</span>}
+      </p>
+    </div>
+  );
+}
+
+const REPORT_REASONS = [
+  { value: 'spam', label: 'Spam or misleading' },
+  { value: 'harassment', label: 'Harassment or bullying' },
+  { value: 'misinformation', label: 'Misinformation' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'other', label: 'Other' },
+];
+
+function ReportModal({ postId, onClose }) {
+  const addToast = useToast();
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    if (!reason || submitting) return;
+    setSubmitting(true);
+    try {
+      await api.post('/reports', { post_id: postId, reason });
+      setDone(true);
+      setTimeout(onClose, 1500);
+    } catch { addToast('Failed to submit report.', 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-[#111111] rounded-2xl border border-gray-200 dark:border-[#2A2A2A] w-full max-w-sm shadow-2xl p-5"
+        onClick={e => e.stopPropagation()} style={{ animation: 'popUp 0.2s ease' }}>
+        {done ? (
+          <div className="text-center py-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mx-auto mb-3">
+              <Check size={22} className="text-emerald-500" />
+            </div>
+            <p className="font-bold text-gray-900 dark:text-gray-100">Report submitted</p>
+            <p className="text-sm text-gray-400 mt-1">Thank you for helping keep Nexly safe.</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Flag size={16} className="text-red-500" />
+                <h3 className="font-bold text-gray-900 dark:text-gray-100">Report Post</h3>
+              </div>
+              <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Why are you reporting this post?</p>
+            <div className="space-y-1.5 mb-4">
+              {REPORT_REASONS.map(r => (
+                <button key={r.value} onClick={() => setReason(r.value)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all border ${
+                    reason === r.value
+                      ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-medium'
+                      : 'border-gray-100 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <button onClick={submit} disabled={!reason || submitting}
+              className="w-full py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50 hover:opacity-90 transition-all"
+              style={{ background: 'linear-gradient(90deg,#EF4444,#DC2626)' }}>
+              {submitting ? 'Submitting…' : 'Submit Report'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RepostModal({ post, onClose, onRepost }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -322,6 +465,7 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
   const [showMenu, setShowMenu] = useState(false);
   const [imgExpanded, setImgExpanded] = useState(false);
   const [repostModal, setRepostModal] = useState(false);
+  const [reportModal, setReportModal] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [editingPost, setEditingPost] = useState(false);
   const [editPostContent, setEditPostContent] = useState(post.content || '');
@@ -330,6 +474,8 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
   const [localEdited, setLocalEdited] = useState(!!post.edited);
   const [isBookmarked, setIsBookmarked] = useState(!!post.is_bookmarked);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const isOwner = post.user_id === myId;
+  const visibilityMeta = VISIBILITY_META[post.visibility] || VISIBILITY_META.public;
   const commentFileRef = useRef();
   const commentInputRef = useRef();
   const commentMention = useMention();
@@ -436,6 +582,9 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
           onRepost={async (text) => onRepost(post.id, text)}
         />
       )}
+      {reportModal && (
+        <ReportModal postId={post.id} onClose={() => setReportModal(false)} />
+      )}
 
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-visible transition-shadow duration-200 hover:shadow-md"
         style={{ animation: 'fadeInUp 0.3s ease' }}>
@@ -458,30 +607,48 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
                   {isOnline(post.user_last_seen_at) && (
                     <span className="text-[10px] text-emerald-500 font-semibold">· Active now</span>
                   )}
+                  {post.visibility && post.visibility !== 'public' && (
+                    <span className={`flex items-center gap-0.5 text-[10px] font-medium ${visibilityMeta.color}`}>
+                      · <visibilityMeta.Icon size={10} className="inline" /> {visibilityMeta.label}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
-            {post.user_id === myId && (
-              <div className="relative">
-                <button onClick={() => setShowMenu(v => !v)}
-                  className="p-1.5 text-gray-300 hover:text-gray-500 hover:bg-gray-100 rounded-xl transition-all">
-                  <MoreHorizontal size={16} />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 top-9 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl z-10 overflow-hidden min-w-28"
-                    style={{ animation: 'fadeInUp 0.15s ease' }}>
+            <div className="relative flex items-center gap-1">
+              {isOwner && post.views_count > 0 && (
+                <span className="flex items-center gap-0.5 text-[10px] text-gray-400 dark:text-gray-500 mr-1">
+                  <Eye size={11} />{post.views_count}
+                </span>
+              )}
+              <button onClick={() => setShowMenu(v => !v)}
+                className="p-1.5 text-gray-300 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all">
+                <MoreHorizontal size={16} />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-9 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl z-10 overflow-hidden min-w-32"
+                  style={{ animation: 'fadeInUp 0.15s ease' }}>
+                  {isOwner && (
                     <button onClick={() => { setEditingPost(true); setEditPostContent(post.content || ''); setShowMenu(false); }}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 w-full transition-colors">
                       <Pencil size={13} />Edit
                     </button>
+                  )}
+                  {isOwner && (
                     <button onClick={() => { onDelete(post.id); setShowMenu(false); }}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 w-full transition-colors">
                       <Trash2 size={13} />Delete
                     </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                  {!isOwner && (
+                    <button onClick={() => { setReportModal(true); setShowMenu(false); }}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 w-full transition-colors">
+                      <Flag size={13} />Report
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -556,8 +723,12 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
             {post.video_url && (
               <video src={post.video_url} controls className="w-full max-h-96 bg-black" style={{ display: 'block' }} />
             )}
+            {/* Poll */}
+            {post.poll && (
+              <PollCard poll={post.poll} postId={post.id} myId={myId} isOwner={isOwner} />
+            )}
             {/* Link Preview */}
-            {post.link_metadata?.title && !post.image_url && !post.video_url && (
+            {post.link_metadata?.title && !post.image_url && !post.video_url && !post.poll && (
               <a href={post.link_metadata.url} target="_blank" rel="noopener noreferrer"
                 className="mx-4 mb-3 flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors overflow-hidden">
                 {post.link_metadata.image && (
@@ -601,6 +772,11 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
             className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${isBookmarked ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
             <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
           </button>
+          {!isOwner && post.views_count > 0 && (
+            <span className="flex items-center gap-0.5 text-[10px] text-gray-300 dark:text-gray-600 px-1">
+              <Eye size={11} />{post.views_count}
+            </span>
+          )}
         </div>
 
         {showComments && (

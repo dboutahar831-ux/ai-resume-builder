@@ -5,7 +5,7 @@ import {
   FileText, Briefcase, Users, MessageSquare, Shield,
   Plus, Sparkles, Smile, Trash2, ChevronRight, Play,
   Share2, Trophy, Star, Lightbulb,
-  Navigation, Video, Send, ThumbsUp,
+  Navigation, Video, Send, ThumbsUp, ExternalLink,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -420,11 +420,21 @@ export default function Profile() {
   // Friends modal
   const [friendsModal, setFriendsModal] = useState(false);
 
+  // Projects
+  const [projects, setProjects]             = useState([]);
+  const [projectModal, setProjectModal]     = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectForm, setProjectForm]       = useState({ title: '', description: '', url: '' });
+  const [projectSaving, setProjectSaving]   = useState(false);
+
+  // Endorsements
+  const [endorsements, setEndorsements] = useState([]);
+
   const fileRef  = useRef();
   const coverRef = useRef();
 
   const loadAll = useCallback(async () => {
-    const [profileRes, statsArr, storyRes, noteRes, hlRes, friendRes, postsRes] = await Promise.allSettled([
+    const [profileRes, statsArr, storyRes, noteRes, hlRes, friendRes, postsRes, projectsRes, endorsementsRes] = await Promise.allSettled([
       api.get('/auth/profile'),
       Promise.all([api.get('/friends'), api.get('/messages/unread/count')]),
       api.get('/stories/feed'),
@@ -432,6 +442,8 @@ export default function Profile() {
       api.get(`/highlights/${myId}`),
       api.get('/friends'),
       api.get(`/posts/user/${myId}`),
+      api.get(`/projects/${myId}`),
+      api.get(`/endorsements/${myId}`),
     ]);
 
     if (profileRes.status === 'fulfilled') {
@@ -451,6 +463,8 @@ export default function Profile() {
     if (hlRes.status === 'fulfilled') setHighlights(hlRes.value.data);
     if (friendRes.status === 'fulfilled') setFriends(friendRes.value.data);
     if (postsRes.status === 'fulfilled') setPosts(postsRes.value.data);
+    if (projectsRes.status === 'fulfilled') setProjects(projectsRes.value.data);
+    if (endorsementsRes.status === 'fulfilled') setEndorsements(endorsementsRes.value.data);
   }, [myId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -479,6 +493,31 @@ export default function Profile() {
   const handleCancel = () => {
     if (user) setForm({ name: user.name||'', age: user.age||'', phone: user.phone||'', location: user.location||'', linkedin: user.linkedin||'', avatar: user.avatar||'', bio: user.bio||'', cover_image: user.cover_image||'', skills: user.skills||[], availability_status: user.availability_status||'all' });
     setEditing(false); setError(''); setSkillInput('');
+  };
+
+  const saveProject = async () => {
+    if (!projectForm.title.trim() || projectSaving) return;
+    setProjectSaving(true);
+    try {
+      if (editingProject) {
+        const res = await api.put(`/projects/${editingProject.id}`, projectForm);
+        setProjects(p => p.map(x => x.id === editingProject.id ? res.data : x));
+      } else {
+        const res = await api.post('/projects', projectForm);
+        setProjects(p => [res.data, ...p]);
+      }
+      setProjectModal(false);
+      setEditingProject(null);
+      setProjectForm({ title: '', description: '', url: '' });
+    } catch { addToast('Failed to save project.', 'error'); }
+    finally { setProjectSaving(false); }
+  };
+
+  const deleteProject = async (id) => {
+    try {
+      await api.delete(`/projects/${id}`);
+      setProjects(p => p.filter(x => x.id !== id));
+    } catch { addToast('Failed to delete project.', 'error'); }
   };
 
   const saveNote = async (content) => {
@@ -595,6 +634,55 @@ export default function Profile() {
       {noteModal && <NoteModal current={note?.content} onSave={saveNote} onClose={() => setNoteModal(false)} />}
       {viewingHL && <HighlightViewer highlight={viewingHL} onClose={() => setViewingHL(null)} />}
       {addHLModal && <AddHighlightModal onSave={createHighlight} onClose={() => setAddHLModal(false)} />}
+
+      {projectModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setProjectModal(false)}>
+          <div className="bg-white dark:bg-[#111111] rounded-2xl border border-gray-200 dark:border-[#2A2A2A] w-full max-w-sm shadow-2xl p-5"
+            onClick={e => e.stopPropagation()} style={{ animation: 'popUp 0.2s ease' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Briefcase size={15} className="text-indigo-500" />
+                {editingProject ? 'Edit Project' : 'Add Project'}
+              </h3>
+              <button onClick={() => setProjectModal(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Title *</label>
+                <input value={projectForm.title} onChange={e => setProjectForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="My Awesome Project"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Description</label>
+                <textarea value={projectForm.description} onChange={e => setProjectForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Describe your project..."
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">URL</label>
+                <input value={projectForm.url} onChange={e => setProjectForm(f => ({ ...f, url: e.target.value }))}
+                  placeholder="https://github.com/..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setProjectModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+                Cancel
+              </button>
+              <button onClick={saveProject} disabled={!projectForm.title.trim() || projectSaving}
+                className="flex-1 px-4 py-2 text-white rounded-xl text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-all"
+                style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7)' }}>
+                {projectSaving ? 'Saving…' : editingProject ? 'Update' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {friendsModal && <FriendsModal friends={friends} onClose={() => setFriendsModal(false)} />}
       {storyViewer && storyFeedEntry.length > 0 && (
         <StoryViewer
@@ -1086,6 +1174,88 @@ export default function Profile() {
             )}
           </div>
         </ScrollReveal>
+
+        {/* ── Projects ── */}
+        <ScrollReveal>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Briefcase size={14} className="text-indigo-500" />Projects
+              </p>
+              <button onClick={() => { setEditingProject(null); setProjectForm({ title: '', description: '', url: '' }); setProjectModal(true); }}
+                className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-2 py-1 rounded-lg transition-colors">
+                <Plus size={12} />Add
+              </button>
+            </div>
+            {projects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-gray-300 dark:text-gray-600">
+                <Briefcase size={28} className="mb-2 opacity-50" />
+                <p className="text-xs font-medium">No projects yet</p>
+                <button onClick={() => { setEditingProject(null); setProjectForm({ title: '', description: '', url: '' }); setProjectModal(true); }}
+                  className="text-xs text-indigo-600 font-semibold mt-2 hover:underline">Add your first project</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {projects.map(p => (
+                  <div key={p.id} className="flex items-start justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl group">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{p.title}</p>
+                        {p.url && (
+                          <a href={p.url} target="_blank" rel="noopener noreferrer"
+                            className="text-indigo-500 hover:text-indigo-700 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                            <ExternalLink size={12} />
+                          </a>
+                        )}
+                      </div>
+                      {p.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{p.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button onClick={() => { setEditingProject(p); setProjectForm({ title: p.title, description: p.description || '', url: p.url || '' }); setProjectModal(true); }}
+                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all">
+                        <Pencil size={12} />
+                      </button>
+                      <button onClick={() => deleteProject(p.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollReveal>
+
+        {/* ── Skill Endorsements ── */}
+        {endorsements.length > 0 && (
+          <ScrollReveal>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-3">
+                <Star size={14} className="text-amber-500" />Skill Endorsements
+              </p>
+              <div className="space-y-3">
+                {endorsements.map(e => (
+                  <div key={e.skill} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{e.skill}</span>
+                      <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full flex-shrink-0">{e.count}</span>
+                    </div>
+                    <div className="flex -space-x-1.5 flex-shrink-0">
+                      {(e.endorsers || []).slice(0, 4).map(u => (
+                        u.avatar
+                          ? <img key={u.id} src={u.avatar} loading="lazy" alt={u.name} title={u.name} className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-gray-900" />
+                          : <div key={u.id} title={u.name} className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[9px] font-bold ring-2 ring-white dark:ring-gray-900">
+                              {u.name?.[0]?.toUpperCase()}
+                            </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollReveal>
+        )}
 
         {/* ── Account info (view mode) ── */}
         {!editing && (

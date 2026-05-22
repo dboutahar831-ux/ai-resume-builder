@@ -28,14 +28,30 @@ async function notify(recipientId, actorId, type, postId, commentId = null) {
   } catch {}
 }
 
+const POLL_SUBQUERY = `
+  (SELECT row_to_json(poll_data) FROM (
+    SELECT pl.id, pl.question, pl.ends_at,
+      (SELECT json_agg(json_build_object(
+        'id', po.id, 'text', po.text,
+        'votes', (SELECT COUNT(*)::int FROM poll_votes WHERE option_id=po.id),
+        'my_vote', EXISTS(SELECT 1 FROM poll_votes WHERE option_id=po.id AND user_id=$VIEWER)
+      ) ORDER BY po.id) FROM poll_options po WHERE po.poll_id=pl.id) AS options,
+      (SELECT COUNT(*)::int FROM poll_votes WHERE poll_id=pl.id) AS total_votes,
+      (SELECT option_id FROM poll_votes WHERE poll_id=pl.id AND user_id=$VIEWER LIMIT 1) AS my_vote_option_id
+    FROM polls pl WHERE pl.post_id=p.id
+  ) poll_data) AS poll
+`;
+
 // GET /api/posts/feed
 router.get('/feed', auth, async (req, res) => {
   try {
+    const uid = req.user.id;
+    const pollSub = POLL_SUBQUERY.replace(/\$VIEWER/g, uid);
     const result = await pool.query(`
       SELECT
         p.id, p.content, p.image_url, p.video_url, p.created_at,
         p.original_post_id, p.repost_text, p.link_metadata,
-        p.edited, p.edited_at,
+        p.edited, p.edited_at, p.visibility, p.views_count,
         u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
         CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
         op.content AS original_content,
@@ -51,7 +67,8 @@ router.get('/feed', auth, async (req, res) => {
          FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
         ) AS reactions_summary,
         (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
-        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked
+        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked,
+        ${pollSub}
       FROM posts p
       JOIN users u ON u.id = p.user_id
       LEFT JOIN posts op ON op.id = p.original_post_id
@@ -63,11 +80,49 @@ router.get('/feed', auth, async (req, res) => {
             WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
           ))
       AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
+      AND (p.visibility = 'public' OR p.visibility = 'friends' OR p.user_id = $1)
       ORDER BY p.created_at DESC
       LIMIT $2 OFFSET $3
-    `, [req.user.id, 20, Number(req.query.offset) || 0]);
+    `, [uid, 20, Number(req.query.offset) || 0]);
     res.json(result.rows);
   } catch { res.status(500).json({ error: 'Failed to load feed.' }); }
+});
+
+// GET /api/posts/explore — public posts from everyone for discovery
+router.get('/explore', auth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const pollSub = POLL_SUBQUERY.replace(/\$VIEWER/g, uid);
+    const result = await pool.query(`
+      SELECT
+        p.id, p.content, p.image_url, p.video_url, p.created_at,
+        p.original_post_id, p.repost_text, p.link_metadata,
+        p.edited, p.edited_at, p.visibility, p.views_count,
+        u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+        COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+        COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+        (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+         FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+        ) AS reactions_summary,
+        (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked,
+        ${pollSub}
+      FROM posts p
+      JOIN users u ON u.id = p.user_id
+      LEFT JOIN posts op ON op.id = p.original_post_id
+      LEFT JOIN users ou ON ou.id = op.user_id
+      WHERE p.visibility = 'public'
+        AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
+        AND p.user_id NOT IN (
+          SELECT CASE WHEN requester_id=$1 THEN addressee_id ELSE requester_id END
+          FROM friendships WHERE (requester_id=$1 OR addressee_id=$1) AND status='accepted'
+        )
+        AND p.user_id != $1
+      ORDER BY (reactions_count + comments_count) DESC, p.created_at DESC
+      LIMIT 20 OFFSET $2
+    `, [uid, Number(req.query.offset) || 0]);
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Failed to load explore.' }); }
 });
 
 // GET /api/posts/scheduled — user's upcoming scheduled posts
@@ -126,18 +181,43 @@ router.get('/user/:userId', auth, async (req, res) => {
   } catch { res.status(500).json({ error: 'Failed to load user posts.' }); }
 });
 
+// POST /api/posts/:id/view — increment view counter
+router.post('/:id/view', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE posts SET views_count = views_count + 1 WHERE id=$1 AND user_id != $2',
+      [req.params.id, req.user.id]
+    );
+    res.json({ ok: true });
+  } catch { res.json({ ok: false }); }
+});
+
 // POST /api/posts
 router.post('/', auth, async (req, res) => {
-  const { content, image_url, video_url, scheduled_at, mention_ids, link_metadata } = req.body;
-  if (!content?.trim() && !image_url && !video_url)
+  const { content, image_url, video_url, scheduled_at, mention_ids, link_metadata, visibility, poll } = req.body;
+  if (!content?.trim() && !image_url && !video_url && !poll)
     return res.status(400).json({ error: 'Post cannot be empty.' });
+  const vis = ['public', 'friends', 'private'].includes(visibility) ? visibility : 'public';
   try {
     const result = await pool.query(
-      `INSERT INTO posts (user_id, content, image_url, video_url, scheduled_at, link_metadata) VALUES ($1,$2,$3,$4,$5,$6)
-       RETURNING id, content, image_url, video_url, created_at, scheduled_at, link_metadata`,
-      [req.user.id, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null, link_metadata ? JSON.stringify(link_metadata) : null]
+      `INSERT INTO posts (user_id, content, image_url, video_url, scheduled_at, link_metadata, visibility) VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING id, content, image_url, video_url, created_at, scheduled_at, link_metadata, visibility`,
+      [req.user.id, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null, link_metadata ? JSON.stringify(link_metadata) : null, vis]
     );
     const post = result.rows[0];
+
+    if (poll?.question && Array.isArray(poll.options) && poll.options.length >= 2) {
+      const pollRes = await pool.query(
+        'INSERT INTO polls (post_id, question, ends_at) VALUES ($1,$2,$3) RETURNING id',
+        [post.id, poll.question.trim(), poll.ends_at || null]
+      );
+      const pollId = pollRes.rows[0].id;
+      for (const opt of poll.options.slice(0, 4)) {
+        if (opt?.trim()) {
+          await pool.query('INSERT INTO poll_options (poll_id, text) VALUES ($1,$2)', [pollId, opt.trim()]);
+        }
+      }
+    }
     // Extract hashtags
     const tags = (content || '').match(/#(\w+)/g);
     if (tags) {
@@ -378,11 +458,13 @@ router.get('/bookmarks', auth, async (req, res) => {
 // GET /api/posts/:id — single post (must come after all specific string routes)
 router.get('/:id', auth, async (req, res) => {
   try {
+    const uid = req.user.id;
+    const pollSub = POLL_SUBQUERY.replace(/\$VIEWER/g, uid);
     const result = await pool.query(`
       SELECT
         p.id, p.content, p.image_url, p.video_url, p.created_at,
         p.original_post_id, p.repost_text, p.link_metadata,
-        p.edited, p.edited_at,
+        p.edited, p.edited_at, p.visibility, p.views_count,
         u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
         CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
         op.content AS original_content, op.image_url AS original_image_url,
@@ -394,13 +476,14 @@ router.get('/:id', auth, async (req, res) => {
          FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
         ) AS reactions_summary,
         (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $2 LIMIT 1) AS my_reaction,
-        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $2) AS is_bookmarked
+        EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $2) AS is_bookmarked,
+        ${pollSub}
       FROM posts p
       JOIN users u ON u.id = p.user_id
       LEFT JOIN posts op ON op.id = p.original_post_id
       LEFT JOIN users ou ON ou.id = op.user_id
       WHERE p.id = $1
-    `, [req.params.id, req.user.id]);
+    `, [req.params.id, uid]);
     if (!result.rows[0]) return res.status(404).json({ error: 'Post not found.' });
     res.json(result.rows[0]);
   } catch { res.status(500).json({ error: 'Failed to load post.' }); }

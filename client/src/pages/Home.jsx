@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Image, X, Users, Video, Sparkles, Search,
   Clock, Hash, SlidersHorizontal, CalendarClock,
+  BarChart2, Globe, Lock, ChevronDown, Plus, Trash2,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import StoriesBar from '../components/StoriesBar';
@@ -104,6 +105,16 @@ export default function Home() {
   const searchTimerRef = useRef();
   const linkPreviewTimerRef = useRef();
   const postMention = useMention();
+
+  // Poll composer state
+  const [showPollComposer, setShowPollComposer] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [pollEndsAt, setPollEndsAt] = useState('');
+
+  // Post visibility
+  const [postVisibility, setPostVisibility] = useState('public');
+  const [showVisibilityMenu, setShowVisibilityMenu] = useState(false);
   const addToast = useToast();
 
   const loadMore = useCallback(async (offset) => {
@@ -221,9 +232,15 @@ export default function Home() {
   };
 
   const submitPost = async () => {
-    if ((!postText.trim() && !postImage && !postVideo) || submitting) return;
+    const hasPoll = showPollComposer && pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2;
+    if ((!postText.trim() && !postImage && !postVideo && !hasPoll) || submitting) return;
     setSubmitting(true);
     try {
+      const pollPayload = hasPoll ? {
+        question: pollQuestion.trim(),
+        options: pollOptions.filter(o => o.trim()),
+        ends_at: pollEndsAt || null,
+      } : null;
       const res = await api.post('/posts', {
         content: postText.trim() || null,
         image_url: postImage || null,
@@ -231,6 +248,8 @@ export default function Home() {
         scheduled_at: scheduledAt || null,
         mention_ids: postMention.mentionIds,
         link_metadata: linkPreview || null,
+        visibility: postVisibility,
+        poll: pollPayload,
       });
       if (!scheduledAt) setPosts(p => [res.data, ...p]);
       setPostText('');
@@ -240,8 +259,14 @@ export default function Home() {
       setComposerFocused(false);
       setLinkPreview(null);
       setLinkPreviewDismissed(false);
+      setShowPollComposer(false);
+      setPollQuestion('');
+      setPollOptions(['', '']);
+      setPollEndsAt('');
+      setPostVisibility('public');
       postMention.reset();
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      localStorage.removeItem('post_draft');
     } finally { setSubmitting(false); }
   };
 
@@ -334,8 +359,28 @@ export default function Home() {
       : x));
   };
 
+  // Load draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem('post_draft');
+    if (draft) {
+      try {
+        const { text } = JSON.parse(draft);
+        if (text) { setPostText(text); setComposerFocused(true); }
+      } catch {}
+    }
+  }, []);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (postText.trim()) {
+      localStorage.setItem('post_draft', JSON.stringify({ text: postText }));
+    } else {
+      localStorage.removeItem('post_draft');
+    }
+  }, [postText]);
+
   const hasMedia = postImage || postVideo;
-  const composerExpanded = composerFocused || !!(postText || postImage || postVideo || scheduledAt);
+  const composerExpanded = composerFocused || !!(postText || postImage || postVideo || scheduledAt || showPollComposer);
 
   return (
     <Layout>
@@ -717,6 +762,48 @@ export default function Home() {
                           </button>
                         </div>
                       )}
+
+                      {/* Poll Composer */}
+                      {showPollComposer && (
+                        <div className="mt-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl space-y-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <BarChart2 size={13} className="text-indigo-500" />
+                            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Poll</span>
+                            <button onClick={() => setShowPollComposer(false)} className="ml-auto text-gray-400 hover:text-gray-600">
+                              <X size={13} />
+                            </button>
+                          </div>
+                          <input value={pollQuestion} onChange={e => setPollQuestion(e.target.value)}
+                            placeholder="Ask a question…"
+                            className="w-full px-3 py-2 text-sm border border-indigo-200 dark:border-indigo-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                          {pollOptions.map((opt, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input value={opt} onChange={e => {
+                                const o = [...pollOptions]; o[i] = e.target.value; setPollOptions(o);
+                              }}
+                                placeholder={`Option ${i + 1}`}
+                                className="flex-1 px-3 py-1.5 text-sm border border-indigo-200 dark:border-indigo-700 rounded-xl bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                              {pollOptions.length > 2 && (
+                                <button onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400 transition-colors">
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {pollOptions.length < 4 && (
+                            <button onClick={() => setPollOptions([...pollOptions, ''])}
+                              className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-medium">
+                              <Plus size={12} />Add option
+                            </button>
+                          )}
+                          <div className="flex items-center gap-2 pt-1">
+                            <label className="text-xs text-gray-500 dark:text-gray-400">Ends:</label>
+                            <input type="datetime-local" value={pollEndsAt} onChange={e => setPollEndsAt(e.target.value)}
+                              min={new Date(Date.now() + 3600000).toISOString().slice(0, 16)}
+                              className="text-xs border border-indigo-200 dark:border-indigo-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none" />
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -741,7 +828,7 @@ export default function Home() {
               )}
 
               {/* Action bar */}
-              <div className={`flex items-center gap-2 px-4 pb-4 pt-2 border-t border-gray-100 ${composerExpanded ? 'justify-between' : 'justify-start'}`}>
+              <div className={`flex items-center gap-2 px-4 pb-4 pt-2 border-t border-gray-100 dark:border-gray-800 ${composerExpanded ? 'justify-between' : 'justify-start'}`}>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => { setComposerFocused(true); postFileRef.current?.click(); }}
@@ -755,6 +842,44 @@ export default function Home() {
                     <Video size={16} className="text-blue-500" />
                     <span className="font-medium hidden sm:inline">Video</span>
                   </button>
+                  <button
+                    onClick={() => { setComposerFocused(true); setShowPollComposer(v => !v); }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm transition-all active:scale-95 ${showPollComposer ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-indigo-50 hover:text-indigo-600'}`}>
+                    <BarChart2 size={16} className="text-indigo-500" />
+                    <span className="font-medium hidden sm:inline">Poll</span>
+                  </button>
+                  {/* Visibility */}
+                  {composerExpanded && (
+                    <div className="relative">
+                      <button onClick={() => setShowVisibilityMenu(v => !v)}
+                        className="flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+                        {postVisibility === 'public' && <Globe size={13} className="text-emerald-500" />}
+                        {postVisibility === 'friends' && <Users size={13} className="text-blue-500" />}
+                        {postVisibility === 'private' && <Lock size={13} className="text-gray-400" />}
+                        <span className="hidden sm:inline capitalize">{postVisibility}</span>
+                        <ChevronDown size={11} />
+                      </button>
+                      {showVisibilityMenu && (
+                        <div className="absolute bottom-full mb-1 left-0 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl z-20 overflow-hidden min-w-36"
+                          style={{ animation: 'fadeInUp 0.12s ease' }}>
+                          {[
+                            { v: 'public', icon: Globe, label: 'Public', sub: 'Everyone can see', color: 'text-emerald-500' },
+                            { v: 'friends', icon: Users, label: 'Friends', sub: 'Only your friends', color: 'text-blue-500' },
+                            { v: 'private', icon: Lock, label: 'Only me', sub: 'Just you', color: 'text-gray-400' },
+                          ].map(({ v, icon: Icon, label, sub, color }) => (
+                            <button key={v} onClick={() => { setPostVisibility(v); setShowVisibilityMenu(false); }}
+                              className={`w-full flex items-start gap-2.5 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left ${postVisibility === v ? 'bg-gray-50 dark:bg-white/5' : ''}`}>
+                              <Icon size={14} className={`${color} flex-shrink-0 mt-0.5`} />
+                              <div>
+                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{label}</p>
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500">{sub}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {composerExpanded && (
@@ -779,7 +904,7 @@ export default function Home() {
                     </button>
 
                     <button onClick={submitPost}
-                      disabled={(!postText.trim() && !hasMedia) || submitting}
+                      disabled={(!postText.trim() && !hasMedia && !(showPollComposer && pollQuestion.trim() && pollOptions.filter(o=>o.trim()).length>=2)) || submitting}
                       className="px-4 py-1.5 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all active:scale-95 disabled:opacity-40 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                       {submitting
                         ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

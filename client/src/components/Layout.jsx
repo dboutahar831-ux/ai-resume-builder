@@ -4,6 +4,7 @@ import {
   Home, Users, MessageSquare, Search, Bookmark,
   Menu, X, User, Settings, Bell, UserPlus, ChevronRight,
   Heart, Repeat2, CornerDownRight, LogOut, Moon, Sun,
+  Compass, BarChart2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../api/axios';
@@ -266,11 +267,13 @@ export default function Layout({ children }) {
 
   const links = [
     { to: '/home',          icon: Home,          label: 'Home' },
+    { to: '/explore',       icon: Compass,       label: 'Explore' },
     { to: '/friends',       icon: Users,         label: 'Friends',       badge: pendingReqs },
     { to: '/messages',      icon: MessageSquare, label: 'Messages',      badge: unreadMsgs },
     { to: '/notifications', icon: Bell,          label: 'Notifications', badge: notifCount },
     { to: '/search',        icon: Search,        label: 'Search' },
     { to: '/bookmarks',     icon: Bookmark,      label: 'Saved' },
+    { to: '/analytics',     icon: BarChart2,     label: 'Analytics' },
   ];
 
   const bottomLinks = [

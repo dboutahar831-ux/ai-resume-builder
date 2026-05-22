@@ -74,6 +74,40 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// GET /api/admin/reports — all user reports
+router.get('/reports', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT r.id, r.reason, r.status, r.created_at,
+        reporter.name AS reporter_name, reporter.avatar AS reporter_avatar,
+        ru.name AS reported_user_name,
+        p.content AS post_content, r.post_id, r.reported_user_id
+      FROM reports r
+      JOIN users reporter ON reporter.id = r.reporter_id
+      LEFT JOIN users ru ON ru.id = r.reported_user_id
+      LEFT JOIN posts p ON p.id = r.post_id
+      ORDER BY CASE WHEN r.status='pending' THEN 0 ELSE 1 END, r.created_at DESC
+      LIMIT 100
+    `);
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Failed to load reports.' }); }
+});
+
+// PUT /api/admin/reports/:id
+router.put('/reports/:id', async (req, res) => {
+  const { status } = req.body;
+  if (!['pending','dismissed','actioned'].includes(status))
+    return res.status(400).json({ error: 'Invalid status.' });
+  try {
+    const r = await pool.query(
+      'UPDATE reports SET status=$1 WHERE id=$2 RETURNING id, status',
+      [status, req.params.id]
+    );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Report not found.' });
+    res.json(r.rows[0]);
+  } catch { res.status(500).json({ error: 'Failed to update report.' }); }
+});
+
 // GET /api/admin/recent-activity — latest posts and users
 router.get('/recent-activity', async (req, res) => {
   try {

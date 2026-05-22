@@ -24,6 +24,11 @@ const linkPreviewRouter = require('./routes/linkPreview');
 const groupsRouter     = require('./routes/groups');
 const oauthRouter      = require('./routes/oauth');
 const adminRouter      = require('./routes/admin');
+const pollsRouter      = require('./routes/polls');
+const analyticsRouter  = require('./routes/analytics');
+const reportsRouter    = require('./routes/reports');
+const projectsRouter   = require('./routes/projects');
+const endorsementsRouter = require('./routes/endorsements');
 
 const app = express();
 
@@ -40,6 +45,84 @@ pool.query(`
   ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
   ALTER TABLE posts ADD COLUMN IF NOT EXISTS link_metadata JSONB
 `).catch(err => console.error('[Migration] posts columns:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS polls (
+    id         SERIAL PRIMARY KEY,
+    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    question   TEXT NOT NULL,
+    ends_at    TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(post_id)
+  );
+  CREATE TABLE IF NOT EXISTS poll_options (
+    id      SERIAL PRIMARY KEY,
+    poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    text    TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS poll_votes (
+    id        SERIAL PRIMARY KEY,
+    poll_id   INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+    option_id INTEGER NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(poll_id, user_id)
+  )
+`).catch(err => console.error('[Migration] polls:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS profile_views (
+    id              SERIAL PRIMARY KEY,
+    profile_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewer_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    viewed_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(profile_user_id, viewer_id)
+  )
+`).catch(err => console.error('[Migration] profile_views:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS skill_endorsements (
+    id              SERIAL PRIMARY KEY,
+    profile_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endorser_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    skill           TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(profile_user_id, endorser_id, skill)
+  )
+`).catch(err => console.error('[Migration] skill_endorsements:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS user_projects (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL,
+    description TEXT,
+    url         TEXT,
+    image_url   TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )
+`).catch(err => console.error('[Migration] user_projects:', err.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS reports (
+    id               SERIAL PRIMARY KEY,
+    reporter_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id          INTEGER REFERENCES posts(id) ON DELETE SET NULL,
+    reported_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    reason           TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'pending',
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )
+`).catch(err => console.error('[Migration] reports:', err.message));
+
+pool.query(`
+  ALTER TABLE posts ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public';
+  ALTER TABLE posts ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0
+`).catch(err => console.error('[Migration] posts visibility/views:', err.message));
+
+pool.query(`
+  ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT FALSE
+`).catch(err => console.error('[Migration] messages pinned:', err.message));
 
 pool.query(`
   CREATE TABLE IF NOT EXISTS post_bookmarks (
@@ -130,6 +213,11 @@ app.use('/api/link-preview', linkPreviewRouter);
 app.use('/api/groups', groupsRouter);
 app.use('/api/auth', oauthRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/polls', pollsRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/reports', reportsRouter);
+app.use('/api/projects', projectsRouter);
+app.use('/api/endorsements', endorsementsRouter);
 
 // Serve React frontend (only when client/dist exists)
 const clientDist = path.join(__dirname, '../client/dist');

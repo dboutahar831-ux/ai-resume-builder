@@ -162,6 +162,15 @@ router.get('/profile/:userId', auth, async (req, res) => {
     result.rows[0].blocked = blockCheck.rows[0].blocked;
     result.rows[0].blocked_by_them = blockCheck.rows[0].blocked_by_them;
 
+    // Track profile view (don't await, fire-and-forget)
+    if (req.user.id !== parseInt(req.params.userId)) {
+      pool.query(
+        `INSERT INTO profile_views (profile_user_id, viewer_id, viewed_at) VALUES ($1,$2,NOW())
+         ON CONFLICT (profile_user_id, viewer_id) DO UPDATE SET viewed_at=NOW()`,
+        [req.params.userId, req.user.id]
+      ).catch(() => {});
+    }
+
     res.json(result.rows[0]);
   } catch { res.status(500).json({ error: 'Failed to load profile.' }); }
 });

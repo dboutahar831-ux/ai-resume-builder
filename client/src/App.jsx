@@ -21,6 +21,8 @@ const Bookmarks = lazy(() => import('./pages/Bookmarks'));
 const PostDetail = lazy(() => import('./pages/PostDetail'));
 const PublicResume = lazy(() => import('./pages/PublicResume'));
 const Admin = lazy(() => import('./pages/Admin'));
+const Explore = lazy(() => import('./pages/Explore'));
+const Analytics = lazy(() => import('./pages/Analytics'));
 
 function Loader() {
   return (
@@ -80,6 +82,8 @@ export default function App() {
             <Route path="/bookmarks"               element={<PrivateRoute><Bookmarks /></PrivateRoute>} />
             <Route path="/post/:id"                element={<PrivateRoute><PostDetail /></PrivateRoute>} />
             <Route path="/admin"                   element={<PrivateRoute><Admin /></PrivateRoute>} />
+            <Route path="/explore"                 element={<PrivateRoute><Explore /></PrivateRoute>} />
+            <Route path="/analytics"               element={<PrivateRoute><Analytics /></PrivateRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
