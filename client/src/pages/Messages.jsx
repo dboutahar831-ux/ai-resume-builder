@@ -936,11 +936,11 @@ export default function Messages() {
                 <div key={msg.id}>
                   {showTime && (
                     <div className="flex items-center gap-3 my-4">
-                      <div className="flex-1 h-px bg-gray-200" />
-                      <p className="text-[11px] text-gray-400 font-medium">
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-[#2A2A2A]" />
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 font-medium">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
-                      <div className="flex-1 h-px bg-gray-200" />
+                      <div className="flex-1 h-px bg-gray-200 dark:bg-[#2A2A2A]" />
                     </div>
                   )}
                   <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-1 group`}>
@@ -1236,11 +1236,13 @@ export default function Messages() {
                       )}
                     </div>
                   )}
-                  <button onClick={() => fileRef.current?.click()}
-                    className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all flex-shrink-0 mb-0.5"
-                    title="Send image">
-                    <Image size={18} />
-                  </button>
+                  {!activeGroup && (
+                    <button onClick={() => fileRef.current?.click()}
+                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all flex-shrink-0 mb-0.5"
+                      title="Send image">
+                      <Image size={18} />
+                    </button>
+                  )}
 
                   {!activeGroup && !pendingVoice && (
                     <button onClick={startRecording}
@@ -1262,7 +1264,7 @@ export default function Messages() {
                   />
 
                   <button onClick={activeGroup ? sendGroupMessage : sendMessage}
-                    disabled={(!input.trim() && !msgImage && !pendingVoice && !replyTo && !showStickers) || sending || groupSending}
+                    disabled={(!input.trim() && !msgImage && !pendingVoice && !replyTo) || sending || groupSending}
                     className="w-10 h-10 text-white rounded-xl flex items-center justify-center hover:opacity-90 hover:shadow-md transition-all disabled:opacity-40 flex-shrink-0 mb-0.5 shadow-sm"
                     style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
                     <Send size={16} />
@@ -1372,10 +1374,10 @@ export default function Messages() {
                   const socket = socketRef.current;
                   if (socket?.connected) {
                     socket.emit('conversation:clear', { targetUserId: confirmDelete.userId }, (res) => {
-                      if (res?.ok) setMessages([]);
+                      if (res?.ok) { setMessages([]); loadConversations().catch(() => {}); }
                     });
                   } else {
-                    api.delete(`/messages/conversation/${confirmDelete.userId}`).then(() => setMessages([])).catch(() => {});
+                    api.delete(`/messages/conversation/${confirmDelete.userId}`).then(() => { setMessages([]); loadConversations().catch(() => {}); }).catch(() => {});
                   }
                   setConfirmDelete(null);
                 }}

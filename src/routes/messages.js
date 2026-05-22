@@ -209,8 +209,8 @@ router.post('/:userId', auth, async (req, res) => {
     }
     res.json({
       ...msg,
-      image_url: msg.image_url ? `/api/messages/img/${msg.id}` : null,
-      voice_url: msg.voice_url ? `/api/messages/voice/${msg.id}` : null,
+      image_url: msg.image_url || null,
+      voice_url: msg.voice_url || null,
       sender_name: sender.rows[0]?.name || 'Unknown',
       sender_avatar: sender.rows[0]?.avatar || null,
       reply_to: reply_preview,
