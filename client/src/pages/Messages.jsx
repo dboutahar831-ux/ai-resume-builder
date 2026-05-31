@@ -141,6 +141,7 @@ export default function Messages() {
   const [editingGroupMsgId, setEditingGroupMsgId] = useState(null);
   const [editGroupContent, setEditGroupContent] = useState('');
 
+  const [showConvPanel, setShowConvPanel] = useState(true);
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const editInputRef = useRef(null);
@@ -694,11 +695,11 @@ export default function Messages() {
 
   return (
     <Layout>
-      <div className="-m-3 sm:-m-6 flex overflow-hidden border-0 sm:border border-gray-200 dark:border-[#2A2A2A] rounded-none sm:rounded-2xl shadow-sm bg-white dark:bg-[#111111]"
+      <div className="relative -m-3 sm:-m-6 flex overflow-hidden border-0 sm:border border-gray-200 dark:border-[#2A2A2A] rounded-none sm:rounded-2xl shadow-sm bg-white dark:bg-[#111111]"
         style={{ height: 'calc(100svh - 4.5rem)', maxHeight: 'calc(100vh - 4.5rem)' }}>
 
-        {/* Conversation list — full screen on mobile, fixed width on desktop */}
-        <div className={`${mobileView === 'chat' ? 'hidden lg:flex' : 'flex'} w-full lg:w-72 xl:w-80 border-r border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] flex-shrink-0 flex-col`}>
+        {/* MOBILE: full-screen conversation list */}
+        <div className={`${mobileView === 'chat' ? 'hidden' : 'flex'} lg:hidden w-full flex-col bg-white dark:bg-[#111111]`}>
           <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-[#2A2A2A]">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -723,9 +724,7 @@ export default function Messages() {
               )}
             </div>
           </div>
-
           <GroupsPanel onSelectGroup={handleGroupSelect} activeGroupId={activeGroup?.id} />
-
           <div className="flex-1 overflow-y-auto custom-scrollbar py-1">
             {!activeGroup && filteredConvs.length === 0 && filteredFriends.length === 0 && (
               <EmptyState
@@ -735,7 +734,6 @@ export default function Messages() {
                 action={<Link to="/friends" className="px-4 py-2 text-white text-xs font-semibold rounded-xl transition-all hover:opacity-90 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>Find friends</Link>}
               />
             )}
-
             {filteredConvs.map(c => (
               <button key={c.other_id} onClick={() => openConversation(c.other_id)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all text-left group
@@ -765,7 +763,6 @@ export default function Messages() {
                 </div>
               </button>
             ))}
-
             {filteredFriends.length > 0 && (
               <>
                 <div className="flex items-center gap-2 px-4 pt-5 pb-2">
@@ -799,7 +796,102 @@ export default function Messages() {
           </div>
         </div>
 
-        {/* Chat area — full screen on mobile, flex-1 on desktop */}
+        {/* DESKTOP: right floating conversations panel */}
+        {showConvPanel && (
+          <div className="hidden lg:flex absolute right-0 top-0 bottom-0 z-20 w-72 xl:w-80 flex-col border-l border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] shadow-2xl">
+            <div className="p-3 border-b border-gray-100 dark:border-[#2A2A2A]">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Search messages..."
+                    className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-200 dark:border-[#2A2A2A] rounded-xl bg-gray-50 dark:bg-[#1A1A1A] dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 focus:border-indigo-300 transition-all placeholder-gray-400 dark:placeholder-gray-600" />
+                  {query && (
+                    <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+                <button onClick={() => setShowConvPanel(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#222] rounded-xl transition-all flex-shrink-0">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <GroupsPanel onSelectGroup={handleGroupSelect} activeGroupId={activeGroup?.id} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar py-1">
+              {!activeGroup && filteredConvs.length === 0 && filteredFriends.length === 0 && (
+                <EmptyState
+                  icon={<MessageSquare size={24} className="text-[#6C5CE7]" />}
+                  title="No conversations yet"
+                  description="Start chatting with your friends"
+                  action={<Link to="/friends" className="px-4 py-2 text-white text-xs font-semibold rounded-xl transition-all hover:opacity-90 shadow-sm" style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>Find friends</Link>}
+                />
+              )}
+              {filteredConvs.map(c => (
+                <button key={c.other_id} onClick={() => openConversation(c.other_id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all text-left group
+                    ${activeUser?.id === c.other_id
+                      ? 'bg-indigo-50 dark:bg-indigo-900/20 shadow-sm border-r-2 border-indigo-500'
+                      : 'hover:bg-gray-50 dark:hover:bg-[#1A1A1A]'
+                    }`}>
+                  <div className="relative flex-shrink-0">
+                    <Avatar user={{ id: c.other_id, name: c.other_name, avatar: c.other_avatar }} />
+                    {c.unread > 0
+                      ? <span className="absolute -top-1 -right-1 w-4 h-4 text-white text-[10px] rounded-full flex items-center justify-center font-bold leading-none shadow-sm" style={{ background: 'linear-gradient(90deg,#6C5CE7,#BF5AF2)' }}>
+                          {c.unread > 9 ? '9+' : c.unread}
+                        </span>
+                      : <StatusDot lastSeenAt={c.other_last_seen_at} glowing={activeUser?.id === c.other_id} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className={`text-sm truncate flex items-center gap-1.5 ${c.unread > 0 ? 'font-bold text-gray-900 dark:text-gray-100' : 'font-semibold text-gray-800 dark:text-gray-200'}`}>
+                        {c.other_name}
+                        {c.unread > 0 && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />}
+                      </p>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 flex-shrink-0">{timeAgo(c.last_at)}</span>
+                    </div>
+                    <p className={`text-xs truncate mt-0.5 ${c.unread > 0 ? 'text-gray-700 dark:text-gray-300 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {c.last_sender_id === myUser.id ? 'You: ' : ''}{lastMsgPreview(c)}
+                    </p>
+                  </div>
+                </button>
+              ))}
+              {filteredFriends.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 px-4 pt-5 pb-2">
+                    <div className="flex-1 h-px bg-gray-100 dark:bg-[#2A2A2A]" />
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 font-semibold uppercase tracking-wider">Friends</p>
+                    <div className="flex-1 h-px bg-gray-100 dark:bg-[#2A2A2A]" />
+                  </div>
+                  {filteredFriends.map(f => (
+                    <button key={f.id} onClick={() => openConversation(f.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 transition-all text-left group
+                        ${activeUser?.id === f.id
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 shadow-sm border-r-2 border-indigo-500'
+                          : 'hover:bg-gray-50 dark:hover:bg-[#1A1A1A]'
+                        }`}>
+                      <div className="relative flex-shrink-0">
+                        <Avatar user={f} />
+                        <StatusDot lastSeenAt={f.last_seen_at} glowing={activeUser?.id === f.id} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{f.name}</p>
+                        {formatLastSeen(f.last_seen_at) && (
+                          <p className={`text-xs mt-0.5 ${isOnline(f.last_seen_at) ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
+                            {formatLastSeen(f.last_seen_at)}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chat area — full screen on mobile, full width on desktop */}
         <div className={`${mobileView === 'list' ? 'hidden lg:flex' : 'flex'} flex-1 flex-col min-w-0`}>
 
           {/* Chat header */}
@@ -819,6 +911,11 @@ export default function Messages() {
               <button onClick={() => setShowGroupInfo(true)}
                 className="p-1.5 text-gray-400 hover:text-[#6C5CE7] hover:bg-[#6C5CE7]/10 rounded-xl transition-all">
                 <Info size={17} />
+              </button>
+              <button onClick={() => setShowConvPanel(v => !v)}
+                className="hidden lg:flex p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"
+                title="Conversations">
+                <Search size={17} />
               </button>
             </div>
           ) : activeUser ? (
@@ -845,10 +942,20 @@ export default function Messages() {
                 title="Clear conversation">
                 <Trash size={17} />
               </button>
+              <button onClick={() => setShowConvPanel(v => !v)}
+                className="hidden lg:flex p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"
+                title="Conversations">
+                <Search size={17} />
+              </button>
             </div>
           ) : (
-            <div className="px-5 py-3.5 border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] flex-shrink-0 shadow-sm">
+            <div className="px-5 py-3.5 border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111] flex-shrink-0 shadow-sm flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-400">Select a conversation</p>
+              <button onClick={() => setShowConvPanel(v => !v)}
+                className="hidden lg:flex p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"
+                title="Conversations">
+                <Search size={17} />
+              </button>
             </div>
           )}
 
