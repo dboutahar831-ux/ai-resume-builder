@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Image, X, Send, MessageSquare, ThumbsUp,
@@ -91,7 +91,7 @@ function ReactionPicker({ myReaction, onReact }) {
       onMouseLeave={() => { timer.current = setTimeout(() => setOpen(false), 200); }}>
 
       {open && (
-        <div className="absolute bottom-10 left-0 flex items-end gap-1 bg-white border border-gray-100 rounded-2xl shadow-2xl z-30 px-3 py-2"
+        <div className="absolute bottom-10 left-0 flex items-end gap-1 bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] rounded-2xl shadow-2xl z-30 px-3 py-2"
           style={{ animation: 'popUp 0.15s cubic-bezier(0.34,1.56,0.64,1)' }}>
           {REACTIONS.map(r => (
             <button key={r.type}
@@ -99,7 +99,7 @@ function ReactionPicker({ myReaction, onReact }) {
               title={r.label}
               className={`flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all duration-150 select-none
                 hover:scale-125 active:scale-110
-                ${myReaction === r.type ? `scale-115 ${r.bg} ring-1 ${r.ring}` : 'hover:bg-gray-50'}`}>
+                ${myReaction === r.type ? `scale-115 ${r.bg} ring-1 ${r.ring}` : 'hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'}`}>
               <span className="text-2xl leading-none">{r.emoji}</span>
               <span className={`text-[10px] font-bold ${r.color}`}>{r.label}</span>
             </button>
@@ -410,12 +410,12 @@ function RepostModal({ post, onClose, onRepost }) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+      <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
         onClick={e => e.stopPropagation()}
         style={{ animation: 'popUp 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <p className="font-bold text-gray-900">Share Post</p>
-          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2A2A2A]">
+          <p className="font-bold text-gray-900 dark:text-gray-100">Share Post</p>
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#2A2A2A] rounded-lg transition-all">
             <X size={16} />
           </button>
         </div>
@@ -425,15 +425,15 @@ function RepostModal({ post, onClose, onRepost }) {
             onChange={e => setText(e.target.value)}
             placeholder="Say something about this post... (optional)"
             rows={3}
-            className="w-full text-sm text-gray-800 placeholder-gray-400 resize-none outline-none border border-gray-200 rounded-xl px-3 py-2.5 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
+            className="w-full text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 resize-none outline-none border border-gray-200 dark:border-[#2A2A2A] bg-transparent rounded-xl px-3 py-2.5 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all"
           />
-          <div className="mt-3 p-3 rounded-xl border border-gray-200 bg-gray-50 text-xs text-gray-500 truncate">
-            <span className="font-semibold text-gray-700">{post.user_name}</span>: {post.content || '📷 Photo/Video'}
+          <div className="mt-3 p-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#111111] text-xs text-gray-500 dark:text-gray-400 truncate">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">{post.user_name}</span>: {post.content || '📷 Photo/Video'}
           </div>
         </div>
         <div className="flex gap-3 px-5 pb-4">
           <button onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all">
+            className="flex-1 px-4 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2A2A2A] transition-all">
             Cancel
           </button>
           <button
@@ -479,6 +479,12 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
   const commentFileRef = useRef();
   const commentInputRef = useRef();
   const commentMention = useMention();
+  const myUser = useMemo(() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } }, []);
+  const topLevelComments = useMemo(() => comments.filter(c => !c.parent_id), [comments]);
+  const repliesByParent = useMemo(() => comments.reduce((acc, c) => {
+    if (c.parent_id) { if (!acc[c.parent_id]) acc[c.parent_id] = []; acc[c.parent_id].push(c); }
+    return acc;
+  }, {}), [comments]);
 
   const loadComments = useCallback(async () => {
     setLoadingComments(true);
@@ -509,7 +515,8 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
       setReplyingTo(null);
       commentMention.reset();
       onCommentCountChange(post.id, 1);
-    } finally { setSending(false); }
+    } catch { addToast('Failed to send comment.', 'error'); }
+    finally { setSending(false); }
   };
 
   const handleBookmark = async () => {
@@ -785,24 +792,17 @@ export default function PostCard({ post, myId, onDelete, onReact, onCommentCount
               <div className="flex justify-center py-3">
                 <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : (() => {
-              const topLevel = comments.filter(c => !c.parent_id);
-              const repliesByParent = comments.reduce((acc, c) => {
-                if (c.parent_id) { if (!acc[c.parent_id]) acc[c.parent_id] = []; acc[c.parent_id].push(c); }
-                return acc;
-              }, {});
-              return topLevel.map(c => (
-                <div key={c.id}>
-                  <CommentItem comment={c} postId={post.id} myId={myId} onDelete={handleDeleteComment} onReact={handleCommentReact} onReply={handleReply} />
-                  {repliesByParent[c.id]?.map(reply => (
-                    <CommentItem key={reply.id} comment={reply} postId={post.id} myId={myId} onDelete={handleDeleteComment} onReact={handleCommentReact} onReply={handleReply} />
-                  ))}
-                </div>
-              ));
-            })()}
+            ) : topLevelComments.map(c => (
+              <div key={c.id}>
+                <CommentItem comment={c} postId={post.id} myId={myId} onDelete={handleDeleteComment} onReact={handleCommentReact} onReply={handleReply} />
+                {repliesByParent[c.id]?.map(reply => (
+                  <CommentItem key={reply.id} comment={reply} postId={post.id} myId={myId} onDelete={handleDeleteComment} onReact={handleCommentReact} onReply={handleReply} />
+                ))}
+              </div>
+            ))}
 
             <div className="flex gap-2 items-end pt-1">
-              <Avatar user={JSON.parse(localStorage.getItem('user') || '{}')} size="sm" />
+              <Avatar user={myUser} size="sm" />
               <div className="flex-1 relative">
                 <MentionSuggestions
                   suggestions={commentMention.suggestions}

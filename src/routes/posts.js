@@ -218,8 +218,8 @@ router.post('/', auth, async (req, res) => {
         }
       }
     }
-    // Extract hashtags
-    const tags = (content || '').match(/#(\w+)/g);
+    // Extract hashtags (Unicode-aware, consistent with trending query)
+    const tags = (content || '').match(/#[A-Za-zÀ-ÿ0-9_]+/g);
     if (tags) {
       const unique = [...new Set(tags.map(t => t.slice(1).toLowerCase()))];
       for (const tag of unique) {

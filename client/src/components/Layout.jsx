@@ -86,7 +86,7 @@ function NotificationBell({ items, count, onMarkRead, onClose }) {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={handleOpen}
+      <button onClick={handleOpen} aria-label="Toggle notifications"
         className="relative p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-600 dark:hover:text-gray-300 transition-all">
         <Bell size={17} />
         {count > 0 && (
@@ -116,7 +116,7 @@ function NotificationBell({ items, count, onMarkRead, onClose }) {
                 const meta = NOTIF_META[item.icon] || NOTIF_META.msg;
                 const { Icon } = meta;
                 return (
-                  <Link key={i} to={item.link} onClick={() => { setOpen(false); onClose?.(); }}
+                  <Link key={`${item.type}-${item.link}-${i}`} to={item.link} onClick={() => { setOpen(false); onClose?.(); }}
                     className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${!item.read ? 'bg-indigo-50/40 dark:bg-indigo-900/10' : ''}`}>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${meta.bg}`}>
                       <Icon size={13} className={meta.color} />
@@ -265,7 +265,7 @@ export default function Layout({ children }) {
     setNotifItems(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 
-  const links = [
+  const links = useMemo(() => [
     { to: '/home',          icon: Home,          label: 'Home' },
     { to: '/explore',       icon: Compass,       label: 'Explore' },
     { to: '/friends',       icon: Users,         label: 'Friends',       badge: pendingReqs },
@@ -274,12 +274,12 @@ export default function Layout({ children }) {
     { to: '/search',        icon: Search,        label: 'Search' },
     { to: '/bookmarks',     icon: Bookmark,      label: 'Saved' },
     { to: '/analytics',     icon: BarChart2,     label: 'Analytics' },
-  ];
+  ], [pendingReqs, unreadMsgs, notifCount]);
 
-  const bottomLinks = [
+  const bottomLinks = useMemo(() => [
     { to: '/profile',  icon: User,     label: t.profile },
     { to: '/settings', icon: Settings, label: t.settings },
-  ];
+  ], [t.profile, t.settings]);
 
   const activeStyle = { background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' };
 

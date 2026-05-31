@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { Resend } = require('resend');
 const pool = require('../db');
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // POST /api/auth/forgot-password — request reset token
 router.post('/forgot-password', async (req, res) => {
@@ -18,8 +21,17 @@ router.post('/forgot-password', async (req, res) => {
          VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
         [email, token]
       );
-      // In production, send email with link: /reset-password?token=${token}
-      console.log(`Password reset token for ${email}: ${token}`);
+      const resetUrl = `${process.env.CLIENT_URL || 'https://nexly.onrender.com'}/reset-password?token=${token}`;
+      if (resend) {
+        await resend.emails.send({
+          from: 'Nexly <onboarding@resend.dev>',
+          to: email,
+          subject: 'Reset your Nexly password',
+          html: `<p>Hi,</p><p>You requested a password reset. Click the link below to set a new password. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can safely ignore this email.</p>`,
+        }).catch(err => console.error('[PasswordReset] Email send failed:', err.message));
+      } else {
+        console.warn('[PasswordReset] RESEND_API_KEY not set — reset link:', resetUrl);
+      }
     }
     res.json({ message: 'If that email is registered, a reset link has been sent.' });
   } catch {

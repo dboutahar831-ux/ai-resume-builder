@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Search, UserPlus, Check, X, UserCheck, Clock, MapPin } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useToast } from '../components/Toast';
 import api from '../api/axios';
 
 function Avatar({ user, size = 'md' }) {
@@ -91,6 +92,7 @@ function FriendCard({ user, onAction, myId }) {
 
 export default function Friends() {
   const myId = JSON.parse(localStorage.getItem('user') || '{}').id;
+  const addToast = useToast();
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
@@ -132,6 +134,7 @@ export default function Friends() {
   }, [query]);
 
   const handleAction = async (type, userId) => {
+    try {
     if (type === 'request') await api.post(`/friends/request/${userId}`);
     if (type === 'accept')  await api.put(`/friends/accept/${userId}`);
     if (type === 'reject')  await api.put(`/friends/reject/${userId}`);
@@ -140,6 +143,7 @@ export default function Friends() {
       const res = await api.get(`/friends/search?q=${encodeURIComponent(query)}`);
       setSearchResults(res.data);
     }
+    } catch { addToast('Action failed. Please try again.', 'error'); }
   };
 
   const tabs = [
@@ -207,9 +211,9 @@ export default function Friends() {
               </div>
             )}
             {!searching && query && searchResults.length === 0 && (
-              <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
-                <Users size={28} className="text-gray-200 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No users found for "{query}"</p>
+              <div className="text-center py-12 bg-white dark:bg-[#111111] rounded-2xl border border-gray-100 dark:border-[#2A2A2A]">
+                <Users size={28} className="text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+                <p className="text-sm text-gray-400 dark:text-gray-500">No users found for "{query}"</p>
               </div>
             )}
             {!searching && searchResults.map(u => (
@@ -222,19 +226,19 @@ export default function Friends() {
         {tab === 'requests' && (
           <div className="space-y-2">
             {requests.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
-                <Users size={28} className="text-gray-200 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No pending friend requests</p>
+              <div className="text-center py-12 bg-white dark:bg-[#111111] rounded-2xl border border-gray-100 dark:border-[#2A2A2A]">
+                <Users size={28} className="text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+                <p className="text-sm text-gray-400 dark:text-gray-500">No pending friend requests</p>
               </div>
             ) : requests.map(u => (
-              <div key={u.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
+              <div key={u.id} className="bg-white dark:bg-[#111111] rounded-2xl border border-gray-100 dark:border-[#2A2A2A] p-4 flex items-center gap-4">
                 <Link to={`/friends/${u.id}`} className="relative flex-shrink-0">
                   <Avatar user={u} size="lg" />
                   <StatusDot lastSeenAt={u.last_seen_at} />
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link to={`/friends/${u.id}`} className="font-semibold text-gray-900 text-sm hover:text-indigo-600">{u.name}</Link>
-                  <p className="text-xs text-gray-400">Sent you a friend request</p>
+                  <Link to={`/friends/${u.id}`} className="font-semibold text-gray-900 dark:text-gray-100 text-sm hover:text-indigo-600">{u.name}</Link>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Sent you a friend request</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleAction('accept', u.id)}

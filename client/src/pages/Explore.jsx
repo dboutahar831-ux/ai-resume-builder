@@ -74,7 +74,7 @@ export default function Explore() {
     try {
       await api.post(`/friends/request/${id}`);
       setAddedIds(prev => new Set([...prev, id]));
-    } catch {}
+    } catch { addToast('Failed to send request.', 'error'); }
   };
 
   return (

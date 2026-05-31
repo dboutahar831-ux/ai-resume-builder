@@ -2,10 +2,18 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 
+const PRIVATE_IP = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.|::1|fc00:|fd)/i;
+
 // POST /api/link-preview — fetch Open Graph metadata from a URL
 router.post('/', auth, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL is required.' });
+  let parsed;
+  try { parsed = new URL(url); } catch { return res.status(400).json({ error: 'Invalid URL.' }); }
+  if (!['http:', 'https:'].includes(parsed.protocol))
+    return res.status(400).json({ error: 'Only http/https URLs are allowed.' });
+  if (PRIVATE_IP.test(parsed.hostname))
+    return res.status(400).json({ error: 'Private/internal URLs are not allowed.' });
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
