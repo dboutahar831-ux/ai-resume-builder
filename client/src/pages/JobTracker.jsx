@@ -102,7 +102,9 @@ export default function JobTracker() {
       const now = Date.now();
       const msInDay = 86400000;
       result = result.filter(j => {
+        if (!j.applied_at) return false;
         const applied = new Date(j.applied_at).getTime();
+        if (isNaN(applied)) return false;
         if (dateRange === 'week') return now - applied < 7 * msInDay;
         if (dateRange === 'month') return now - applied < 30 * msInDay;
         if (dateRange === 'quarter') return now - applied < 90 * msInDay;

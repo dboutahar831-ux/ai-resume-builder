@@ -20,12 +20,16 @@ export default function ResumeForm() {
   useEffect(() => {
     if (isEdit) {
       api.get(`/resumes/${id}`).then((res) => {
-        setForm({
-          personal_info: res.data.personal_info,
-          experience: res.data.experience,
-          education: res.data.education,
-          skills: res.data.skills,
-        });
+        if (res.data) {
+          setForm({
+            personal_info: res.data.personal_info || empty.personal_info,
+            experience: res.data.experience || empty.experience,
+            education: res.data.education || empty.education,
+            skills: res.data.skills || empty.skills,
+          });
+        }
+      }).catch((err) => {
+        setError(err.response?.data?.error || 'Failed to load resume data.');
       });
     }
   }, [id]);

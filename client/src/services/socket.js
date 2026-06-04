@@ -25,9 +25,15 @@ export function getSocket() {
 
     socket.on('disconnect', (reason) => {
       if (reason === 'io server disconnect') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // Server closed the connection — attempt reconnection before logging out
+        socket.io.on('reconnect_attempt', (attempt) => {
+          if (attempt >= socket.io.reconnectionAttempts()) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+          }
+        });
+        socket.connect();
       }
     });
   }

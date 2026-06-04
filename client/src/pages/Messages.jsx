@@ -321,7 +321,7 @@ export default function Messages() {
         setMsgOffset(res.data.length);
         setHasMoreMsgs(res.data.length >= 50);
       }
-    } catch {}
+    } catch { addToast('Failed to load messages. Please try again.', 'error'); }
   }, []);
 
   const loadOlderMessages = useCallback(async () => {
@@ -335,7 +335,7 @@ export default function Messages() {
         setMsgOffset(prev => prev + res.data.length);
         setHasMoreMsgs(res.data.length >= 50);
       }
-    } catch {} finally { setLoadingOlder(false); }
+    } catch { addToast('Failed to load older messages.', 'error'); } finally { setLoadingOlder(false); }
   }, [msgOffset, hasMoreMsgs, loadingOlder]);
 
   useEffect(() => {
@@ -368,13 +368,27 @@ export default function Messages() {
     if (isTyping) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [isTyping]);
 
-  useEffect(() => {
+  const markMessagesRead = useCallback(() => {
     if (!activeUser?.id) return;
     const socket = socketRef.current;
     if (socket?.connected) {
       socket.emit('messages:read', { fromUserId: activeUser.id });
     }
-  }, [activeUser?.id, messages.length]);
+  }, [activeUser?.id]);
+
+  useEffect(() => {
+    markMessagesRead();
+  }, [markMessagesRead]);
+
+  // Scroll-based read: mark as read when user scrolls to bottom
+  const chatContainerRef = useRef(null);
+  const handleChatScroll = useCallback(() => {
+    const el = chatContainerRef.current;
+    if (!el || !activeUser?.id) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+      markMessagesRead();
+    }
+  }, [markMessagesRead, activeUser?.id]);
 
   const openConversation = async (userId) => {
     prevMsgCountRef.current = 0;
@@ -960,7 +974,7 @@ export default function Messages() {
           )}
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto bg-gray-50/80 dark:bg-[#0A0A0A]">
+          <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto bg-gray-50/80 dark:bg-[#0A0A0A]">
 
             {/* Empty states — centered in full height */}
             {!activeUser && !activeGroup && (

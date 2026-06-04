@@ -63,13 +63,22 @@ export default function SearchPage() {
     } catch { addToast('Failed to send request.', 'error'); setActionStates(p => ({ ...p, [userId]: null })); }
   };
 
+  const acceptRequest = async (userId) => {
+    setActionStates(p => ({ ...p, [userId]: 'loading' }));
+    try {
+      await api.put(`/friends/accept/${userId}`);
+      setActionStates(p => ({ ...p, [userId]: 'accepted' }));
+      addToast('Friend request accepted!', 'success');
+    } catch { addToast('Failed to accept request.', 'error'); setActionStates(p => ({ ...p, [userId]: null })); }
+  };
+
   const getFriendshipLabel = (user) => {
     const state = actionStates[user.id];
-    if (state === 'sent') return { label: 'Requested', icon: <Clock size={13} />, cls: 'text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-default' };
+    if (state === 'sent' || state === 'accepted') return { label: state === 'sent' ? 'Requested' : 'Friends', icon: <Check size={13} />, cls: 'text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-default' };
     if (state === 'loading') return { label: '…', icon: null, cls: 'text-gray-400 bg-gray-100 cursor-default' };
     if (user.friendship_status === 'accepted') return null; // already friends — show profile link only
     if (user.friendship_status === 'pending' && user.requester_id !== Number(JSON.parse(localStorage.getItem('user') || '{}').id))
-      return { label: 'Respond', icon: <Check size={13} />, cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', onClick: () => {} };
+      return { label: 'Accept', icon: <Check size={13} />, cls: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30', onClick: () => acceptRequest(user.id) };
     if (user.friendship_status === 'pending')
       return { label: 'Requested', icon: <Clock size={13} />, cls: 'text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-default' };
     return { label: 'Add Friend', icon: <UserPlus size={13} />, cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30', onClick: () => sendRequest(user.id) };

@@ -29,7 +29,7 @@ function printResume(form) {
     </div>`).join('');
 
   const win = window.open('', '_blank');
-  if (!win) { /* will be handled by caller */ return; }
+  if (!win) return false;
 
   win.document.write(`<!DOCTYPE html><html><head>
     <title>${esc(p.full_name) || 'Resume'}</title>
@@ -70,6 +70,7 @@ function printResume(form) {
   win.document.close();
   win.focus();
   setTimeout(() => { win.print(); win.close(); }, 400);
+  return true;
 }
 
 // ─── Strength score ───────────────────────────────────────────────────────────
@@ -255,7 +256,7 @@ export default function ResumeBuilder() {
               style={{ background: 'linear-gradient(90deg,#2EC4B6,#6C5CE7,#BF5AF2)' }}>
               <Sparkles size={14} />Generate with AI
             </button>
-            <button onClick={() => { if (!window.open('', '_blank')) { addToast('Please allow popups to export PDF.', 'warning'); return; } printResume(form); }}
+            <button onClick={() => { if (!printResume(form)) addToast('Please allow popups to export PDF.', 'warning'); }}
               className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all">
               <Download size={14} />Export PDF
             </button>
@@ -524,7 +525,7 @@ export default function ResumeBuilder() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col">
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/60">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Live Preview</p>
-              <button onClick={() => { if (!window.open('', '_blank')) { addToast('Please allow popups to export PDF.', 'warning'); return; } printResume(form); }}
+              <button onClick={() => { if (!printResume(form)) addToast('Please allow popups to export PDF.', 'warning'); }}
                 className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800">
                 <Download size={12} />Export PDF
               </button>
