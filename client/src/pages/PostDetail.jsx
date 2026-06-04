@@ -36,7 +36,7 @@ export default function PostDetail() {
       const newCount = prev === type ? prevCount - 1 : prev ? prevCount : prevCount + 1;
       return { ...p, my_reaction: newType, reactions_count: newCount };
     });
-    api.post(`/posts/${postId}/react`, { type }).catch(() => {});
+    api.post(`/posts/${postId}/react`, { type }).catch(err => console.error('Failed to react:', err));
   };
 
   const handleRepost = async (postId, repost_text) => {

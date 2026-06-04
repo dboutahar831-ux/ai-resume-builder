@@ -52,7 +52,7 @@ export default function Login() {
 
   // Check OAuth availability
   useEffect(() => {
-    api.get('/auth/oauth/status').then(r => setOauthStatus(r.data)).catch(() => {});
+    api.get('/auth/oauth/status').then(r => setOauthStatus(r.data)).catch(err => console.error('Failed to check OAuth status:', err));
   }, []);
 
   const handleSubmit = async (e) => {

@@ -67,7 +67,7 @@ export default function Explore() {
       const delta = prev2 === type ? -1 : prev2 ? 0 : 1;
       return { ...p, my_reaction: newType, reactions_count: (p.reactions_count || 0) + delta };
     }));
-    api.post(`/posts/${postId}/react`, { type }).catch(() => {});
+    api.post(`/posts/${postId}/react`, { type }).catch(err => console.error('Failed to react:', err));
   };
 
   const handleAddFriend = async (id) => {

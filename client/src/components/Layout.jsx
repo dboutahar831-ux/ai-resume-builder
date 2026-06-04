@@ -261,7 +261,7 @@ export default function Layout({ children }) {
   const notifCount = notifItems.filter(n => !n.read).length;
 
   const markAllRead = useCallback(() => {
-    api.put('/notifications/read-all').catch(() => {});
+    api.put('/notifications/read-all').catch(err => console.error('Failed to mark all notifications read:', err));
     setNotifItems(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 

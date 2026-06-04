@@ -15,7 +15,7 @@ import api from '../api/axios';
 import { compressImage } from '../utils/imageUtils';
 import PostCard, { Avatar, timeAgo, isOnline } from '../components/PostCard';
 
-const FALLBACK_TOPICS = ['#JobSearchAI', '#ResumeTips', '#CareerGrowth', '#InterviewPrep', '#TechJobs', '#HiringNow', '#CareerAdvice', '#LinkedInTips'];
+const FALLBACK_TOPICS = [];
 
 function ScheduleModal({ onClose, onSchedule }) {
   const [dt, setDt] = useState('');
@@ -104,6 +104,7 @@ export default function Home() {
   const searchRef = useRef();
   const searchTimerRef = useRef();
   const linkPreviewTimerRef = useRef();
+  const loadingMoreRef = useRef(false);
   const postMention = useMention();
 
   // Poll composer state
@@ -118,7 +119,8 @@ export default function Home() {
   const addToast = useToast();
 
   const loadMore = useCallback(async (offset) => {
-    if (loadingMore) return;
+    if (loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const res = await api.get(`/posts/feed?offset=${offset}`);
@@ -129,8 +131,8 @@ export default function Home() {
         return [...prev, ...newPosts.filter(p => !existingIds.has(p.id))];
       });
       setFeedOffset(offset + newPosts.length);
-    } catch {} finally { setLoadingMore(false); }
-  }, [loadingMore]);
+    } catch { console.error('Failed to load more posts'); } finally { loadingMoreRef.current = false; setLoadingMore(false); }
+  }, []);
 
   const load = useCallback(async () => {
     api.get('/posts/feed?offset=0')
@@ -139,7 +141,7 @@ export default function Home() {
         setFeedOffset(res.data.length);
         setHasMore(res.data.length >= 20);
       })
-      .catch(() => {})
+      .catch(err => console.error('Failed to load feed:', err))
       .finally(() => setLoading(false));
 
     Promise.all([
@@ -148,17 +150,17 @@ export default function Home() {
     ]).then(([f, u]) => {
       setStats({ friends: f.data.length, unread: u.data.count });
       setFriends(f.data.slice(0, 7));
-    }).catch(() => {});
-    api.get('/friends/requests').then(r => setFriendRequests(r.data)).catch(() => {});
+    }).catch(err => console.error('Failed to load friends/unread:', err));
+    api.get('/friends/requests').then(r => setFriendRequests(r.data)).catch(err => console.error('Failed to load friend requests:', err));
     api.get('/notifications').then(r => {
       const data = Array.isArray(r.data) ? r.data : [];
       setNotifications(data);
       setNotifCount(data.filter(n => !n.read_at).length);
-    }).catch(() => {});
-    api.get('/friends/suggestions').then(r => setSuggestions(r.data)).catch(() => {});
-    api.get('/messages/conversations').then(r => setConversations(r.data)).catch(() => {});
-    api.get('/posts/trending').then(r => { if (r.data.length > 0) setTrendingTopics(r.data); }).catch(() => {});
-    api.get('/auth/profile').then(r => { if (r.data.cover_image) setCoverImage(r.data.cover_image); }).catch(() => {});
+    }).catch(err => console.error('Failed to load notifications:', err));
+    api.get('/friends/suggestions').then(r => setSuggestions(r.data)).catch(err => console.error('Failed to load suggestions:', err));
+    api.get('/messages/conversations').then(r => setConversations(r.data)).catch(err => console.error('Failed to load conversations:', err));
+    api.get('/posts/trending').then(r => { if (r.data.length > 0) setTrendingTopics(r.data); }).catch(err => console.error('Failed to load trending:', err));
+    api.get('/auth/profile').then(r => { if (r.data.cover_image) setCoverImage(r.data.cover_image); }).catch(err => console.error('Failed to load profile:', err));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -194,7 +196,7 @@ export default function Home() {
   }, []);
 
   const markAllRead = async () => {
-    try { await api.put('/notifications/read-all'); } catch {}
+    try { await api.put('/notifications/read-all'); } catch (err) { console.error('Failed to mark notifications read:', err); }
     setNotifCount(0);
   };
 
@@ -204,14 +206,14 @@ export default function Home() {
       setFriendRequests(prev => prev.filter(f => f.id !== userId));
       setStats(prev => ({ ...prev, friends: prev.friends + 1 }));
       addToast('Friend request accepted!', 'success');
-    } catch { addToast('Failed to accept request.', 'error'); }
+    } catch (err) { console.error('Failed to accept friend request:', err); addToast('Failed to accept request.', 'error'); }
   };
 
   const sendRequest = async (userId) => {
     try {
       await api.post(`/friends/request/${userId}`);
       setAddedIds(prev => new Set([...prev, userId]));
-    } catch {}
+    } catch (err) { console.error('Failed to send friend request:', err); }
   };
 
   const aiEnhance = async () => {
@@ -272,12 +274,13 @@ export default function Home() {
 
   const handlePostImage = async (e) => {
     const file = e.target.files[0];
-    if (!file || file.size > 10 * 1024 * 1024) return;
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { addToast('Image must be under 10MB.', 'warning'); return; }
     e.target.value = '';
     try {
       const compressed = await compressImage(file);
       setPostImage(compressed); setPostVideo('');
-    } catch { addToast('Failed to process image.', 'error'); }
+    } catch (err) { console.error('Failed to process image:', err); addToast('Failed to process image.', 'error'); }
   };
 
   const handlePostVideo = (e) => {
@@ -407,174 +410,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Far-right floating panel removed */}
-      {false && <div className="hidden">
-        <div className="relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl bg-white/40 backdrop-blur-sm border border-gray-100/30 shadow-lg">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/0 via-white/20 to-white/0 pointer-events-none dark:hidden" />
-
-        {/* Live Clock */}
-        <div className="relative group">
-          <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-indigo-400/30 via-purple-400/30 to-teal-400/30 opacity-0 group-hover:opacity-100 blur-sm transition-all duration-500" />
-          <div className="relative bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] px-3 py-2 shadow-sm group-hover:shadow-md transition-all cursor-default min-w-[60px] text-center">
-            <div className="text-[18px] font-bold tracking-wider text-gray-900 dark:text-gray-100 leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {currentTime.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}
-            </div>
-            <div className="text-[7px] font-semibold text-indigo-500 uppercase tracking-widest leading-tight mt-0.5">
-              {currentTime.toLocaleTimeString('en',{second:'2-digit'})}
-            </div>
-          </div>
-        </div>
-
-        {/* Date */}
-        <div className="relative date-far-btn">
-          <button onClick={() => setDateOpen(o => !o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-2.5 py-2 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer min-w-[46px]">
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{new Date().toLocaleDateString('en',{month:'short'})}</span>
-            <span className="text-base font-bold text-gray-800 leading-none mt-px">{new Date().getDate()}</span>
-            <span className="text-[6px] font-semibold text-gray-400 mt-0.5">{new Date().toLocaleDateString('en',{weekday:'short'})}</span>
-          </button>
-          {dateOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-100 dark:border-[#2A2A2A] shadow-xl z-50 w-52 overflow-hidden date-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="p-3 text-center">
-                <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString('en',{weekday:'long',month:'long',day:'numeric'})}</p>
-                <div className="grid grid-cols-7 gap-0.5 mt-3 text-[9px]">
-                  {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => <span key={d} className="font-bold text-gray-400 py-1">{d}</span>)}
-                  {Array.from({length:35},(_,i)=>{const d=i-2;return<span key={i} className={`py-1 rounded-md ${d<1||d>30?'text-gray-200':'text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition-colors'} ${d===new Date().getDate()?'bg-indigo-100 text-indigo-700 font-bold':''}`}>{d>0&&d<31?d:''}</span>})}
-                </div>
-              </div>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#6C5CE7)' }} />
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#6C5CE7)' }} />
-
-        {/* Streak */}
-        <div className="relative streak-far-btn" style={{ animation: 'subtle-float 4s ease-in-out infinite', animationDelay: '0.5s' }}>
-          <button onClick={() => setStreakOpen(o => !o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-amber-200 transition-all cursor-pointer">
-            <span className="text-xl">🔥</span>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">0</span>
-          </button>
-          {streakOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-48 overflow-hidden streak-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="p-4 text-center">
-                <p className="text-[11px] font-bold text-gray-900 mb-2">🔥 Activity</p>
-                <p className="text-[9px] text-gray-400">Start posting to build your streak!</p>
-              </div>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        {/* Tasks */}
-        <div className="relative tasks-far-btn" style={{ animation: 'subtle-float 4s ease-in-out infinite', animationDelay: '2s' }}>
-          <button onClick={() => setTasksOpen(o => !o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-emerald-500"><path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">Tasks</span>
-          </button>
-          {tasksOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden tasks-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2.5 border-b border-gray-50"><p className="text-[11px] font-bold text-gray-900">Today's Tasks</p></div>
-              <div className="p-4 text-center">
-                <p className="text-[9px] text-gray-400">No tasks yet. Stay productive!</p>
-              </div>
-              <Link to="/dashboard" onClick={() => setTasksOpen(false)} className="block w-full px-3 py-2 text-[10px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Go to Dashboard →</Link>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#2EC4B6)' }} />
-
-        {/* Notifications */}
-        <div className="relative notif-far-btn" style={{ animation: 'subtle-float 4s ease-in-out infinite', animationDelay: '1s' }}>
-          <button onClick={() => setNotifOpen(o=>!o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-indigo-500"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">{notifCount} new</span>
-          </button>
-          {notifCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full shadow-sm" />}
-          {notifOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden notif-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Notifications</p>{notifCount > 0 && <span className="text-[8px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded-full font-semibold">{notifCount}</span>}</div>
-              {notifications.length === 0 ? (
-                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No notifications yet</p></div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {notifications.slice(0, 5).map((n,i)=><div key={n.id||i} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer"><span className="text-sm">{n.icon||'🔔'}</span><div className="flex-1 min-w-0"><p className="text-[9px] text-gray-700 truncate">{n.content||n.message||n.text||'New notification'}</p><p className="text-[7px] text-gray-400">{timeAgo(n.created_at)}</p></div></div>)}
-                </div>
-              )}
-              {notifCount > 0 && <button onClick={markAllRead} className="w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Mark all read</button>}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        <div className="w-[2px] h-4 rounded-full" style={{ background: 'linear-gradient(180deg,transparent,#BF5AF2)' }} />
-
-        {/* Messages */}
-        <div className="relative msg-far-btn">
-          <button onClick={() => setMsgOpen(o=>!o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-blue-500"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">Chats</span>
-          </button>
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full shadow-sm" />
-          {msgOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden msg-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Messages</p>{stats.unread > 0 && <span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{stats.unread} unread</span>}</div>
-              {conversations.length === 0 ? (
-                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No recent messages</p></div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {conversations.slice(0, 5).map((c,i)=><div key={c.other_id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">{c.other_name?.[0]||'?'}</div>
-                    <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800 truncate">{c.other_name}</p><p className="text-[7px] text-gray-400 truncate">{c.has_image ? '📷 Photo' : c.has_voice ? '🎤 Voice' : c.last_message||'No messages yet'}</p></div>
-                    {Number(c.unread) > 0 && <span className="text-[8px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded-full font-semibold">{c.unread}</span>}
-                  </div>)}
-                </div>
-              )}
-              <Link to="/messages" onClick={() => setMsgOpen(false)} className="block w-full px-3 py-1.5 text-[9px] text-indigo-600 font-semibold hover:bg-indigo-50 transition-colors text-center">Open Messages →</Link>
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-        {/* Friends */}
-        <div className="relative friends-far-btn">
-          <button onClick={() => setFriendsOpen(o=>!o)}
-            className="flex flex-col items-center bg-white/80 backdrop-blur-sm border border-gray-100/50 rounded-xl px-3 py-2 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-emerald-500"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className="text-[8px] font-bold text-gray-400 mt-px">Friends</span>
-          </button>
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full shadow-sm" />
-          {friendsOpen && (
-            <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-white rounded-xl border border-gray-100 shadow-xl z-50 w-52 overflow-hidden friends-far-dropdown" style={{animation:'fadeInUp 0.15s ease'}}>
-              <div className="px-3 py-2 border-b border-gray-50 flex items-center justify-between"><p className="text-[11px] font-bold text-gray-900">Friend Requests</p><span className="text-[8px] bg-emerald-50 text-emerald-500 px-1.5 py-0.5 rounded-full font-semibold">{friendRequests.length} new</span></div>
-              {friendRequests.length === 0 ? (
-                <div className="p-4 text-center"><p className="text-[9px] text-gray-400">No pending requests</p></div>
-              ) : (
-              <div className="divide-y divide-gray-50">
-                {friendRequests.map((f,i)=><div key={f.id||i} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-[9px] flex-shrink-0">{f.name?.[0]||'?'}</div>
-                  <div className="flex-1 min-w-0"><p className="text-[9px] font-semibold text-gray-800">{f.name}</p></div>
-                  <button onClick={() => acceptFriendReq(f.id)} className="text-[9px] bg-indigo-50 text-indigo-600 font-semibold px-2 py-0.5 rounded-lg hover:bg-indigo-100 transition-colors">Accept</button>
-                </div>)}
-              </div>
-              )}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full border-y-4 border-l-4 border-y-transparent border-l-white" />
-            </div>
-          )}
-        </div>
-
-
-
-        </div>
-      </div>}
+      {/* Far-right floating panel — removed */}
 
 
 

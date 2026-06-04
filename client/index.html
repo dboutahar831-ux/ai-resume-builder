@@ -7,7 +7,9 @@
     <title>Nexly</title>
     <script>
       (function(){
-        document.documentElement.classList.remove('dark');
+        var dark = localStorage.getItem('dark') === 'true';
+        if (dark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
       })();
     </script>
   </head>
