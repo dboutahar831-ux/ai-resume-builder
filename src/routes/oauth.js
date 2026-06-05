@@ -9,7 +9,6 @@ const pool = require('../db');
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 
-// Serialize / Deserialize
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
@@ -18,13 +17,12 @@ passport.deserializeUser(async (id, done) => {
   } catch { done(null, null); }
 });
 
-// ─── Google Strategy ──────────────────────────────────────────────
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
-  }, async (accessToken, refreshToken, profile, done) => {
+  }, async (_accessToken, _refreshToken, profile, done) => {
     try {
       const email = profile.emails?.[0]?.value;
       if (!email) return done(null, false, { message: 'No email from Google.' });
@@ -40,14 +38,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   }));
 }
 
-// ─── LinkedIn Strategy ────────────────────────────────────────────
 if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
   passport.use(new LinkedInStrategy({
     clientID: process.env.LINKEDIN_CLIENT_ID,
     clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
     callbackURL: process.env.LINKEDIN_CALLBACK_URL || '/api/auth/linkedin/callback',
     scope: ['openid', 'profile', 'email'],
-  }, async (accessToken, refreshToken, profile, done) => {
+  }, async (_accessToken, _refreshToken, profile, done) => {
     try {
       const email = profile.emails?.[0]?.value || profile.email;
       if (!email) return done(null, false, { message: 'No email from LinkedIn.' });
@@ -64,30 +61,33 @@ if (process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET) {
   }));
 }
 
-// ─── Routes ───────────────────────────────────────────────────────
-
-// GET /api/auth/google — start Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 
-// GET /api/auth/google/callback — Google callback
 router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/login' }), (req, res) => {
   const token = jwt.sign({ id: req.user.id }, JWT_SECRET, { expiresIn: '30d' });
-  const user = encodeURIComponent(JSON.stringify({ id: req.user.id, name: req.user.name, email: req.user.email, avatar: req.user.avatar }));
-  res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?token=${token}&user=${user}`);
+  const safeUser = JSON.stringify({ id: req.user.id, name: req.user.name, email: req.user.email, avatar: req.user.avatar });
+  const encoded = encodeURIComponent(safeUser);
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const redirectUrl = new URL('/login', clientUrl);
+  redirectUrl.searchParams.set('token', token);
+  redirectUrl.searchParams.set('user', encoded);
+  res.redirect(redirectUrl.toString());
 });
 
-// GET /api/auth/linkedin — start LinkedIn OAuth
 router.get('/linkedin', passport.authenticate('linkedin', { state: true, session: false }));
 
-// GET /api/auth/linkedin/callback — LinkedIn callback
 router.get('/linkedin/callback', passport.authenticate('linkedin', { session: false, failureRedirect: '/login' }), (req, res) => {
   const token = jwt.sign({ id: req.user.id }, JWT_SECRET, { expiresIn: '30d' });
-  const user = encodeURIComponent(JSON.stringify({ id: req.user.id, name: req.user.name, email: req.user.email, avatar: req.user.avatar }));
-  res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?token=${token}&user=${user}`);
+  const safeUser = JSON.stringify({ id: req.user.id, name: req.user.name, email: req.user.email, avatar: req.user.avatar });
+  const encoded = encodeURIComponent(safeUser);
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const redirectUrl = new URL('/login', clientUrl);
+  redirectUrl.searchParams.set('token', token);
+  redirectUrl.searchParams.set('user', encoded);
+  res.redirect(redirectUrl.toString());
 });
 
-// GET /api/auth/oauth/status — check if OAuth is configured
-router.get('/oauth/status', (req, res) => {
+router.get('/oauth/status', (_req, res) => {
   res.json({
     google: !!process.env.GOOGLE_CLIENT_ID,
     linkedin: !!process.env.LINKEDIN_CLIENT_ID,

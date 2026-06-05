@@ -2,7 +2,7 @@
 .env
 .env.local
 .env.production
-.env.example
+.env.*.local
 
 # Dependencies
 node_modules/
@@ -13,29 +13,35 @@ client/dist/
 
 # Logs
 *.log
-server.log
-server-err.log
-client/vite.log
-client/vite-err.log
+server*.log
+client/*.log
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Deployment folders
-.vercel
-.netlify
+.vercel/
+.netlify/
 
 # IDE
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Local machine config
-.claude/settings.local.json
+.claude/
 
 # Misc
 ads/
-
-.env*.local
+tmp/
+temp/
+*.tsbuildinfo

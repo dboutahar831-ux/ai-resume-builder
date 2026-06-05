@@ -5,7 +5,12 @@ const helmet = require('helmet');
 const passport = require('passport');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 const pool = require('./db');
+const runMigrations = require('./migrate');
+const errorHandler = require('./middleware/errorHandler');
+const { sanitizeBody } = require('./middleware/validate');
+
 const resumesRouter = require('./routes/resumes');
 const authRouter = require('./routes/auth');
 const jobsRouter = require('./routes/jobs');
@@ -15,143 +20,42 @@ const messagesRouter = require('./routes/messages');
 const coverLettersRouter = require('./routes/coverLetters');
 const postsRouter = require('./routes/posts');
 const notificationsRouter = require('./routes/notifications');
-const storiesRouter    = require('./routes/stories');
+const storiesRouter = require('./routes/stories');
 const highlightsRouter = require('./routes/highlights');
-const notesRouter      = require('./routes/notes');
+const notesRouter = require('./routes/notes');
 const passwordResetRouter = require('./routes/passwordReset');
-const hashtagsRouter   = require('./routes/hashtags');
+const hashtagsRouter = require('./routes/hashtags');
 const linkPreviewRouter = require('./routes/linkPreview');
-const groupsRouter     = require('./routes/groups');
-const oauthRouter      = require('./routes/oauth');
-const adminRouter      = require('./routes/admin');
-const pollsRouter      = require('./routes/polls');
-const analyticsRouter  = require('./routes/analytics');
-const reportsRouter    = require('./routes/reports');
-const projectsRouter   = require('./routes/projects');
+const groupsRouter = require('./routes/groups');
+const oauthRouter = require('./routes/oauth');
+const adminRouter = require('./routes/admin');
+const pollsRouter = require('./routes/polls');
+const analyticsRouter = require('./routes/analytics');
+const reportsRouter = require('./routes/reports');
+const projectsRouter = require('./routes/projects');
 const endorsementsRouter = require('./routes/endorsements');
 
 const app = express();
 
-// Run DB migrations idempotently on every cold start
-pool.query(`
-  ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
-  ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
-  ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_for_sender BOOLEAN NOT NULL DEFAULT FALSE;
-  ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_for_receiver BOOLEAN NOT NULL DEFAULT FALSE
-`).catch(err => console.error('[Migration] messages columns:', err.message));
-
-pool.query(`
-  ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited BOOLEAN NOT NULL DEFAULT FALSE;
-  ALTER TABLE posts ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
-  ALTER TABLE posts ADD COLUMN IF NOT EXISTS link_metadata JSONB
-`).catch(err => console.error('[Migration] posts columns:', err.message));
-
-pool.query(`
-  CREATE TABLE IF NOT EXISTS polls (
-    id         SERIAL PRIMARY KEY,
-    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-    question   TEXT NOT NULL,
-    ends_at    TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(post_id)
-  );
-  CREATE TABLE IF NOT EXISTS poll_options (
-    id      SERIAL PRIMARY KEY,
-    poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
-    text    TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS poll_votes (
-    id        SERIAL PRIMARY KEY,
-    poll_id   INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
-    option_id INTEGER NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
-    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(poll_id, user_id)
-  )
-`).catch(err => console.error('[Migration] polls:', err.message));
-
-pool.query(`
-  CREATE TABLE IF NOT EXISTS profile_views (
-    id              SERIAL PRIMARY KEY,
-    profile_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    viewer_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    viewed_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(profile_user_id, viewer_id)
-  )
-`).catch(err => console.error('[Migration] profile_views:', err.message));
-
-pool.query(`
-  CREATE TABLE IF NOT EXISTS skill_endorsements (
-    id              SERIAL PRIMARY KEY,
-    profile_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    endorser_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    skill           TEXT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(profile_user_id, endorser_id, skill)
-  )
-`).catch(err => console.error('[Migration] skill_endorsements:', err.message));
-
-pool.query(`
-  CREATE TABLE IF NOT EXISTS user_projects (
-    id          SERIAL PRIMARY KEY,
-    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title       TEXT NOT NULL,
-    description TEXT,
-    url         TEXT,
-    image_url   TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  )
-`).catch(err => console.error('[Migration] user_projects:', err.message));
-
-pool.query(`
-  CREATE TABLE IF NOT EXISTS reports (
-    id               SERIAL PRIMARY KEY,
-    reporter_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    post_id          INTEGER REFERENCES posts(id) ON DELETE SET NULL,
-    reported_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    reason           TEXT NOT NULL,
-    status           TEXT NOT NULL DEFAULT 'pending',
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  )
-`).catch(err => console.error('[Migration] reports:', err.message));
-
-pool.query(`
-  ALTER TABLE posts ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public';
-  ALTER TABLE posts ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0
-`).catch(err => console.error('[Migration] posts visibility/views:', err.message));
-
-pool.query(`
-  ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT FALSE
-`).catch(err => console.error('[Migration] messages pinned:', err.message));
-
-pool.query(`
-  CREATE TABLE IF NOT EXISTS post_bookmarks (
-    id         SERIAL PRIMARY KEY,
-    post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(post_id, user_id)
-  )
-`).catch(err => console.error('[Migration] post_bookmarks:', err.message));
-
-// Trust proxy for rate limiter behind reverse proxies
 app.set('trust proxy', 1);
 
-// Middleware
-app.use(helmet({ crossOriginResourcePolicy: false }));
-const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
-  : [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'https://nexly-app-green.vercel.app',
-    ];
-app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json({ limit: '20mb' }));
-app.use(passport.initialize());
-app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+// ─── Security Middleware ────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
+}));
 
-// Rate limiting
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+  : ['http://localhost:5173', 'http://localhost:3000', 'https://nexly-app-green.vercel.app'];
+
+app.use(cors({ origin: corsOrigins, credentials: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(sanitizeBody);
+app.use(passport.initialize());
+
+// ─── Rate Limiting ─────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -184,17 +88,31 @@ app.use('/api/posts', writeLimiter);
 app.use('/api/messages', writeLimiter);
 app.use('/api/groups', writeLimiter);
 
-// Health check — also verifies DB connectivity
-app.get('/health', async (req, res) => {
+// ─── Health Check ──────────────────────────────────────────
+app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', database: 'connected' });
+    res.json({ status: 'ok', database: 'connected', uptime: process.uptime() });
   } catch (err) {
-    res.status(500).json({ status: 'error', database: 'disconnected', detail: err.message });
+    res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
 
-// Routes
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', database: 'connected', uptime: process.uptime() });
+  } catch (err) {
+    res.status(503).json({ status: 'error', database: 'disconnected' });
+  }
+});
+
+// ─── Run Migrations (async, non-blocking) ──────────────────
+if (process.env.NODE_ENV !== 'test') {
+  runMigrations().catch(err => console.error('[Startup] Migration error:', err.message));
+}
+
+// ─── Routes ────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
 app.use('/api/resumes', resumesRouter);
 app.use('/api/jobs', jobsRouter);
@@ -204,9 +122,9 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/cover-letters', coverLettersRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/stories',       storiesRouter);
-app.use('/api/highlights',    highlightsRouter);
-app.use('/api/notes',         notesRouter);
+app.use('/api/stories', storiesRouter);
+app.use('/api/highlights', highlightsRouter);
+app.use('/api/notes', notesRouter);
 app.use('/api/auth', passwordResetRouter);
 app.use('/api/hashtags', hashtagsRouter);
 app.use('/api/link-preview', linkPreviewRouter);
@@ -219,20 +137,16 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/endorsements', endorsementsRouter);
 
-// Serve React frontend (only when client/dist exists)
+// ─── Serve React Frontend ──────────────────────────────────
 const clientDist = path.join(__dirname, '../client/dist');
-const fs = require('fs');
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
+  app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('[ERROR]', err.stack || err.message || err);
-  res.status(err.status || 500).json({ error: err.expose ? err.message : 'Internal server error' });
-});
+// ─── Error Handler ─────────────────────────────────────────
+app.use(errorHandler);
 
 module.exports = { app, corsOrigins };

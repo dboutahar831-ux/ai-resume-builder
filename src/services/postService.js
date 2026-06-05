@@ -1,0 +1,456 @@
+const pool = require('../db');
+const { NotFoundError, ValidationError } = require('../utils/errors');
+
+const VALID_REACTIONS = ['like', 'heart', 'laugh', 'sad', 'angry'];
+
+let _io = null;
+function setIo(io) { _io = io; }
+
+const POLL_SUBQUERY = `
+  (SELECT row_to_json(poll_data) FROM (
+    SELECT pl.id, pl.question, pl.ends_at,
+      (SELECT json_agg(json_build_object(
+        'id', po.id, 'text', po.text,
+        'votes', (SELECT COUNT(*)::int FROM poll_votes WHERE option_id=po.id),
+        'my_vote', EXISTS(SELECT 1 FROM poll_votes WHERE option_id=po.id AND user_id=$VIEWER)
+      ) ORDER BY po.id) FROM poll_options po WHERE po.poll_id=pl.id) AS options,
+      (SELECT COUNT(*)::int FROM poll_votes WHERE poll_id=pl.id) AS total_votes,
+      (SELECT option_id FROM poll_votes WHERE poll_id=pl.id AND user_id=$VIEWER LIMIT 1) AS my_vote_option_id
+    FROM polls pl WHERE pl.post_id=p.id
+  ) poll_data) AS poll
+`;
+
+async function notify(recipientId, actorId, type, postId, commentId = null, io) {
+  const emitter = io || _io;
+  if (recipientId === actorId) return;
+  try {
+    const result = await pool.query(
+      `INSERT INTO notifications (user_id, actor_id, type, post_id, comment_id)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [recipientId, actorId, type, postId, commentId || null]
+    );
+    const notif = result.rows[0];
+    if (emitter && notif) {
+      const actor = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [actorId]);
+      emitter.to(`user:${recipientId}`).emit('notification:new', {
+        ...notif,
+        actor_name: actor.rows[0]?.name || 'Someone',
+        actor_avatar: actor.rows[0]?.avatar || null,
+      });
+    }
+  } catch {}
+}
+
+async function getFeed(userId, offset) {
+  const pollSub = POLL_SUBQUERY.replace(/\$VIEWER/g, userId);
+  const result = await pool.query(`
+    SELECT
+      p.id, p.content, p.image_url, p.video_url, p.created_at,
+      p.original_post_id, p.repost_text, p.link_metadata,
+      p.edited, p.edited_at, p.visibility, p.views_count,
+      u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+      CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
+      op.content AS original_content,
+      op.image_url AS original_image_url,
+      op.video_url AS original_video_url,
+      op.created_at AS original_created_at,
+      ou.id AS original_user_id,
+      ou.name AS original_user_name,
+      ou.avatar AS original_user_avatar,
+      COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+      COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+      (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+       FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+      ) AS reactions_summary,
+      (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+      EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked,
+      ${pollSub}
+    FROM posts p
+    JOIN users u ON u.id = p.user_id
+    LEFT JOIN posts op ON op.id = p.original_post_id
+    LEFT JOIN users ou ON ou.id = op.user_id
+    WHERE (p.user_id = $1
+       OR p.user_id IN (
+          SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END
+          FROM friendships
+          WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
+        ))
+    AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
+    AND (p.visibility = 'public' OR p.visibility = 'friends' OR p.user_id = $1)
+    ORDER BY p.created_at DESC
+    LIMIT $2 OFFSET $3
+  `, [userId, 20, offset]);
+  return result.rows;
+}
+
+async function getExplore(userId, offset) {
+  const pollSub = POLL_SUBQUERY.replace(/\$VIEWER/g, userId);
+  const result = await pool.query(`
+    SELECT
+      p.id, p.content, p.image_url, p.video_url, p.created_at,
+      p.original_post_id, p.repost_text, p.link_metadata,
+      p.edited, p.edited_at, p.visibility, p.views_count,
+      u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+      COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+      COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+      (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+       FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+      ) AS reactions_summary,
+      (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+      EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked,
+      ${pollSub}
+    FROM posts p
+    JOIN users u ON u.id = p.user_id
+    LEFT JOIN posts op ON op.id = p.original_post_id
+    LEFT JOIN users ou ON ou.id = op.user_id
+    WHERE p.visibility = 'public'
+      AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
+      AND p.user_id NOT IN (
+        SELECT CASE WHEN requester_id=$1 THEN addressee_id ELSE requester_id END
+        FROM friendships WHERE (requester_id=$1 OR addressee_id=$1) AND status='accepted'
+      )
+      AND p.user_id != $1
+    ORDER BY (reactions_count + comments_count) DESC, p.created_at DESC
+    LIMIT 20 OFFSET $2
+  `, [userId, offset]);
+  return result.rows;
+}
+
+async function getScheduledPosts(userId) {
+  const result = await pool.query(
+    `SELECT id, content, image_url, video_url, scheduled_at
+     FROM posts
+     WHERE user_id = $1 AND scheduled_at > NOW()
+     ORDER BY scheduled_at ASC`,
+    [userId]
+  );
+  return result.rows;
+}
+
+async function getTrendingHashtags() {
+  const result = await pool.query(`
+    SELECT tag, COUNT(*)::int AS count FROM (
+      SELECT LOWER((REGEXP_MATCHES(content, '#[A-Za-zÀ-ÿ0-9_]+', 'g'))[1]) AS tag
+      FROM posts WHERE created_at > NOW() - INTERVAL '7 days' AND content IS NOT NULL
+    ) t
+    WHERE tag IS NOT NULL
+    GROUP BY tag ORDER BY count DESC LIMIT 8
+  `);
+  return result.rows.map(r => r.tag);
+}
+
+async function getUserPosts(viewerId, targetUserId) {
+  const result = await pool.query(`
+    SELECT
+      p.id, p.content, p.image_url, p.video_url, p.created_at,
+      p.original_post_id, p.repost_text, p.link_metadata,
+      p.edited, p.edited_at,
+      u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+      COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+      COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+      (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+       FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+      ) AS reactions_summary,
+      (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+      EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $1) AS is_bookmarked
+    FROM posts p
+    JOIN users u ON u.id = p.user_id
+    WHERE p.user_id = $2
+      AND (p.scheduled_at IS NULL OR p.scheduled_at <= NOW())
+    ORDER BY p.created_at DESC
+    LIMIT 50
+  `, [viewerId, targetUserId]);
+  return result.rows;
+}
+
+async function incrementViewCount(postId, userId) {
+  await pool.query(
+    'UPDATE posts SET views_count = views_count + 1 WHERE id=$1 AND user_id != $2',
+    [postId, userId]
+  );
+}
+
+async function createPost(userId, data) {
+  const { content, image_url, video_url, scheduled_at, mention_ids, link_metadata, visibility, poll } = data;
+  if (!content?.trim() && !image_url && !video_url && !poll)
+    throw new ValidationError('Post cannot be empty.');
+  const vis = ['public', 'friends', 'private'].includes(visibility) ? visibility : 'public';
+  const result = await pool.query(
+    `INSERT INTO posts (user_id, content, image_url, video_url, scheduled_at, link_metadata, visibility)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     RETURNING id, content, image_url, video_url, created_at, scheduled_at, link_metadata, visibility`,
+    [userId, content?.trim() || null, image_url || null, video_url || null, scheduled_at || null, link_metadata ? JSON.stringify(link_metadata) : null, vis]
+  );
+  const post = result.rows[0];
+
+  if (poll?.question && Array.isArray(poll.options) && poll.options.length >= 2) {
+    const pollRes = await pool.query(
+      'INSERT INTO polls (post_id, question, ends_at) VALUES ($1,$2,$3) RETURNING id',
+      [post.id, poll.question.trim(), poll.ends_at || null]
+    );
+    const pollId = pollRes.rows[0].id;
+    for (const opt of poll.options.slice(0, 4)) {
+      if (opt?.trim()) {
+        await pool.query('INSERT INTO poll_options (poll_id, text) VALUES ($1,$2)', [pollId, opt.trim()]);
+      }
+    }
+  }
+
+  const tags = (content || '').match(/#[A-Za-zÀ-ÿ0-9_]+/g);
+  if (tags) {
+    const unique = [...new Set(tags.map(t => t.slice(1).toLowerCase()))];
+    for (const tag of unique) {
+      await pool.query(
+        `INSERT INTO hashtags (tag) VALUES ($1) ON CONFLICT (tag) DO UPDATE SET post_count = hashtags.post_count + 1`,
+        [tag]
+      );
+      const ht = await pool.query('SELECT id FROM hashtags WHERE tag=$1', [tag]);
+      await pool.query(
+        'INSERT INTO post_hashtags (post_id, hashtag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [post.id, ht.rows[0].id]
+      );
+    }
+  }
+
+  const u = await pool.query(
+    'SELECT name, avatar, last_seen_at, COALESCE(show_online_status, TRUE) AS show_online FROM users WHERE id=$1',
+    [userId]
+  );
+
+  if (Array.isArray(mention_ids)) {
+    for (const uid of mention_ids) {
+      await notify(uid, userId, 'mention', post.id);
+    }
+  }
+
+  return {
+    ...post,
+    user_id: userId,
+    user_name: u.rows[0].name,
+    user_avatar: u.rows[0].avatar,
+    user_last_seen_at: u.rows[0].show_online ? u.rows[0].last_seen_at : null,
+    reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
+  };
+}
+
+async function repostPost(userId, postId, repostText) {
+  const original = await pool.query('SELECT id, user_id FROM posts WHERE id=$1', [postId]);
+  if (!original.rows[0]) throw new NotFoundError('Post');
+
+  const result = await pool.query(
+    `INSERT INTO posts (user_id, original_post_id, repost_text)
+     VALUES ($1,$2,$3)
+     RETURNING id, content, image_url, video_url, original_post_id, repost_text, created_at`,
+    [userId, postId, repostText?.trim() || null]
+  );
+  const post = result.rows[0];
+  const u = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [userId]);
+  const orig = await pool.query(`
+    SELECT p.content, p.image_url, p.video_url, p.created_at,
+      u.id AS user_id, u.name, u.avatar
+    FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id=$1
+  `, [postId]);
+  const o = orig.rows[0];
+
+  await notify(original.rows[0].user_id, userId, 'repost', parseInt(postId));
+
+  return {
+    ...post,
+    user_id: userId, user_name: u.rows[0].name, user_avatar: u.rows[0].avatar,
+    original_content: o?.content, original_image_url: o?.image_url, original_video_url: o?.video_url,
+    original_created_at: o?.created_at, original_user_id: o?.user_id,
+    original_user_name: o?.name, original_user_avatar: o?.avatar,
+    reactions_count: 0, comments_count: 0, reactions_summary: null, my_reaction: null,
+  };
+}
+
+async function editPost(userId, postId, content) {
+  if (!content?.trim()) throw new ValidationError('Content cannot be empty.');
+  const result = await pool.query(
+    'UPDATE posts SET content=$1, edited=TRUE, edited_at=NOW() WHERE id=$2 AND user_id=$3 RETURNING *',
+    [content.trim(), postId, userId]
+  );
+  if (result.rows.length === 0) throw new NotFoundError('Post');
+  return result.rows[0];
+}
+
+async function deletePost(userId, postId) {
+  const result = await pool.query('DELETE FROM posts WHERE id=$1 AND user_id=$2 RETURNING id', [postId, userId]);
+  if (result.rows.length === 0) throw new NotFoundError('Post');
+}
+
+async function reactToPost(userId, postId, type) {
+  if (!VALID_REACTIONS.includes(type)) throw new ValidationError('Invalid reaction type.');
+  const ex = await pool.query(
+    'SELECT type FROM post_reactions WHERE post_id=$1 AND user_id=$2',
+    [postId, userId]
+  );
+  if (ex.rows.length > 0 && ex.rows[0].type === type) {
+    await pool.query('DELETE FROM post_reactions WHERE post_id=$1 AND user_id=$2', [postId, userId]);
+    return { my_reaction: null };
+  }
+  if (ex.rows.length > 0) {
+    await pool.query('UPDATE post_reactions SET type=$1 WHERE post_id=$2 AND user_id=$3', [type, postId, userId]);
+  } else {
+    await pool.query('INSERT INTO post_reactions (post_id, user_id, type) VALUES ($1,$2,$3)', [postId, userId, type]);
+    const owner = await pool.query('SELECT user_id FROM posts WHERE id=$1', [postId]);
+    if (owner.rows[0]) await notify(owner.rows[0].user_id, userId, 'reaction', parseInt(postId));
+  }
+  return { my_reaction: type };
+}
+
+async function getComments(postId, userId) {
+  const result = await pool.query(`
+    SELECT
+      c.id, c.content, c.image_url, c.created_at, c.parent_id,
+      u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+      (SELECT u2.name FROM comments c2 JOIN users u2 ON u2.id = c2.user_id WHERE c2.id = c.parent_id) AS parent_user_name,
+      (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+       FROM (SELECT type, COUNT(*)::int AS cnt FROM comment_reactions WHERE comment_id = c.id GROUP BY type) t
+      ) AS reactions_summary,
+      (SELECT type FROM comment_reactions WHERE comment_id = c.id AND user_id = $2 LIMIT 1) AS my_reaction
+    FROM comments c
+    JOIN users u ON u.id = c.user_id
+    WHERE c.post_id = $1
+    ORDER BY c.created_at ASC
+  `, [postId, userId]);
+  return result.rows;
+}
+
+async function createComment(postId, userId, data) {
+  const { content, image_url, parent_id, mention_ids } = data;
+  if (!content?.trim() && !image_url) throw new ValidationError('Comment cannot be empty.');
+  const result = await pool.query(
+    `INSERT INTO comments (post_id, user_id, content, image_url, parent_id)
+     VALUES ($1,$2,$3,$4,$5) RETURNING id, content, image_url, created_at, parent_id`,
+    [postId, userId, content?.trim() || null, image_url || null, parent_id || null]
+  );
+  const c = result.rows[0];
+  const u = await pool.query('SELECT name, avatar FROM users WHERE id=$1', [userId]);
+
+  const owner = await pool.query('SELECT user_id FROM posts WHERE id=$1', [postId]);
+  if (owner.rows[0]) {
+    if (parent_id) {
+      const parentComment = await pool.query('SELECT user_id FROM comments WHERE id=$1', [parent_id]);
+      if (parentComment.rows[0]) {
+        await notify(parentComment.rows[0].user_id, userId, 'reply', parseInt(postId), c.id);
+      }
+    } else {
+      await notify(owner.rows[0].user_id, userId, 'comment', parseInt(postId), c.id);
+    }
+  }
+  if (Array.isArray(mention_ids)) {
+    for (const uid of mention_ids) {
+      await notify(uid, userId, 'mention', parseInt(postId), c.id);
+    }
+  }
+
+  return {
+    ...c,
+    user_id: userId,
+    user_name: u.rows[0].name,
+    user_avatar: u.rows[0].avatar,
+    parent_user_name: null,
+    reactions_summary: null,
+    my_reaction: null,
+  };
+}
+
+async function deleteComment(commentId, userId) {
+  await pool.query('DELETE FROM comments WHERE id=$1 AND user_id=$2', [commentId, userId]);
+}
+
+async function reactToComment(commentId, userId, type) {
+  if (!VALID_REACTIONS.includes(type)) throw new ValidationError('Invalid reaction type.');
+  const ex = await pool.query(
+    'SELECT type FROM comment_reactions WHERE comment_id=$1 AND user_id=$2',
+    [commentId, userId]
+  );
+  if (ex.rows.length > 0 && ex.rows[0].type === type) {
+    await pool.query('DELETE FROM comment_reactions WHERE comment_id=$1 AND user_id=$2', [commentId, userId]);
+    return { my_reaction: null };
+  }
+  if (ex.rows.length > 0) {
+    await pool.query('UPDATE comment_reactions SET type=$1 WHERE comment_id=$2 AND user_id=$3', [type, commentId, userId]);
+  } else {
+    await pool.query('INSERT INTO comment_reactions (comment_id, user_id, type) VALUES ($1,$2,$3)', [commentId, userId, type]);
+  }
+  return { my_reaction: type };
+}
+
+async function getBookmarks(userId) {
+  const result = await pool.query(`
+    SELECT
+      p.id, p.content, p.image_url, p.video_url, p.created_at,
+      p.original_post_id, p.repost_text, p.link_metadata,
+      p.edited, p.edited_at,
+      u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+      COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+      COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+      (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+       FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+      ) AS reactions_summary,
+      (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $1 LIMIT 1) AS my_reaction,
+      TRUE AS is_bookmarked
+    FROM post_bookmarks pb
+    JOIN posts p ON p.id = pb.post_id
+    JOIN users u ON u.id = p.user_id
+    WHERE pb.user_id = $1
+    ORDER BY pb.created_at DESC
+    LIMIT 50
+  `, [userId]);
+  return result.rows;
+}
+
+async function getPost(postId, userId) {
+  const pollSub = POLL_SUBQUERY.replace(/\$VIEWER/g, userId);
+  const result = await pool.query(`
+    SELECT
+      p.id, p.content, p.image_url, p.video_url, p.created_at,
+      p.original_post_id, p.repost_text, p.link_metadata,
+      p.edited, p.edited_at, p.visibility, p.views_count,
+      u.id AS user_id, u.name AS user_name, u.avatar AS user_avatar,
+      CASE WHEN COALESCE(u.show_online_status, TRUE) THEN u.last_seen_at ELSE NULL END AS user_last_seen_at,
+      op.content AS original_content, op.image_url AS original_image_url,
+      op.video_url AS original_video_url, op.created_at AS original_created_at,
+      ou.id AS original_user_id, ou.name AS original_user_name, ou.avatar AS original_user_avatar,
+      COALESCE((SELECT COUNT(*)::int FROM post_reactions WHERE post_id = p.id), 0) AS reactions_count,
+      COALESCE((SELECT COUNT(*)::int FROM comments WHERE post_id = p.id), 0) AS comments_count,
+      (SELECT json_agg(json_build_object('type', t.type, 'count', t.cnt))
+       FROM (SELECT type, COUNT(*)::int AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY type ORDER BY cnt DESC) t
+      ) AS reactions_summary,
+      (SELECT type FROM post_reactions WHERE post_id = p.id AND user_id = $2 LIMIT 1) AS my_reaction,
+      EXISTS(SELECT 1 FROM post_bookmarks WHERE post_id = p.id AND user_id = $2) AS is_bookmarked,
+      ${pollSub}
+    FROM posts p
+    JOIN users u ON u.id = p.user_id
+    LEFT JOIN posts op ON op.id = p.original_post_id
+    LEFT JOIN users ou ON ou.id = op.user_id
+    WHERE p.id = $1
+  `, [postId, userId]);
+  if (!result.rows[0]) throw new NotFoundError('Post');
+  return result.rows[0];
+}
+
+async function bookmarkPost(postId, userId) {
+  await pool.query(
+    'INSERT INTO post_bookmarks (post_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+    [postId, userId]
+  );
+}
+
+async function unbookmarkPost(postId, userId) {
+  await pool.query(
+    'DELETE FROM post_bookmarks WHERE post_id=$1 AND user_id=$2',
+    [postId, userId]
+  );
+}
+
+module.exports = {
+  setIo, notify, VALID_REACTIONS,
+  getFeed, getExplore, getScheduledPosts, getTrendingHashtags,
+  getUserPosts, incrementViewCount, createPost, repostPost,
+  editPost, deletePost, reactToPost, getComments, createComment,
+  deleteComment, reactToComment, getBookmarks, getPost,
+  bookmarkPost, unbookmarkPost,
+};
